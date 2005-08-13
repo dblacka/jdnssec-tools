@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+
+<!--
+     build.xml for SECTOOLS
+     =================== 
+
+     Just run Ant using Ant's scripts ("ant") to compile.  Once you
+     have done that, a "build/classes" directory will be created
+     containing the compiled class files.
+
+-->
+
+<project default="compile" basedir=".">
+
+  <property file="build.properties" />
+  <property file="VERSION" />
+  
+  <property name="sectools-distname" value="java-dnssec-tools-${version}" />
+
+  <property name="build.dir" value="build" />
+  <property name="build.dest" value="${build.dir}/classes" />
+  <property name="build.lib.dest" value="${build.dir}/lib" />
+  <property name="build.src" value="src" />
+
+  <property name="packages" value="com.verisignlabs.dnssec.*" />
+  <property name="doc.dir" value="doc" />
+  <property name="javadoc.dest" value="${doc.dir}/javadoc" />
+
+  <property name="lib.dir" value="lib" />
+
+  <!-- set the standard classpath -->
+  <path id="project.classpath">
+    <pathelement location="${build.dest}" />
+    <fileset dir="${lib.dir}" includes="*.jar,*.zip" />
+  </path>
+  <property name="project.classpath" refid="project.classpath" />
+
+  <target name="prepare-src">
+    <mkdir dir="${build.dest}" />
+    <mkdir dir="${build.lib.dest}" />
+  </target>
+
+  <target name="sectools" depends="prepare-src" >
+    <javac srcdir="${build.src}" 
+           destdir="${build.dest}"
+           classpathref="project.classpath"
+           deprecation="true" 
+           includes="com/verisignlabs/dnssec/" />
+  </target>
+
+  <target name="sectools-jar" depends="usage,sectools">
+    <jar jarfile="${build.lib.dest}/java-dnssec-tools.jar"
+         basedir="${build.dest}"
+         includes="com/verisignlabs/dnssec/" />
+  </target>
+
+  <target name="compile" 
+          depends="usage,sectools-jar">
+  </target>
+
+  <target name="javadoc" depends="usage">
+    <mkdir dir="${javadoc.dest}"/>
+    <javadoc packagenames="${packages}" 
+             classpath="${project.classpath}"
+             sourcepath="${build.src}" 
+             destdir="${javadoc.dest}"
+             verbose="true" author="true" 
+             windowtitle="java-dnssec-tools-${version}" 
+             use="true">
+      <link href="http://java.sun.com/j2se/1.4.2/docs/api/" />
+      <link href="http://www.xbill.org/dnsjava/doc/" />
+    </javadoc>
+  </target>
+
+
+  <target name="clean" depends="usage">
+    <delete dir="${build.dest}" />
+    <delete dir="${build.lib.dest}" />
+  </target>
+
+  <target name="sectools-dist-prepare" depends="usage, compile, javadoc">
+    <mkdir dir="${sectools-distname}" />
+
+    <copy todir="${sectools-distname}">
+      <fileset dir=".">
+        <include name="bin/jdnssec-*" />
+        <include name="lib/*.jar" />
+        <include name="lib/*.zip" />
+        <include name="doc/**" />
+        <include name="licenses/" />
+        <include name="src/**/*.java" />
+        <include name="VERSION" />
+        <include name="README" />
+        <include name="build.xml" />
+        <include name="build.properties" />
+      </fileset>
+    </copy>
+
+    <copy todir="${sectools-distname}/lib">
+      <fileset dir="${build.lib.dest}">
+        <include name="*.jar" />
+       </fileset>
+    </copy>
+  </target>
+
+  <target name="sectools-dist-clean">
+    <delete dir="${sectools-distname}" />
+  </target>
+
+  <patternset id="exec.files">
+    <!-- FIXME: when we get more command line tools built, make sure
+    to include them here -->
+    <include name="${sectools-distname}/bin/jdnssec-signzone" />
+    <include name="${sectools-distname}/bin/jdnssec-keygen" />
+    <include name="${sectools-distname}/bin/jdnssec-verifyzone" />
+  </patternset>
+
+  <patternset id="src.files">
+    <include name="${sectools-distname}/src/" />
+    <include name="${sectools-distname}/build.xml" />
+    <include name="${sectools-distname}/build.properties" />
+  </patternset>
+
+  <patternset id="bin.files">
+    <include name="${sectools-distname}/doc/" />
+    <include name="${sectools-distname}/lib/" />
+    <include name="${sectools-distname}/licenses/" />
+    <include name="${sectools-distname}/VERSION" />
+    <include name="${sectools-distname}/README" />
+  </patternset>
+
+  <target name="sectools-bin-dist" depends="sectools-dist-prepare">
+    <tar destfile="${sectools-distname}.tar.gz" compression="gzip">
+      <tarfileset mode="755" dir=".">
+        <patternset refid="exec.files" />
+      </tarfileset>
+      <tarfileset dir=".">
+        <patternset refid="bin.files" />
+      </tarfileset>
+    </tar>
+  </target>
+
+  <target name="sectools-src-dist" depends="sectools-dist-prepare">
+    <tar destfile="${sectools-distname}-src.tar.gz"
+         compression="gzip">
+      <tarfileset dir=".">
+        <patternset refid="src.files" />
+      </tarfileset>
+    </tar>
+  </target>
+
+  <target name="sectools-dist" 
+         depends="sectools-bin-dist,sectools-src-dist, sectools-dist-clean">
+  </target>
+
+
+  <target name="dist" depends="sectools-dist">
+   <echo message="do not forget to tag the release:" />
+   <echo message="  cvs tag V_${tagversion}" />
+  </target>
+
+  <target name="usage">
+    <echo message=" " />
+    <echo message="SECTOOLS v. ${version} Build System" />
+    <echo message="--------------------------------" />
+    <echo message="Available Targets:" />
+    <echo message="  compile (default) - compiles the source code, creates jar" />
+    <echo message="  javadoc           - create javadoc from source" />
+    <echo message="  clean             - delete class files" />
+    <echo message="  dist              - package it up" />
+    <echo message="  usage             - this help message" />
+    <echo message=" " />
+  </target>
+
+</project>
+

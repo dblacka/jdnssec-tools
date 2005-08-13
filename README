@@ -1,0 +1,51 @@
+java-dnssec-tools
+
+http://www.dnssec.verisignlabs.com/
+
+Author: David Blacka (davidb@verisignlabs.com)
+
+This is a collection of DNSSEC tools written in Java.  They are
+intended to be an addition or replacement for the DNSSEC tools that
+are part of BIND 9.
+
+These tools depend upon DNSjava (http://www.xbill.org/dnsjava), the
+Jakarta Commons CLI and Logging libraries (http://jakarta.apache.org),
+and Sun's Java Cryptography extensions.  A copy of each of these
+libraries is included in the distribution.
+
+See the "licenses" directory for the licensing information of this
+package and the other packages that are distributed with it.
+
+Getting started:
+
+1. unpack the binary distribution:
+
+% tar zxvf java-dnssec-tools-x.x.x.tar.gz
+
+2. run the various tools from their unpacked location:
+
+% cd java-dnssec-tools-x.x.x
+% ./bin/signZone.sh -h
+
+Building from source:
+
+1. unpack the source distribution, preferably into the same directory
+that the binary distribution was unpacked.
+
+% tar zxvf java-dnssec-tools-x.x.x-src.tar.gz
+
+2. edit the build.properties file to suit your environment,
+particularly the use of the jikes compiler.
+
+2. run Ant (see http://jakara.apache.org for information about the Ant
+build tool).
+
+% ant
+
+---
+
+Questions or comments may be directed to the author
+(mailto:davidb@verisignlabs.com) or sent to the
+dnssec@verisignlabs.com mailing list
+(http://lists.verisignlabs.com/mailman/listinfo/dnssec).
+
