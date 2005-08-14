@@ -1,24 +1,28 @@
-// $Id: TypeMap.java,v 1.5 2004/03/23 17:53:57 davidb Exp $
+// $Id$
 //
 // Copyright (C) 2004 Verisign, Inc.
 
 package com.verisignlabs.dnssec.security;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
-import org.xbill.DNS.Type;
 import org.xbill.DNS.DNSOutput;
+import org.xbill.DNS.Type;
 
-/** This class represents the multiple type maps of the NSEC
- *  record. Currently it is just used to convert the wire format type
- *  map to the int array that org.xbill.DNS.NSECRecord uses.  */
+/**
+ * This class represents the multiple type maps of the NSEC record. Currently
+ * it is just used to convert the wire format type map to the int array that
+ * org.xbill.DNS.NSECRecord uses.
+ */
 
 public class TypeMap
 {
   private static final Integer[] integerArray = new Integer[0];
 
-  private Set typeSet;
-  
+  private Set                    typeSet;
+
   public TypeMap()
   {
     this.typeSet = new HashSet();
@@ -41,7 +45,6 @@ public class TypeMap
   {
     return typeSet.contains(new Integer(type));
   }
-  
 
   public static TypeMap fromTypes(int[] types)
   {
@@ -53,27 +56,29 @@ public class TypeMap
 
     return m;
   }
-  
-  /** Given an array of bytes representing a wire-format type map,
-   *  construct the TypeMap object. */
+
+  /**
+   * Given an array of bytes representing a wire-format type map, construct
+   * the TypeMap object.
+   */
   public static TypeMap fromBytes(byte[] map)
   {
-    int     m       = 0;
+    int m = 0;
     TypeMap typemap = new TypeMap();
-    
+
     int map_number;
     int byte_length;
-    
+
     while (m < map.length)
     {
-      map_number  = map[m++];
+      map_number = map[m++];
       byte_length = map[m++];
-      
+
       for (int i = 0; i < byte_length; i++)
       {
         for (int j = 0; j < 8; j++)
         {
-          if ( (map[m + i] & (1 << (7 - j))) != 0 )
+          if ((map[m + i] & (1 << (7 - j))) != 0)
           {
             typemap.set(map_number * 8 + j);
           }
@@ -84,15 +89,15 @@ public class TypeMap
 
     return typemap;
   }
-  
+
   /** @return the normal string representation of the typemap. */
   public String toString()
   {
     int[] types = getTypes();
     Arrays.sort(types);
-    
+
     StringBuffer sb = new StringBuffer();
-    
+
     for (int i = 0; i < types.length; i++)
     {
       sb.append(" ");
@@ -102,8 +107,8 @@ public class TypeMap
     return sb.toString();
   }
 
-  protected static void mapToWire(DNSOutput out, int[] types,
-                                  int base, int start, int end)
+  protected static void mapToWire(DNSOutput out, int[] types, int base,
+      int start, int end)
   {
     // calculate the length of this map by looking at the largest
     // typecode in this section.
@@ -121,7 +126,7 @@ public class TypeMap
     // for each type in our sub-array, set its corresponding bit in the map.
     for (int i = start; i < end; i++)
     {
-      map[ (types[i] & 0xFF) / 8 ] |= ( 1 << (7 - types[i] % 8) );
+      map[(types[i] & 0xFF) / 8] |= (1 << (7 - types[i] % 8));
     }
     // write out the resulting binary bitmap.
     for (int i = 0; i < map.length; i++)
@@ -129,7 +134,7 @@ public class TypeMap
       out.writeU8(map[i]);
     }
   }
-  
+
   public byte[] toWire()
   {
     int[] types = getTypes();
@@ -140,7 +145,7 @@ public class TypeMap
     int mapstart = -1;
 
     DNSOutput out = new DNSOutput();
-    
+
     for (int i = 0; i < types.length; i++)
     {
       int base = types[i] >> 8;
@@ -156,13 +161,14 @@ public class TypeMap
 
     return out.toByteArray();
   }
-  
+
   public int[] getTypes()
   {
     Integer[] a = (Integer[]) typeSet.toArray(integerArray);
 
     int[] res = new int[a.length];
-    for (int i = 0; i < res.length; i++) {
+    for (int i = 0; i < res.length; i++)
+    {
       res[i] = a[i].intValue();
     }
 
@@ -178,5 +184,5 @@ public class TypeMap
   {
     return TypeMap.fromTypes(types).toWire();
   }
-    
+
 }

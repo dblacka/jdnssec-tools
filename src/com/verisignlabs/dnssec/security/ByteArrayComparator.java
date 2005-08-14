@@ -1,4 +1,4 @@
-// $Id: ByteArrayComparator.java,v 1.2 2004/02/25 20:46:14 davidb Exp $
+// $Id$
 //
 // Copyright (C) 2001-2003 VeriSign, Inc.
 //
@@ -18,31 +18,32 @@
 
 package com.verisignlabs.dnssec.security;
 
-import java.util.*;
+import java.util.Comparator;
 
-
-/** This class implements a basic comparitor for byte arrays.  It is
- *  primarily useful for comparing RDATA portions of DNS records in
- *  doing DNSSEC canonical ordering.
- *
- *  @author David Blacka (original)
- *  @author $Author: davidb $
- *  @version $Revision: 1.2 $
+/**
+ * This class implements a basic comparitor for byte arrays. It is primarily
+ * useful for comparing RDATA portions of DNS records in doing DNSSEC
+ * canonical ordering.
+ * 
+ * @author David Blacka (original)
+ * @author $Author$
+ * @version $Revision$
  */
 public class ByteArrayComparator implements Comparator
 {
-  private int mOffset = 0;
-  private boolean mDebug = false;
-  
+  private int     mOffset = 0;
+  private boolean mDebug  = false;
+
   public ByteArrayComparator()
-  {}
+  {
+  }
 
   public ByteArrayComparator(int offset, boolean debug)
   {
     mOffset = offset;
     mDebug = debug;
   }
-  
+
   public int compare(Object o1, Object o2) throws ClassCastException
   {
     byte[] b1 = (byte[]) o1;
@@ -52,12 +53,12 @@ public class ByteArrayComparator implements Comparator
     {
       if (b1[i] != b2[i])
       {
-	if (mDebug)
-	{
-	  System.out.println("offset " + i + " differs (this is " +
-			     (i - mOffset) +" bytes in from our offset.)");
-	}
-	return (b1[i] & 0xFF) - (b2[i] & 0xFF);
+        if (mDebug)
+        {
+          System.out.println("offset " + i + " differs (this is "
+              + (i - mOffset) + " bytes in from our offset.)");
+        }
+        return (b1[i] & 0xFF) - (b2[i] & 0xFF);
       }
     }
 

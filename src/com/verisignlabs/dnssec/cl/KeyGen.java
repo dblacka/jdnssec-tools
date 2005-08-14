@@ -1,4 +1,4 @@
-// $Id: KeyGen.java,v 1.2 2004/01/16 17:56:17 davidb Exp $
+// $Id$
 //
 // Copyright (C) 2001-2003 VeriSign, Inc.
 //
@@ -20,6 +20,8 @@
 package com.verisignlabs.dnssec.cl;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
@@ -32,66 +34,65 @@ import com.verisignlabs.dnssec.security.*;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-/** This class forms the command line implementation of a DNSSEC key
- *  generator
- *
- *  @author David Blacka (original)
- *  @author $Author: davidb $
- *  @version $Revision: 1.2 $
+/**
+ * This class forms the command line implementation of a DNSSEC key generator
+ * 
+ * @author David Blacka (original)
+ * @author $Author$
+ * @version $Revision$
  */
 public class KeyGen
 {
-  private static Log log;
-  
-  /** This is a small inner class used to hold all of the command line
-   *  option state. */
+  private static Logger log;
+
+  /**
+   * This is a small inner class used to hold all of the command line option
+   * state.
+   */
   private static class CLIState
   {
-    public int     algorithm  = 5;
-    public int     keylength  = 1024;
-    public String  outputfile = null;
-    public File    keydir     = null;
-    public boolean zoneKey    = true;
-    public boolean kskFlag    = false;
-    public String  owner      = null;
-    public long    ttl        = 86400;
-    
-    public CLIState() { }
+    private Options opts;
+    public int      algorithm  = 5;
+    public int      keylength  = 1024;
+    public String   outputfile = null;
+    public File     keydir     = null;
+    public boolean  zoneKey    = true;
+    public boolean  kskFlag    = false;
+    public String   owner      = null;
+    public long     ttl        = 86400;
 
-    public void parseCommandLine(Options opts, String[] args)
-      throws org.apache.commons.cli.ParseException, ParseException,
-	     IOException
+    public CLIState()
+    {
+      setupCLI();
+    }
+
+    public void parseCommandLine(String[] args)
+        throws org.apache.commons.cli.ParseException
     {
       CommandLineParser cli_parser = new PosixParser();
-      CommandLine       cli        = cli_parser.parse(opts, args);
+      CommandLine cli = cli_parser.parse(opts, args);
 
       String optstr = null;
 
-      if (cli.hasOption('h')) usage(opts);
-      
+      if (cli.hasOption('h')) usage();
+
       if (cli.hasOption('v'))
       {
-	int value = parseInt(cli.getOptionValue('v'), 5);
-
-	switch (value)
-	{
-	case 0:
-	  System.setProperty("org.apache.commons.logging.simplelog.defaultlog",
-			     "fatal");
-	  break;
-	case 5:
-	default:
-	  System.setProperty("org.apache.commons.logging.simplelog.defaultlog",
-			     "debug");
-	  break;
-	case 6:
-	  System.setProperty("org.apache.commons.logging.simplelog.defaultlog",
-			     "trace");
-	  break;
-	}
+        int value = parseInt(cli.getOptionValue('v'), 5);
+        Logger rootLogger = Logger.getLogger("");
+        switch (value)
+        {
+          case 0 :
+            rootLogger.setLevel(Level.OFF);
+            break;
+          case 5 :
+          default :
+            rootLogger.setLevel(Level.FINE);
+            break;
+          case 6 :
+            rootLogger.setLevel(Level.ALL);
+            break;
+        }
       }
 
       if (cli.hasOption('k')) kskFlag = true;
@@ -102,10 +103,10 @@ public class KeyGen
       {
         keydir = new File(optstr);
       }
-      
+
       if ((optstr = cli.getOptionValue('n')) != null)
       {
-        if (! optstr.equalsIgnoreCase("ZONE"))
+        if (!optstr.equalsIgnoreCase("ZONE"))
         {
           zoneKey = false;
         }
@@ -124,25 +125,104 @@ public class KeyGen
       {
         ttl = parseInt(optstr, 86400);
       }
-      
+
       String[] cl_args = cli.getArgs();
 
       if (cl_args.length < 1)
       {
-	System.err.println("error: missing key owner name");
-	usage(opts);
+        System.err.println("error: missing key owner name");
+        usage();
       }
 
       owner = cl_args[0];
     }
+
+    /**
+     * Set up the command line options.
+     * 
+     * @return a set of command line options.
+     */
+    private void setupCLI()
+    {
+      opts = new Options();
+
+      // boolean options
+      opts.addOption("h", "help", false, "Print this message.");
+      opts.addOption("k",
+          "kskflag",
+          false,
+          "Key is a key-signing-key (sets the SEP flag).");
+
+      // Argument options
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("nametype");
+      OptionBuilder.withArgName("type");
+      OptionBuilder.withDescription("ZONE | OTHER (default ZONE)");
+      opts.addOption(OptionBuilder.create('n'));
+
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("verbose");
+      OptionBuilder.withArgName("level");
+      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
+          + "5 is debug information, " + "6 is trace information.\n"
+          + "default is level 5.");
+      opts.addOption(OptionBuilder.create('v'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("algorithm");
+      OptionBuilder.withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA, "
+          + "RSASHA1 is default.");
+      opts.addOption(OptionBuilder.create('a'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("size");
+      OptionBuilder.withDescription("key size, in bits. (default = 1024)\n"
+          + "RSA|RSASHA1|RSAMD5: [512..4096]\n"
+          + "DSA:                [512..1024]\n"
+          + "DH:                 [128..4096]");
+      opts.addOption(OptionBuilder.create('b'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("file");
+      OptionBuilder.withLongOpt("output-file");
+      OptionBuilder.withDescription("base filename for the public/private key files");
+      opts.addOption(OptionBuilder.create('f'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("keydir");
+      OptionBuilder.withArgName("dir");
+      OptionBuilder.withDescription("place generated key files in this directory");
+      opts.addOption(OptionBuilder.create('d'));
+    }
+
+    /** Print out the usage and help statements, then quit. */
+    private void usage()
+    {
+      HelpFormatter f = new HelpFormatter();
+
+      PrintWriter out = new PrintWriter(System.err);
+
+      // print our own usage statement:
+      f.printHelp(out,
+          75,
+          "jdnssec-keygen [..options..] name",
+          null,
+          opts,
+          HelpFormatter.DEFAULT_LEFT_PAD,
+          HelpFormatter.DEFAULT_DESC_PAD,
+          null);
+
+      out.flush();
+      System.exit(64);
+    }
   }
 
-  /** This is just a convenience method for parsing integers from
-   *  strings.
-   *
-   *  @param s the string to parse.
-   *  @param def the default value, if the string doesn't parse.
-   *  @return the parsed integer, or the default.
+  /**
+   * This is just a convenience method for parsing integers from strings.
+   * 
+   * @param s the string to parse.
+   * @param def the default value, if the string doesn't parse.
+   * @return the parsed integer, or the default.
    */
   private static int parseInt(String s, int def)
   {
@@ -161,7 +241,7 @@ public class KeyGen
   {
     int alg = parseInt(s, -1);
     if (alg > 0) return alg;
-    
+
     s = s.toUpperCase();
 
     if (s.equals("RSA"))
@@ -188,109 +268,34 @@ public class KeyGen
     // default
     return DNSSEC.RSASHA1;
   }
-  
-  /** Set up the command line options.
-   *
-   *  @return a set of command line options.
-   */
-  private static Options setupCLI()
-  {
-    Options options = new Options();
-    
-    // boolean options
-    options.addOption("h", "help", false, "Print this message.");
-    options.addOption("k", "kskflag", false,
-                      "Key is a key-signing-key (sets the SEP flag).");
 
-    // Argument options
-    options.addOption(OptionBuilder.hasArg()
-                      .withLongOpt("nametype")
-                      .withArgName("type")
-                      .withDescription("ZONE | OTHER (default ZONE)")
-                      .create('n'));
-    options.addOption(OptionBuilder.hasOptionalArg()
-                      .withLongOpt("verbose")
-		      .withArgName("level")
-		      .withDescription("verbosity level -- 0 is silence, " +
-				       "5 is debug information, " +
-				       "6 is trace information.\n"+
-				       "default is level 5.")
-		      .create('v'));
-    options.addOption(OptionBuilder.hasArg()
-                      .withArgName("algorithm")
-                      .withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA, " +
-                                       "RSASHA1 is default.")
-                      .create('a'));
-    options.addOption(OptionBuilder.hasArg()
-                      .withArgName("size")
-                      .withDescription
-                      ("key size, in bits. (default = 1024)\n" +
-                       "RSA|RSASHA1|RSAMD5: [512..4096]\n" +
-                       "DSA:                [512..1024]\n" +
-                       "DH:                 [128..4096]")
-                      .create('b'));
-    options.addOption(OptionBuilder.hasArg()
-                      .withArgName("file")
-                      .withLongOpt("output-file")
-                      .withDescription
-                      ("base filename for the public/private key files")
-                      .create('f'));
-    options.addOption(OptionBuilder.hasArg()
-                      .withLongOpt("keydir")
-                      .withArgName("dir")
-                      .withDescription
-                      ("place generated key files in this directory")
-                      .create('d'));
-    
-    return options;
-  }
-
-  /** Print out the usage and help statements, then quit. */
-  private static void usage(Options opts)
-  {
-    HelpFormatter f = new HelpFormatter();
-
-    PrintWriter out = new PrintWriter(System.err);
-
-    // print our own usage statement:
-    f.printHelp(out, 75, "keyGen.sh [..options..] name", null, opts,
-		HelpFormatter.DEFAULT_LEFT_PAD,
-                HelpFormatter.DEFAULT_DESC_PAD, null);
-
-    out.flush();
-    System.exit(64);
-  }
-
-
-  public static void execute(CLIState state, Options opts)
-    throws Exception
+  public static void execute(CLIState state) throws Exception
   {
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
     // Minor hack to make the owner name absolute.
-    if (! state.owner.endsWith("."))
+    if (!state.owner.endsWith("."))
     {
       state.owner = state.owner + ".";
     }
-    
+
     Name owner_name = Name.fromString(state.owner);
 
     // Calculate our flags
     int flags = 0;
-    if (state.zoneKey) flags |= DNSKEYRecord.OWNER_ZONE;
-    if (state.kskFlag) flags |= DNSKEYRecord.FLAG_SEP;
+    if (state.zoneKey) flags |= DNSKEYRecord.Flags.ZONE_KEY;
+    if (state.kskFlag) flags |= DNSKEYRecord.Flags.SEP_KEY;
 
-    log.debug("create key pair with (name = " + owner_name + ", ttl = " +
-              state.ttl + ", alg = " + state.algorithm + ", flags = " +
-              flags + ", length = " + state.keylength + ")");
-          
-    
+    log.fine("create key pair with (name = " + owner_name + ", ttl = "
+        + state.ttl + ", alg = " + state.algorithm + ", flags = " + flags
+        + ", length = " + state.keylength + ")");
+
     DnsKeyPair pair = signer.generateKey(owner_name,
-                                         state.ttl,
-                                         DClass.IN,
-                                         state.algorithm,
-                                         flags,
-                                         state.keylength);
+        state.ttl,
+        DClass.IN,
+        state.algorithm,
+        flags,
+        state.keylength);
 
     if (state.outputfile != null)
     {
@@ -301,48 +306,39 @@ public class KeyGen
       BINDKeyUtils.writeKeyFiles(pair, state.keydir);
     }
   }
-  
+
   public static void main(String[] args)
   {
-    // set up logging.
-    // For now, we force the commons logging to use the built-in
-    // SimpleLog.
-    System.setProperty("org.apache.commons.logging.Log",
-		       "org.apache.commons.logging.impl.SimpleLog");
-
-    // set up the command line options
-    Options opts = setupCLI();
-    
-    CLIState  state = new CLIState();
+    CLIState state = new CLIState();
 
     try
     {
-      state.parseCommandLine(opts, args);
+      state.parseCommandLine(args);
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err.println("error: unknown option encountered: " +
-			 e.getMessage());
-      usage(opts);
+      System.err.println("error: unknown option encountered: "
+          + e.getMessage());
+      state.usage();
     }
     catch (AlreadySelectedException e)
     {
-      System.err.println("error: mutually exclusive options have " +
-			 "been selected:\n     " + e.getMessage());
-      usage(opts);
+      System.err.println("error: mutually exclusive options have "
+          + "been selected:\n     " + e.getMessage());
+      state.usage();
     }
     catch (Exception e)
     {
       System.err.println("error: unknown command line parsing exception:");
       e.printStackTrace();
-      usage(opts);
+      state.usage();
     }
 
-    log = LogFactory.getLog(KeyGen.class);
+    log = Logger.getLogger(KeyGen.class.toString());
 
     try
     {
-      execute(state, opts);
+      execute(state);
     }
     catch (Exception e)
     {

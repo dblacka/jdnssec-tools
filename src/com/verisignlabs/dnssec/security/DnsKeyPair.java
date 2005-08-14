@@ -1,4 +1,4 @@
-// $Id: DnsKeyPair.java,v 1.3 2004/01/16 21:07:09 davidb Exp $
+// $Id$
 //
 // Copyright (C) 2001-2003 VeriSign, Inc.
 //
@@ -20,73 +20,74 @@ package com.verisignlabs.dnssec.security;
 
 import java.security.*;
 import java.security.interfaces.*;
+import java.util.logging.Logger;
+
 import org.xbill.DNS.*;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-/** This class forms the basis for representing public/private key
- *  pairs in a DNSSEC context.  It is possible to get a JCA public and
- *  private key from this object, as well as a KEYRecord encoding of
- *  the public key.  This class is implemented as a UNION of all the
- *  functionality needed for handing native java, BIND, and possibly
- *  other underlying KEY engines.
- *
- *  JCA == Java Cryptography Architecture.
- *
- *  @author David Blacka (orig)
- *  @author $Author: davidb $ (latest)
- *  @version $Revision: 1.3 $
+/**
+ * This class forms the basis for representing public/private key pairs in a
+ * DNSSEC context. It is possible to get a JCA public and private key from
+ * this object, as well as a DNSKEYRecord encoding of the public key. This
+ * class is implemented as a UNION of all the functionality needed for handing
+ * native java, BIND, and possibly other underlying DNSKEY engines.
+ * 
+ * JCA == Java Cryptography Architecture.
+ * 
+ * @author David Blacka (orig)
+ * @author $Author$ (latest)
+ * @version $Revision$
  */
-
-// FIXME: this class is not a generic DnsKeyPair at all.  It is really
-// a JCEDnsKeyPair.  We probably need to reexamine the class design here.
 
 // NOTE: this class is designed to do "lazy" evaluation of it's
 // various cached objects and format conversions, so methods should
 // avoid direct access to the member variables.
-
 public class DnsKeyPair
 {
   /** This is the real (base) encoding of the public key. */
-  protected DNSKEYRecord mPublicKeyRecord;
+  protected DNSKEYRecord    mPublicKeyRecord;
 
-  /** This is a precalcuated cache of the KEYRecord converted into a
-   *  JCA public key. */
-  private   PublicKey    mPublicKey;
+  /**
+   * This is a precalcuated cache of the KEYRecord converted into a JCA public
+   * key.
+   */
+  private PublicKey         mPublicKey;
 
-  /** The private key in Base64 encoded format.  This version is
-   *  presumed to be opaque, so no attempts will be made to convert it
-   *  to a JCA private key. */
-  protected String       mPrivateKeyString;
-  
-  /** The private key in JCA format. This is the base encoding for
-   *  instances were JCA private keys are used. */
-  protected PrivateKey   mPrivateKey;
+  /**
+   * The private key in Base64 encoded format. This version is presumed to be
+   * opaque, so no attempts will be made to convert it to a JCA private key.
+   */
+  protected String          mPrivateKeyString;
+
+  /**
+   * The private key in JCA format. This is the base encoding for instances
+   * were JCA private keys are used.
+   */
+  protected PrivateKey      mPrivateKey;
 
   /** The local key converter. */
   protected DnsKeyConverter mKeyConverter;
 
-  /** a cached Signature used for signing (initialized with the
-   *  private key) */
-  protected Signature mSigner;
+  /**
+   * a cached Signature used for signing (initialized with the private key)
+   */
+  protected Signature       mSigner;
 
-  /** a caches Signature used for verifying (intialized with the
-   *  public key) */
-  protected Signature mVerifier;
+  /**
+   * a caches Signature used for verifying (intialized with the public key)
+   */
+  protected Signature       mVerifier;
 
+  private Logger            log;
 
-  private Log log;
-  
   public DnsKeyPair()
   {
-    log = LogFactory.getLog(this.getClass());
+    log = Logger.getLogger(this.getClass().toString());
   }
 
   public DnsKeyPair(DNSKEYRecord keyRecord, PrivateKey privateKey)
   {
     this();
-    
+
     setDNSKEYRecord(keyRecord);
     setPrivate(privateKey);
   }
@@ -94,19 +95,23 @@ public class DnsKeyPair
   public DnsKeyPair(DNSKEYRecord keyRecord, String privateKeyString)
   {
     this();
-    
+
     setDNSKEYRecord(keyRecord);
     setPrivateKeyString(privateKeyString);
   }
-  
+
   public DnsKeyPair(Name keyName, int algorithm, PublicKey publicKey,
-		    PrivateKey privateKey)
+      PrivateKey privateKey)
   {
     this();
-    
+
     DnsKeyConverter conv = new DnsKeyConverter();
-    DNSKEYRecord keyrec = conv.generateDNSKEYRecord(keyName, DClass.IN, 0, 0,
-                                                    algorithm, publicKey);
+    DNSKEYRecord keyrec = conv.generateDNSKEYRecord(keyName,
+        DClass.IN,
+        0,
+        0,
+        algorithm,
+        publicKey);
     setDNSKEYRecord(keyrec);
     setPrivate(privateKey);
   }
@@ -114,7 +119,7 @@ public class DnsKeyPair
   public DnsKeyPair(DnsKeyPair pair)
   {
     this();
-    
+
     setDNSKEYRecord(pair.getDNSKEYRecord());
     setPrivate(pair.getPrivate());
     setPrivateKeyString(pair.getPrivateKeyString());
@@ -130,7 +135,7 @@ public class DnsKeyPair
 
     return mKeyConverter;
   }
-  
+
   /** @return the appropriate Signature object for this keypair. */
   protected Signature getSignature()
   {
@@ -143,30 +148,31 @@ public class DnsKeyPair
     {
       switch (getDNSKEYAlgorithm())
       {
-      case DNSSEC.RSAMD5:
-	s = Signature.getInstance("MD5withRSA");
-	break;
-      case DNSSEC.DSA:
-	s = Signature.getInstance("SHA1withDSA");
-	break;
-      case DNSSEC.RSASHA1:
-	s = Signature.getInstance("SHA1withRSA");
-	break;
-      case -1:
-	s = null;
-	break;
+        case DNSSEC.RSAMD5 :
+          s = Signature.getInstance("MD5withRSA");
+          break;
+        case DNSSEC.DSA :
+          s = Signature.getInstance("SHA1withDSA");
+          break;
+        case DNSSEC.RSASHA1 :
+          s = Signature.getInstance("SHA1withRSA");
+          break;
+        case -1 :
+          s = null;
+          break;
       }
     }
     catch (NoSuchAlgorithmException e)
     {
-      log.error("error getting Signature object", e);
+      log.severe("error getting Signature object: " + e);
     }
 
     return s;
   }
 
-  /** @return the public key, translated from the KEYRecord, if
-   *  necessary. */
+  /**
+   * @return the public key, translated from the KEYRecord, if necessary.
+   */
   public PublicKey getPublic()
   {
     if (mPublicKey == null && getDNSKEYRecord() != null)
@@ -178,9 +184,9 @@ public class DnsKeyPair
     return mPublicKey;
   }
 
-  
-  /** sets the public key.  This method is generally not used
-   *  directly. */
+  /**
+   * sets the public key. This method is generally not used directly.
+   */
   protected void setPublic(PublicKey k)
   {
     mPublicKey = k;
@@ -205,17 +211,19 @@ public class DnsKeyPair
     mPrivateKey = k;
   }
 
-  /** @return the opaque private key string, null if one doesn't
-   *  exist. */
+  /**
+   * @return the opaque private key string, null if one doesn't exist.
+   */
   public String getPrivateKeyString()
   {
     if (mPrivateKeyString == null && mPrivateKey != null)
     {
       PublicKey pub = getPublic();
-      mPrivateKeyString = BINDKeyUtils.convertPrivateKey(mPrivateKey, pub,
-                                                         getDNSKEYAlgorithm());
+      mPrivateKeyString = BINDKeyUtils.convertPrivateKey(mPrivateKey,
+          pub,
+          getDNSKEYAlgorithm());
     }
-    
+
     return mPrivateKeyString;
   }
 
@@ -224,7 +232,7 @@ public class DnsKeyPair
   {
     mPrivateKeyString = p;
   }
-  
+
   /** @return the private key in an encoded form (normally PKCS#8). */
   public byte[] getEncodedPrivate()
   {
@@ -233,11 +241,13 @@ public class DnsKeyPair
     return null;
   }
 
-  /** Sets the private key from the encoded form (PKCS#8). This
-   *  routine requires that the public key already be assigned.
-   *  Currently it can only handle DSA and RSA keys. */
+  /**
+   * Sets the private key from the encoded form (PKCS#8). This routine
+   * requires that the public key already be assigned. Currently it can only
+   * handle DSA and RSA keys.
+   */
   public void setEncodedPrivate(byte[] encoded)
-  {	
+  {
     int alg = getDNSKEYAlgorithm();
 
     if (alg >= 0)
@@ -246,15 +256,17 @@ public class DnsKeyPair
       setPrivate(conv.convertEncodedPrivateKey(encoded, alg));
     }
   }
-    
+
   /** @return the public DNSKEY record */
   public DNSKEYRecord getDNSKEYRecord()
   {
     return mPublicKeyRecord;
   }
 
-  /** @return a Signature object initialized for signing, or null if
-   *  this key pair does not have a valid private key. */
+  /**
+   * @return a Signature object initialized for signing, or null if this key
+   *         pair does not have a valid private key.
+   */
   public Signature getSigner()
   {
     if (mSigner == null)
@@ -263,27 +275,29 @@ public class DnsKeyPair
       PrivateKey priv = getPrivate();
       if (mSigner != null && priv != null)
       {
-	try
-	{
-	  mSigner.initSign(priv);
-	}
-	catch (InvalidKeyException e)
-	{
-	  log.error("Signature error", e);
-	}
+        try
+        {
+          mSigner.initSign(priv);
+        }
+        catch (InvalidKeyException e)
+        {
+          log.severe("Signature error: " + e);
+        }
       }
       else
       {
-	// do not return an unitialized signer.
-	return null;
+        // do not return an unitialized signer.
+        return null;
       }
     }
 
     return mSigner;
   }
 
-  /** @return a Signature object initialized for verifying, or null if
-   *  this key pair does not have a valid public key. */
+  /**
+   * @return a Signature object initialized for verifying, or null if this key
+   *         pair does not have a valid public key.
+   */
   public Signature getVerifier()
   {
     if (mVerifier == null)
@@ -292,16 +306,17 @@ public class DnsKeyPair
       PublicKey pk = getPublic();
       if (mVerifier != null && pk != null)
       {
-	try
-	{
-	  mVerifier.initVerify(pk);
-	}
-	catch (InvalidKeyException e) {}
+        try
+        {
+          mVerifier.initVerify(pk);
+        }
+        catch (InvalidKeyException e)
+        {}
       }
       else
       {
-	// do not return an unitialized verifier
-	return null;
+        // do not return an unitialized verifier
+        return null;
       }
     }
 
@@ -313,10 +328,9 @@ public class DnsKeyPair
   {
     mPublicKeyRecord = r;
     // force the conversion to PublicKey:
-    mPublicKey       = null;
+    mPublicKey = null;
   }
 
-  
   public Name getDNSKEYName()
   {
     DNSKEYRecord kr = getDNSKEYRecord();
@@ -343,7 +357,7 @@ public class DnsKeyPair
       if (priv instanceof RSAPrivateKey) return DNSSEC.RSASHA1;
       if (priv instanceof DSAPrivateKey) return DNSSEC.DSA;
     }
-    
+
     return -1;
   }
 

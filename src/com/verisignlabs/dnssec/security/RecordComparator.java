@@ -1,4 +1,4 @@
-// $Id: RecordComparator.java,v 1.2 2004/01/16 17:54:48 davidb Exp $
+// $Id$
 //
 // Copyright (C) 2000-2003 Network Solutions, Inc.
 //
@@ -19,26 +19,33 @@
 
 package com.verisignlabs.dnssec.security;
 
-import java.util.*;
+import java.util.Comparator;
 
-import org.xbill.DNS.*;
+import org.xbill.DNS.RRSIGRecord;
+import org.xbill.DNS.Record;
+import org.xbill.DNS.Type;
 
-/** This class implements a comparison operator for {@link
- *  org.xbill.DNS.Record} objects.  It imposes a canonical order
- *  consistent with DNSSEC.  It does not put records within a RRset
- *  into canonical order: see {@link ByteArrayComparator}.
- *
- *  @author David Blacka (original)
- *  @author $Author: davidb $
- *  @version $Revision: 1.2 $ */
+/**
+ * This class implements a comparison operator for {@link
+ * org.xbill.DNS.Record} objects. It imposes a canonical order consistent with
+ * DNSSEC. It does not put records within a RRset into canonical order: see
+ * {@link ByteArrayComparator}.
+ * 
+ * @author David Blacka (original)
+ * @author $Author$
+ * @version $Revision$
+ */
 
 public class RecordComparator implements Comparator
 {
   public RecordComparator()
-  {}
+  {
+  }
 
-  /** In general, types are compared numerically.  However, SOA and NS
-   *  are ordered before the rest. */
+  /**
+   * In general, types are compared numerically. However, SOA and NS are
+   * ordered before the rest.
+   */
   private int compareTypes(int a, int b)
   {
     if (a == b) return 0;
@@ -53,8 +60,7 @@ public class RecordComparator implements Comparator
     return 1;
   }
 
-  public int compare(Object o1, Object o2)
-    throws ClassCastException
+  public int compare(Object o1, Object o2) throws ClassCastException
   {
     Record a = (Record) o1;
     Record b = (Record) o2;
