@@ -25,12 +25,15 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.TimeZone;
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -43,11 +46,13 @@ import org.xbill.DNS.Name;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.TextParseException;
+import org.xbill.DNS.Type;
 
 import com.verisignlabs.dnssec.security.BINDKeyUtils;
 import com.verisignlabs.dnssec.security.DnsKeyPair;
 import com.verisignlabs.dnssec.security.DnsSecVerifier;
 import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
+import com.verisignlabs.dnssec.security.RecordComparator;
 import com.verisignlabs.dnssec.security.SignUtils;
 import com.verisignlabs.dnssec.security.ZoneUtils;
 
@@ -192,7 +197,7 @@ public class SignZone
       keyFiles = new String[files.length - 1];
       System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
     }
-    
+
     /**
      * Set up the command line options.
      * 
@@ -201,7 +206,7 @@ public class SignZone
     private void setupCLI()
     {
       opts = new Options();
-      
+
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
       opts.addOption("a", false, "verify generated signatures>");
@@ -223,49 +228,48 @@ public class SignZone
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
       OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, "
-          + "6 is trace information. "
+          + "5 is debug information, " + "6 is trace information. "
           + "No argument means 5.");
       opts.addOption(OptionBuilder.create('v'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("dir");
       OptionBuilder.withLongOpt("keyset-directory");
       OptionBuilder.withDescription("directory to find keyset files (default '.').");
       opts.addOption(OptionBuilder.create('d'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("dir");
       OptionBuilder.withLongOpt("key-directory");
       OptionBuilder.withDescription("directory to find key files (default '.').");
       opts.addOption(OptionBuilder.create('D'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("time/offset");
       OptionBuilder.withLongOpt("start-time");
       OptionBuilder.withDescription("signature starting time (default is now - 1 hour)");
       opts.addOption(OptionBuilder.create('s'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("time/offset");
       OptionBuilder.withLongOpt("expire-time");
       OptionBuilder.withDescription("signature expiration time (default is "
           + "start-time + 30 days");
       opts.addOption(OptionBuilder.create('e'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("outfile");
       OptionBuilder.withDescription("file the signed zone is written "
           + "to (default is <origin>.signed).");
       opts.addOption(OptionBuilder.create('f'));
-      
+
       OptionBuilder.hasArgs();
       OptionBuilder.withArgName("KSK file");
       OptionBuilder.withLongOpt("ksk-file");
       OptionBuilder.withDescription("this key is a key signing key "
           + "(may repeat)");
       opts.addOption(OptionBuilder.create('k'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("file");
       OptionBuilder.withLongOpt("include-file");
@@ -542,7 +546,188 @@ public class SignZone
     return true;
   }
 
-  
+  /**
+   * Conditionally sign an RRset and add it to the toList.
+   * 
+   * @param toList the list to which we are adding the processed RRsets.
+   * @param zonename the zone apex name.
+   * @param rrset the rrset under consideration.
+   * @param keysigningkeypairs the List of KSKs..
+   * @param zonekeypairs the List of zone keys.
+   * @param start the RRSIG inception time.
+   * @param expire the RRSIG expiration time.
+   * @param fullySignKeyset if true, sign the zone apex keyset with both KSKs
+   *          and ZSKs.
+   * @param last_cut the name of the last delegation point encountered.
+   * @return the name of the new last_cut.
+   */
+  private static Name addRRset(JCEDnsSecSigner signer, List toList,
+      Name zonename, RRset rrset, List keysigningkeypairs, List zonekeypairs,
+      Date start, Date expire, boolean fullySignKeyset, Name last_cut)
+      throws IOException, GeneralSecurityException
+  {
+    // add the records themselves
+    for (Iterator i = rrset.rrs(); i.hasNext();)
+    {
+      toList.add(i.next());
+    }
+
+    int type = SignUtils.recordSecType(zonename,
+        rrset.getName(),
+        rrset.getType(),
+        last_cut);
+
+    // we don't sign non-normal sets (delegations, glue, invalid).
+    // we also don't sign the zone key set unless we've been asked.
+    if (type == SignUtils.RR_DELEGATION)
+    {
+      return rrset.getName();
+    }
+    if (type == SignUtils.RR_GLUE || type == SignUtils.RR_INVALID)
+    {
+      return last_cut;
+    }
+
+    // check for the zone apex keyset.
+    if (rrset.getName().equals(zonename) && rrset.getType() == Type.DNSKEY)
+    {
+      // if we have key signing keys, sign the keyset with them,
+      // otherwise we will just sign them with the zonesigning keys.
+      if (keysigningkeypairs != null && keysigningkeypairs.size() > 0)
+      {
+        List sigs = signer.signRRset(rrset, keysigningkeypairs, start, expire);
+        toList.addAll(sigs);
+
+        // If we aren't going to sign with all the keys, bail out now.
+        if (!fullySignKeyset) return last_cut;
+      }
+    }
+
+    // otherwise, we are OK to sign this set.
+    List sigs = signer.signRRset(rrset, zonekeypairs, start, expire);
+    toList.addAll(sigs);
+
+    return last_cut;
+  }
+
+  /**
+   * Given a zone, sign it.
+   * 
+   * @param zonename the name of the zone.
+   * @param records the records comprising the zone. They do not have to be in
+   *          any particular order, as this method will order them as
+   *          necessary.
+   * @param keysigningkeypairs the key pairs that are designated as "key
+   *          signing keys".
+   * @param zonekeypair this key pairs that are designated as "zone signing
+   *          keys".
+   * @param start the RRSIG inception time.
+   * @param expire the RRSIG expiration time.
+   * @param useOptIn generate Opt-In style NXT records. It will consider any
+   *          insecure delegation to be unsigned. To override this, include
+   *          the name of the insecure delegation in the NXTIncludeNames list.
+   * @param useConservativeOptIn if true, Opt-In NXT records will only be
+   *          generated if there are insecure, unsigned delegations in the
+   *          span. Not effect if useOptIn is false.
+   * @param fullySignKeyset sign the zone apex keyset with all available keys.
+   * @param NXTIncludeNames names that are to be included in the NXT chain
+   *          regardless. This may be null and is only used if useOptIn is
+   *          true.
+   * 
+   * @return an ordered list of {@link org.xbill.DNS.Record} objects,
+   *         representing the signed zone.
+   */
+  private static List signZone(JCEDnsSecSigner signer, Name zonename,
+      List records, List keysigningkeypairs, List zonekeypairs, Date start,
+      Date expire, boolean useOptIn, boolean useConservativeOptIn,
+      boolean fullySignKeyset, List NSECIncludeNames) throws IOException,
+      GeneralSecurityException
+  {
+
+    // Remove any existing DNSSEC records (NSEC, RRSIG)
+    SignUtils.removeGeneratedRecords(zonename, records);
+    // Sort the zone
+    Collections.sort(records, new RecordComparator());
+
+    // Remove any duplicate records.
+    SignUtils.removeDuplicateRecords(records);
+
+    // Generate DS records
+    SignUtils.generateDSRecords(zonename, records);
+
+    // Generate NXT records
+    if (useOptIn)
+    {
+      SignUtils.generateOptInNSECRecords(zonename,
+          records,
+          NSECIncludeNames,
+          useConservativeOptIn);
+    }
+    else
+    {
+      SignUtils.generateNSECRecords(zonename, records);
+    }
+
+    // Assemble into RRsets and sign.
+    RRset rrset = new RRset();
+    ArrayList signed_records = new ArrayList();
+    Name last_cut = null;
+
+    for (ListIterator i = records.listIterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+
+      // First record
+      if (rrset.getName() == null)
+      {
+        rrset.addRR(r);
+        continue;
+      }
+
+      // Current record is part of the current RRset.
+      if (rrset.getName().equals(r.getName())
+          && rrset.getDClass() == r.getDClass()
+          && rrset.getType() == r.getType())
+      {
+        rrset.addRR(r);
+        continue;
+      }
+
+      // Otherwise, we have completed the RRset
+      // Sign the records
+
+      // add the RRset to the list of signed_records, regardless of
+      // whether or not we actually end up signing the set.
+      last_cut = addRRset(signer,
+          signed_records,
+          zonename,
+          rrset,
+          keysigningkeypairs,
+          zonekeypairs,
+          start,
+          expire,
+          fullySignKeyset,
+          last_cut);
+
+      rrset.clear();
+      rrset.addRR(r);
+    }
+
+    // add the last RR set
+    addRRset(signer,
+        signed_records,
+        zonename,
+        rrset,
+        keysigningkeypairs,
+        zonekeypairs,
+        start,
+        expire,
+        fullySignKeyset,
+        last_cut);
+
+    return signed_records;
+  }
+
   public static void execute(CLIState state) throws Exception
   {
     // Load the key pairs.
@@ -638,7 +823,8 @@ public class SignZone
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
     // Sign the zone.
-    List signed_records = signer.signZone(zonename,
+    List signed_records = signZone(signer,
+        zonename,
         records,
         kskpairs,
         keypairs,

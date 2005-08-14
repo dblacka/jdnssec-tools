@@ -19,20 +19,20 @@
 
 package com.verisignlabs.dnssec.cl;
 
-import java.util.*;
+import java.io.File;
+import java.io.PrintWriter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.io.*;
-import java.text.SimpleDateFormat;
-import java.text.ParseException;
-import java.security.GeneralSecurityException;
-
-import org.xbill.DNS.*;
-
-import com.verisignlabs.dnssec.security.*;
 
 import org.apache.commons.cli.*;
-import org.apache.commons.cli.Options;
+import org.xbill.DNS.DClass;
+import org.xbill.DNS.DNSKEYRecord;
+import org.xbill.DNS.DNSSEC;
+import org.xbill.DNS.Name;
+
+import com.verisignlabs.dnssec.security.BINDKeyUtils;
+import com.verisignlabs.dnssec.security.DnsKeyPair;
+import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
 
 /**
  * This class forms the command line implementation of a DNSSEC key generator
