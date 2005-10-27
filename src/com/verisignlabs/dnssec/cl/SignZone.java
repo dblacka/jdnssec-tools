@@ -28,13 +28,8 @@ import java.io.PrintWriter;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.TimeZone;
+import java.util.*;
+import java.util.logging.Handler;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -47,6 +42,7 @@ import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.TextParseException;
 import org.xbill.DNS.Type;
+import org.xbill.DNS.utils.base16;
 
 import com.verisignlabs.dnssec.security.BINDKeyUtils;
 import com.verisignlabs.dnssec.security.DnsKeyPair;
@@ -68,8 +64,7 @@ public class SignZone
   private static Logger log;
 
   /**
-   * This is a small inner class used to hold all of the command line option
-   * state.
+   * This is an inner class used to hold all of the command line option state.
    */
   private static class CLIState
   {
@@ -85,9 +80,11 @@ public class SignZone
     public boolean  verifySigs      = false;
     public boolean  selfSignKeys    = true;
     public boolean  useOptIn        = false;
-    public boolean  optInConserve   = false;
     public boolean  fullySignKeyset = false;
     public List     includeNames    = null;
+    public boolean  useNsec3        = false;
+    public byte[]   salt            = null;
+    public int      iterations      = 0;
 
     public CLIState()
     {
@@ -115,23 +112,25 @@ public class SignZone
           case 0 :
             rootLogger.setLevel(Level.OFF);
             break;
-          case 5 :
+          case 4 :
           default :
+            rootLogger.setLevel(Level.INFO);
+            break;
+          case 5 :
             rootLogger.setLevel(Level.FINE);
             break;
           case 6 :
             rootLogger.setLevel(Level.ALL);
             break;
         }
+        Handler[] handlers = rootLogger.getHandlers();
+        for (int i = 0; i < handlers.length; i++)
+          handlers[i].setLevel(rootLogger.getLevel());
       }
 
       if (cli.hasOption('a')) verifySigs = true;
+      if (cli.hasOption('3')) useNsec3 = true;
       if (cli.hasOption('O')) useOptIn = true;
-      if (cli.hasOption('C'))
-      {
-        useOptIn = true;
-        optInConserve = true;
-      }
 
       if (cli.hasOption('F')) fullySignKeyset = true;
 
@@ -185,6 +184,21 @@ public class SignZone
         includeNames = getNameList(includeNamesFile);
       }
 
+      if ((optstr = cli.getOptionValue("salt")) != null)
+      {
+        salt = base16.fromString(optstr);
+      }
+      if ((optstr = cli.getOptionValue("random-salt")) != null)
+      {
+        int length = parseInt(optstr, 0);
+        if (length > 0 && length <= 255)
+        {
+          Random random = new Random();
+          salt = new byte[length];
+          random.nextBytes(salt);
+        }
+      }
+
       String[] files = cli.getArgs();
 
       if (files.length < 2)
@@ -209,73 +223,60 @@ public class SignZone
 
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("a", false, "verify generated signatures>");
+      opts.addOption("a", "verify", false, "verify generated signatures>");
       opts.addOption("F",
           "fully-sign-keyset",
           false,
-          "sign the zone apex keyset with all "
-              + "available keys, instead of just key-signing-keys.");
-
-      // Opt-In generation switches
-      OptionGroup opt_in_opts = new OptionGroup();
-      opt_in_opts.addOption(new Option("O", "generate a fully Opt-In zone."));
-      opt_in_opts.addOption(new Option("C",
-          "generate a conservative Opt-In zone."));
-      opts.addOptionGroup(opt_in_opts);
+          "sign the zone apex keyset with all available keys.");
 
       // Argument options
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, " + "6 is trace information. "
-          + "No argument means 5.");
-      opts.addOption(OptionBuilder.create('v'));
+      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
+          .withArgName("level").withDescription("verbosity level")
+          .create('v'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("dir")
+          .withLongOpt("keyset-directory")
+          .withDescription("directory to find keyset files (default '.').")
+          .create('d'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("dir")
+          .withLongOpt("key-directory")
+          .withDescription("directory to find key files (default '.').")
+          .create('D'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("time/offset")
+          .withLongOpt("start-time")
+          .withDescription("signature starting time "
+              + "(default is now - 1 hour)").create('s'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("time/offset")
+          .withLongOpt("expire-time")
+          .withDescription("signature expiration time "
+              + "(default is start-time + 30 days).").create('e'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("outfile")
+          .withDescription("file the signed zone is written to "
+              + "(default is <origin>.signed).").create('f'));
+      opts.addOption(OptionBuilder.hasArgs().withArgName("KSK file")
+          .withLongOpt("ksk-file").withDescription("this key is a key "
+              + "signing key (may repeat).").create('k'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("file")
+          .withLongOpt("include-file")
+          .withDescription("include names in this "
+              + "file in the NSEC/NSEC3 chain.").create('I'));
 
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("dir");
-      OptionBuilder.withLongOpt("keyset-directory");
-      OptionBuilder.withDescription("directory to find keyset files (default '.').");
-      opts.addOption(OptionBuilder.create('d'));
+      // NSEC3 options
+      opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
+      opts.addOption("O",
+          "use-opt-in",
+          false,
+          "generate a fully Opt-In zone.");
 
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("dir");
-      OptionBuilder.withLongOpt("key-directory");
-      OptionBuilder.withDescription("directory to find key files (default '.').");
-      opts.addOption(OptionBuilder.create('D'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("time/offset");
-      OptionBuilder.withLongOpt("start-time");
-      OptionBuilder.withDescription("signature starting time (default is now - 1 hour)");
-      opts.addOption(OptionBuilder.create('s'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("time/offset");
-      OptionBuilder.withLongOpt("expire-time");
-      OptionBuilder.withDescription("signature expiration time (default is "
-          + "start-time + 30 days");
-      opts.addOption(OptionBuilder.create('e'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("outfile");
-      OptionBuilder.withDescription("file the signed zone is written "
-          + "to (default is <origin>.signed).");
-      opts.addOption(OptionBuilder.create('f'));
-
-      OptionBuilder.hasArgs();
-      OptionBuilder.withArgName("KSK file");
-      OptionBuilder.withLongOpt("ksk-file");
-      OptionBuilder.withDescription("this key is a key signing key "
-          + "(may repeat)");
-      opts.addOption(OptionBuilder.create('k'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("file");
-      OptionBuilder.withLongOpt("include-file");
-      OptionBuilder.withDescription("include names in this file "
-          + "in the NSEC chain");
-      opts.addOption(OptionBuilder.create('I'));
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("salt")
+          .withArgName("hex value").withDescription("supply a salt value.")
+          .create());
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("random-salt")
+          .withArgName("length").withDescription("generate a random salt.")
+          .create());
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("iterations")
+          .withArgName("value")
+          .withDescription("use this value for the iterations in NSEC3.")
+          .create());
     }
 
     /** Print out the usage and help statements, then quit. */
@@ -286,7 +287,8 @@ public class SignZone
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      out.println("usage: signZone.sh [..options..] zone_file [key_file ...] ");
+      out.println("usage: signZone.sh [..options..] "
+          + "zone_file [key_file ...] ");
       f.printHelp(out,
           75,
           "signZone.sh",
@@ -572,10 +574,8 @@ public class SignZone
       toList.add(i.next());
     }
 
-    int type = SignUtils.recordSecType(zonename,
-        rrset.getName(),
-        rrset.getType(),
-        last_cut);
+    int type = SignUtils.recordSecType(zonename, rrset.getName(), rrset
+        .getType(), last_cut);
 
     // we don't sign non-normal sets (delegations, glue, invalid).
     // we also don't sign the zone key set unless we've been asked.
@@ -595,7 +595,8 @@ public class SignZone
       // otherwise we will just sign them with the zonesigning keys.
       if (keysigningkeypairs != null && keysigningkeypairs.size() > 0)
       {
-        List sigs = signer.signRRset(rrset, keysigningkeypairs, start, expire);
+        List sigs = signer
+            .signRRset(rrset, keysigningkeypairs, start, expire);
         toList.addAll(sigs);
 
         // If we aren't going to sign with all the keys, bail out now.
@@ -639,13 +640,13 @@ public class SignZone
    */
   private static List signZone(JCEDnsSecSigner signer, Name zonename,
       List records, List keysigningkeypairs, List zonekeypairs, Date start,
-      Date expire, boolean useOptIn, boolean useConservativeOptIn,
-      boolean fullySignKeyset, List NSECIncludeNames) throws IOException,
-      GeneralSecurityException
+      Date expire, boolean fullySignKeyset)
+      throws IOException, GeneralSecurityException
   {
 
-    // Remove any existing DNSSEC records (NSEC, RRSIG)
+    // Remove any existing DNSSEC records (NSEC, NSEC3, RRSIG)
     SignUtils.removeGeneratedRecords(zonename, records);
+
     // Sort the zone
     Collections.sort(records, new RecordComparator());
 
@@ -655,18 +656,8 @@ public class SignZone
     // Generate DS records
     SignUtils.generateDSRecords(zonename, records);
 
-    // Generate NXT records
-    if (useOptIn)
-    {
-      SignUtils.generateOptInNSECRecords(zonename,
-          records,
-          NSECIncludeNames,
-          useConservativeOptIn);
-    }
-    else
-    {
-      SignUtils.generateNSECRecords(zonename, records);
-    }
+    // Generate the NSEC records
+    SignUtils.generateNSECRecords(zonename, records);
 
     // Assemble into RRsets and sign.
     RRset rrset = new RRset();
@@ -678,7 +669,102 @@ public class SignZone
       Record r = (Record) i.next();
 
       // First record
-      if (rrset.getName() == null)
+      if (rrset.size() == 0)
+      {
+        rrset.addRR(r);
+        continue;
+      }
+
+      // Current record is part of the current RRset.
+      if (rrset.getName().equals(r.getName())
+          && rrset.getDClass() == r.getDClass()
+          && rrset.getType() == r.getType())
+      {
+        rrset.addRR(r);
+        continue;
+      }
+
+      // Otherwise, we have completed the RRset
+      // Sign the records
+
+      // add the RRset to the list of signed_records, regardless of
+      // whether or not we actually end up signing the set.
+      last_cut = addRRset(signer,
+          signed_records,
+          zonename,
+          rrset,
+          keysigningkeypairs,
+          zonekeypairs,
+          start,
+          expire,
+          fullySignKeyset,
+          last_cut);
+
+      rrset.clear();
+      rrset.addRR(r);
+    }
+
+    // add the last RR set
+    addRRset(signer,
+        signed_records,
+        zonename,
+        rrset,
+        keysigningkeypairs,
+        zonekeypairs,
+        start,
+        expire,
+        fullySignKeyset,
+        last_cut);
+
+    return signed_records;
+  }
+
+  private static List signZoneNSEC3(JCEDnsSecSigner signer, Name zonename,
+      List records, List keysigningkeypairs, List zonekeypairs, Date start,
+      Date expire, boolean fullySignKeyset, boolean useOptIn,
+      List includedNames, byte[] salt, int iterations)
+      throws IOException, GeneralSecurityException
+  {
+    // Remove any existing DNSSEC records (NSEC, NSEC3, RRSIG)
+    SignUtils.removeGeneratedRecords(zonename, records);
+
+    // Sort the zone
+    Collections.sort(records, new RecordComparator());
+
+    // Remove duplicate records
+    SignUtils.removeDuplicateRecords(records);
+
+    // Generate DS records
+    SignUtils.generateDSRecords(zonename, records);
+
+    // Generate NSEC3 records
+    if (useOptIn)
+    {
+      SignUtils.generateOptInNSEC3Records(zonename,
+          records,
+          includedNames,
+          salt,
+          iterations);
+    }
+    else
+    {
+      SignUtils.generateNSEC3Records(zonename, records, salt, iterations);
+    }
+
+    // Re-sort so we can assemble into rrsets.
+    Collections.sort(records, new RecordComparator());
+
+    // Assemble into RRsets and sign.
+    RRset rrset = new RRset();
+    ArrayList signed_records = new ArrayList();
+    Name last_cut = null;
+
+    for (ListIterator i = records.listIterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+
+      // First record
+      if (rrset.size() == 0)
       {
         rrset.addRR(r);
         continue;
@@ -823,17 +909,34 @@ public class SignZone
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
     // Sign the zone.
-    List signed_records = signZone(signer,
-        zonename,
-        records,
-        kskpairs,
-        keypairs,
-        state.start,
-        state.expire,
-        state.useOptIn,
-        state.optInConserve,
-        state.fullySignKeyset,
-        state.includeNames);
+    List signed_records;
+
+    if (state.useNsec3)
+    {
+      signed_records = signZoneNSEC3(signer,
+          zonename,
+          records,
+          kskpairs,
+          keypairs,
+          state.start,
+          state.expire,
+          state.fullySignKeyset,
+          state.useOptIn,
+          state.includeNames,
+          state.salt,
+          state.iterations);
+    }
+    else
+    {
+      signed_records = signZone(signer,
+          zonename,
+          records,
+          kskpairs,
+          keypairs,
+          state.start,
+          state.expire,
+          state.fullySignKeyset);
+    }
 
     // write out the signed zone
     // force multiline mode for now

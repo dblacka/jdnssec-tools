@@ -31,7 +31,6 @@ import java.util.logging.Logger;
 import org.xbill.DNS.*;
 import org.xbill.DNS.utils.base64;
 
-
 /**
  * This class contains a bunch of utility methods that are generally useful in
  * signing zones.
@@ -43,15 +42,16 @@ import org.xbill.DNS.utils.base64;
 
 public class SignUtils
 {
-  private static final int ASN1_INT      = 0x02;
-  private static final int ASN1_SEQ      = 0x30;
+  private static final int   ASN1_INT        = 0x02;
+  private static final int   ASN1_SEQ        = 0x30;
 
-  public static final int  RR_NORMAL     = 0;
-  public static final int  RR_DELEGATION = 1;
-  public static final int  RR_GLUE       = 2;
-  public static final int  RR_INVALID    = 3;
+  public static final int    RR_NORMAL       = 0;
+  public static final int    RR_DELEGATION   = 1;
+  public static final int    RR_GLUE         = 2;
+  public static final int    RR_INVALID      = 3;
+  private static final int[] ENT_NSEC3_TYPES = {Type.RRSIG, Type.NSEC3};
 
-  private static Logger    log;
+  private static Logger      log;
 
   static
   {
@@ -78,9 +78,9 @@ public class SignUtils
   public static RRSIGRecord generatePreRRSIG(RRset rrset, DNSKEYRecord key,
       Date start, Date expire, long sig_ttl)
   {
-    return new RRSIGRecord(rrset.getName(), rrset.getDClass(), sig_ttl,
-        rrset.getType(), key.getAlgorithm(), (int) rrset.getTTL(), expire,
-        start, key.getFootprint(), key.getName(), null);
+    return new RRSIGRecord(rrset.getName(), rrset.getDClass(), sig_ttl, rrset
+        .getType(), key.getAlgorithm(), (int) rrset.getTTL(), expire, start,
+        key.getFootprint(), key.getName(), null);
   }
 
   /**
@@ -97,9 +97,9 @@ public class SignUtils
   public static RRSIGRecord generatePreRRSIG(Record rec, DNSKEYRecord key,
       Date start, Date expire, long sig_ttl)
   {
-    return new RRSIGRecord(rec.getName(), rec.getDClass(), sig_ttl,
-        rec.getType(), key.getAlgorithm(), rec.getTTL(), expire, start,
-        key.getFootprint(), key.getName(), null);
+    return new RRSIGRecord(rec.getName(), rec.getDClass(), sig_ttl, rec
+        .getType(), key.getAlgorithm(), rec.getTTL(), expire, start, key
+        .getFootprint(), key.getName(), null);
   }
 
   /**
@@ -229,10 +229,10 @@ public class SignUtils
    */
   public static RRSIGRecord generateRRSIG(byte[] signature, RRSIGRecord presig)
   {
-    return new RRSIGRecord(presig.getName(), presig.getDClass(),
-        presig.getTTL(), presig.getTypeCovered(), presig.getAlgorithm(),
-        presig.getOrigTTL(), presig.getExpire(), presig.getTimeSigned(),
-        presig.getFootprint(), presig.getSigner(), signature);
+    return new RRSIGRecord(presig.getName(), presig.getDClass(), presig
+        .getTTL(), presig.getTypeCovered(), presig.getAlgorithm(), presig
+        .getOrigTTL(), presig.getExpire(), presig.getTimeSigned(), presig
+        .getFootprint(), presig.getSigner(), signature);
   }
 
   /**
@@ -479,7 +479,8 @@ public class SignUtils
       // Current record is part of the current RRset.
       if (rrset.getName().equals(r.getName())
           && rrset.getDClass() == r.getDClass()
-          && ((r.getType() == Type.RRSIG && rrset.getType() == ((RRSIGRecord) r).getTypeCovered()) || rrset.getType() == r.getType()))
+          && ((r.getType() == Type.RRSIG && rrset.getType() == ((RRSIGRecord) r)
+              .getTypeCovered()) || rrset.getType() == r.getType()))
       {
         rrset.addRR(r);
         continue;
@@ -650,11 +651,281 @@ public class SignUtils
     log.finer("Generated: " + nsec);
   }
 
+  public static void generateNSEC3Records(Name zonename, List records,
+      byte[] salt, int iterations) throws NoSuchAlgorithmException
+  {
+    List proto_nsec3s = new ArrayList();
+    NodeInfo current_node = null;
+    NodeInfo last_node = null;
+    // For detecting glue.
+    Name last_cut = null;
+
+    for (Iterator i = records.iterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+      Name r_name = r.getName();
+      int r_type = r.getType();
+
+      // Classify this record so we know if we can skip it.
+      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut);
+
+      // skip irrelevant records
+      if (r_sectype == RR_INVALID || r_sectype == RR_GLUE) continue;
+
+      // note our last delegation point so we can recognize glue.
+      if (r_sectype == RR_DELEGATION) last_cut = r_name;
+
+      // For the first iteration, we create our current node.
+      if (current_node == null)
+      {
+        current_node = new NodeInfo(r);
+        continue;
+      }
+
+      // If we are at the same name, we are on the same node.
+      if (r_name.equals(current_node.name))
+      {
+        current_node.addType(r_type);
+        continue;
+      }
+
+      // At this point, r represents the start of a new node.
+      // So we move current_node to last_node and generate a new current node.
+      // But first, we need to do something with the last node.
+      generateNSEC3ForNode(last_node,
+          zonename,
+          salt,
+          iterations,
+          false,
+          proto_nsec3s);
+
+      last_node = current_node;
+      current_node = new NodeInfo(r);
+    }
+
+    // process last two nodes.
+    generateNSEC3ForNode(last_node,
+        zonename,
+        salt,
+        iterations,
+        false,
+        proto_nsec3s);
+    generateNSEC3ForNode(current_node,
+        zonename,
+        salt,
+        iterations,
+        false,
+        proto_nsec3s);
+
+    List nsec3s = finishNSEC3s(proto_nsec3s);
+    records.addAll(nsec3s);
+  }
+
+  public static void generateOptInNSEC3Records(Name zonename, List records,
+      List includedNames, byte[] salt, int iterations)
+      throws NoSuchAlgorithmException
+  {
+    List proto_nsec3s = new ArrayList();
+    NodeInfo current_node = null;
+    NodeInfo last_node = null;
+    // For detecting glue.
+    Name last_cut = null;
+
+    HashSet includeSet = null;
+    if (includedNames != null)
+    {
+      includeSet = new HashSet(includedNames);
+    }
+
+    for (Iterator i = records.iterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+      Name r_name = r.getName();
+      int r_type = r.getType();
+
+      // Classify this record so we know if we can skip it.
+      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut);
+
+      // skip irrelevant records
+      if (r_sectype == RR_INVALID || r_sectype == RR_GLUE) continue;
+
+      // note our last delegation point so we can recognize glue.
+      if (r_sectype == RR_DELEGATION) last_cut = r_name;
+
+      // For the first iteration, we create our current node.
+      if (current_node == null)
+      {
+        current_node = new NodeInfo(r);
+        continue;
+      }
+
+      // If we are at the same name, we are on the same node.
+      if (r_name.equals(current_node.name))
+      {
+        current_node.addType(r_type);
+        continue;
+      }
+
+      if (includeSet != null && includeSet.contains(current_node.name))
+      {
+        current_node.isSecureNode = true;
+      }
+
+      // At this point, r represents the start of a new node.
+      // So we move current_node to last_node and generate a new current node.
+      // But first, we need to do something with the last node.
+      generateNSEC3ForNode(last_node,
+          zonename,
+          salt,
+          iterations,
+          true,
+          proto_nsec3s);
+
+      if (current_node.isSecureNode)
+      {
+        last_node = current_node;
+      }
+      else
+      {
+        last_node.hasOptInSpan = true;
+      }
+
+      current_node = new NodeInfo(r);
+    }
+
+    // process last two nodes.
+    generateNSEC3ForNode(last_node,
+        zonename,
+        salt,
+        iterations,
+        true,
+        proto_nsec3s);
+    generateNSEC3ForNode(current_node,
+        zonename,
+        salt,
+        iterations,
+        true,
+        proto_nsec3s);
+
+    List nsec3s = finishNSEC3s(proto_nsec3s);
+    records.addAll(nsec3s);
+  }
+
+  private static void generateNSEC3ForNode(NodeInfo node, Name zonename,
+      byte[] salt, int iterations, boolean optIn, List nsec3s)
+      throws NoSuchAlgorithmException
+  {
+    if (node == null) return;
+    if (optIn && !node.isSecureNode) return;
+
+    // Add our default types.
+    node.addType(Type.RRSIG);
+    node.addType(Type.NSEC3);
+
+    // Check for ENTs -- note this will generate duplicate ENTs because it
+    // doesn't use any context.
+    int ldiff = node.name.labels() - zonename.labels();
+    for (int i = 1; i < ldiff; i++)
+    {
+      Name n = new Name(node.name, i);
+      log.info("Generating ENT NSEC3 for " + n);
+      ProtoNSEC3 nsec3 = generateNSEC3(n,
+          zonename,
+          node.ttl,
+          salt,
+          iterations,
+          optIn,
+          null);
+      nsec3s.add(nsec3);
+    }
+
+    ProtoNSEC3 nsec3 = generateNSEC3(node.name,
+        zonename,
+        node.ttl,
+        salt,
+        iterations,
+        optIn,
+        node.getTypes());
+    nsec3s.add(nsec3);
+  }
+
+  private static ProtoNSEC3 generateNSEC3(Name name, Name zonename, long ttl,
+      byte[] salt, int iterations, boolean optIn, int[] types)
+      throws NoSuchAlgorithmException
+  {
+    byte[] hash = NSEC3Record.hash(name,
+        NSEC3Record.SHA1_DIGEST_ID,
+        iterations,
+        salt);
+
+    if (types == null)
+    {
+      types = ENT_NSEC3_TYPES;
+    }
+    ProtoNSEC3 r = new ProtoNSEC3(hash, zonename, DClass.IN, ttl, optIn,
+        NSEC3Record.SHA1_DIGEST_ID, iterations, salt, null, types);
+
+    log.finer("Generated: " + r);
+    return r;
+  }
+
+  private static List finishNSEC3s(List nsec3s)
+  {
+    if (nsec3s == null) return null;
+    Collections.sort(nsec3s, new ProtoNSEC3.Comparator());
+
+    ProtoNSEC3 prev_nsec3 = null;
+    ProtoNSEC3 cur_nsec3 = null;
+    byte[] first_nsec3_hash = null;
+
+    for (ListIterator i = nsec3s.listIterator(); i.hasNext();)
+    {
+      cur_nsec3 = (ProtoNSEC3) i.next();
+
+      // log.fine("finishNSEC3s: processing " + cur_nsec3);
+      // check to see if cur is a duplicate (by name)
+      if (prev_nsec3 != null
+          && Arrays.equals(prev_nsec3.getOwner(), cur_nsec3.getOwner()))
+      {
+        log.fine("found duplicate NSEC3 (by name) -- merging type maps: "
+            + prev_nsec3.getTypemap() + " and " + cur_nsec3.getTypemap());
+        i.remove();
+        prev_nsec3.mergeTypes(cur_nsec3.getTypemap());
+        log.fine("merged type map: " + prev_nsec3.getTypemap());
+        continue;
+      }
+
+      byte[] next = cur_nsec3.getOwner();
+
+      if (prev_nsec3 == null)
+      {
+        prev_nsec3 = cur_nsec3;
+        first_nsec3_hash = next;
+        continue;
+      }
+
+      prev_nsec3.setNext(next);
+      prev_nsec3 = cur_nsec3;
+    }
+
+    // Handle last NSEC3.
+    cur_nsec3.setNext(first_nsec3_hash);
+
+    List res = new ArrayList(nsec3s.size());
+    for (Iterator i = nsec3s.iterator(); i.hasNext();)
+    {
+      ProtoNSEC3 p = (ProtoNSEC3) i.next();
+      res.add(p.getNSEC3Record());
+    }
+
+    return res;
+  }
+
   /**
    * Given a canonical (by name) ordered list of records in a zone, generate
-   * the NXT records in place.
+   * the NSEC records in place.
    * 
-   * Note thatthe list that the records are stored in must support the
+   * Note that the list that the records are stored in must support the
    * <code>listIterator.add</code> operation.
    * 
    * @param zonename the name of the zone apex, used to distinguish between
@@ -838,7 +1109,8 @@ public class SignUtils
     {
       Record r = (Record) i.next();
 
-      if (r.getType() == Type.RRSIG || r.getType() == Type.NSEC)
+      if (r.getType() == Type.RRSIG || r.getType() == Type.NSEC
+          || r.getType() == Type.NSEC3)
       {
         i.remove();
       }
@@ -898,9 +1170,9 @@ public class SignUtils
 
       byte[] digest = md.digest(os.toByteArray());
 
-      return new DSRecord(keyrec.getName(), keyrec.getDClass(), ttl,
-          keyrec.getFootprint(), keyrec.getAlgorithm(),
-          DSRecord.SHA1_DIGEST_ID, digest);
+      return new DSRecord(keyrec.getName(), keyrec.getDClass(), ttl, keyrec
+          .getFootprint(), keyrec.getAlgorithm(), DSRecord.SHA1_DIGEST_ID,
+          digest);
 
     }
     catch (NoSuchAlgorithmException e)
