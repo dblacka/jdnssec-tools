@@ -11,7 +11,8 @@ are part of BIND 9.
 These tools depend upon DNSjava (http://www.xbill.org/dnsjava), the
 Jakarta Commons CLI and Logging libraries (http://jakarta.apache.org),
 and Sun's Java Cryptography extensions.  A copy of each of these
-libraries is included in the distribution.
+libraries is included in the distribution.  Currently, these tools use
+a custom version of the DNSjava library (for NSEC3 support)
 
 See the "licenses" directory for the licensing information of this
 package and the other packages that are distributed with it.
@@ -25,7 +26,7 @@ Getting started:
 2. run the various tools from their unpacked location:
 
 % cd java-dnssec-tools-x.x.x
-% ./bin/signZone.sh -h
+% ./bin/jdnssec-signzone -h
 
 Building from source:
 
@@ -37,12 +38,16 @@ that the binary distribution was unpacked.
 2. edit the build.properties file to suit your environment,
 particularly the use of the jikes compiler.
 
-2. run Ant (see http://jakara.apache.org for information about the Ant
+3. run Ant (see http://jakara.apache.org for information about the Ant
 build tool).
 
 % ant
 
----
+4. You can build the distribution tarballs with 'ant dist'.  You can
+run the tools directly from the build area by using the
+./bin/_jdnssec_* wrappers.
+
+ ---
 
 Questions or comments may be directed to the author
 (mailto:davidb@verisignlabs.com) or sent to the

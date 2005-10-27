@@ -470,7 +470,7 @@ public class SignUtils
       Record r = (Record) o;
 
       // First record
-      if (rrset.getName() == null)
+      if (rrset.size() == 0)
       {
         rrset.addRR(r);
         continue;
@@ -828,7 +828,7 @@ public class SignUtils
     for (int i = 1; i < ldiff; i++)
     {
       Name n = new Name(node.name, i);
-      log.info("Generating ENT NSEC3 for " + n);
+      log.fine("Generating ENT NSEC3 for " + n);
       ProtoNSEC3 nsec3 = generateNSEC3(n,
           zonename,
           node.ttl,

@@ -132,6 +132,12 @@ public class SignZone
       if (cli.hasOption('3')) useNsec3 = true;
       if (cli.hasOption('O')) useOptIn = true;
 
+      if (useOptIn && ! useNsec3)
+      {
+        System.err.println("OptIn not supported without NSEC3 -- ignored.");
+        useOptIn = false;
+      }
+      
       if (cli.hasOption('F')) fullySignKeyset = true;
 
       if ((optstr = cli.getOptionValue('d')) != null)
@@ -184,11 +190,11 @@ public class SignZone
         includeNames = getNameList(includeNamesFile);
       }
 
-      if ((optstr = cli.getOptionValue("salt")) != null)
+      if ((optstr = cli.getOptionValue('S')) != null)
       {
         salt = base16.fromString(optstr);
       }
-      if ((optstr = cli.getOptionValue("random-salt")) != null)
+      if ((optstr = cli.getOptionValue('R')) != null)
       {
         int length = parseInt(optstr, 0);
         if (length > 0 && length <= 255)
@@ -269,10 +275,10 @@ public class SignZone
 
       opts.addOption(OptionBuilder.hasArg().withLongOpt("salt")
           .withArgName("hex value").withDescription("supply a salt value.")
-          .create());
+          .create('S'));
       opts.addOption(OptionBuilder.hasArg().withLongOpt("random-salt")
           .withArgName("length").withDescription("generate a random salt.")
-          .create());
+          .create('R'));
       opts.addOption(OptionBuilder.hasArg().withLongOpt("iterations")
           .withArgName("value")
           .withDescription("use this value for the iterations in NSEC3.")

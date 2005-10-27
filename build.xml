@@ -156,7 +156,7 @@
 
   <target name="dist" depends="sectools-dist">
    <echo message="do not forget to tag the release:" />
-   <echo message="  cvs tag V_${tagversion}" />
+   <echo message="  svn-tag ${version}" />
   </target>
 
   <target name="usage">
