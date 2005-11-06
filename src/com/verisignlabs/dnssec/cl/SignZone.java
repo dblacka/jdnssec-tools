@@ -194,6 +194,7 @@ public class SignZone
       {
         salt = base16.fromString(optstr);
       }
+      
       if ((optstr = cli.getOptionValue('R')) != null)
       {
         int length = parseInt(optstr, 0);
@@ -204,7 +205,12 @@ public class SignZone
           random.nextBytes(salt);
         }
       }
-
+      
+      if ((optstr = cli.getOptionValue("iterations")) != null)
+      {
+        iterations = parseInt(optstr, iterations);
+      }
+      
       String[] files = cli.getArgs();
 
       if (files.length < 2)
