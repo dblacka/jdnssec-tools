@@ -197,7 +197,7 @@ public class ProtoNSEC3
     int len = owner.length < o_owner.length ? o_owner.length : owner.length;
     for (int i = 0; i < len; i++)
     {
-      int d = (owner[i] - o_owner[i]);
+      int d = ((owner[i] & 0xFF) - (o_owner[i] & 0xFF));
       if (d != 0) return d;
     }
     return owner.length - o_owner.length;
