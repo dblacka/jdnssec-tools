@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.logging.Logger;
 
 import org.xbill.DNS.*;
+import org.xbill.DNS.utils.base16;
 import org.xbill.DNS.utils.base64;
 
 /**
@@ -718,6 +719,13 @@ public class SignUtils
         proto_nsec3s);
 
     List nsec3s = finishNSEC3s(proto_nsec3s);
+    // DEBUG
+//    for (Iterator i = nsec3s.iterator(); i.hasNext();)
+//    {
+//      NSEC3Record nsec3 = (NSEC3Record) i.next();
+//      log.fine("NSEC3: " + nsec3 + "\nRDATA: "
+//          + base16.toString(nsec3.rdataToWireCanonical()));
+//    }
     records.addAll(nsec3s);
   }
 
@@ -909,8 +917,19 @@ public class SignUtils
     }
 
     // Handle last NSEC3.
-    cur_nsec3.setNext(first_nsec3_hash);
+    if (prev_nsec3.getNext() == null)
+    {
+      // if prev_nsec3's next field hasn't been set, then it is the last
+      // record (i.e., all remaining records were duplicates.)
+      prev_nsec3.setNext(first_nsec3_hash);
+    }
+    else
+    {
+      // otherwise, cur_nsec3 is the last record.
+      cur_nsec3.setNext(first_nsec3_hash);
+    }
 
+    // Convert our ProtoNSEC3s to actual (immutable) NSEC3Record objects.
     List res = new ArrayList(nsec3s.size());
     for (Iterator i = nsec3s.iterator(); i.hasNext();)
     {

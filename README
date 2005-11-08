@@ -12,7 +12,8 @@ These tools depend upon DNSjava (http://www.xbill.org/dnsjava), the
 Jakarta Commons CLI and Logging libraries (http://jakarta.apache.org),
 and Sun's Java Cryptography extensions.  A copy of each of these
 libraries is included in the distribution.  Currently, these tools use
-a custom version of the DNSjava library (for NSEC3 support)
+a custom version of the DNSjava library (for NSEC3 support), which is
+provided.
 
 See the "licenses" directory for the licensing information of this
 package and the other packages that are distributed with it.
@@ -46,6 +47,12 @@ build tool).
 4. You can build the distribution tarballs with 'ant dist'.  You can
 run the tools directly from the build area by using the
 ./bin/_jdnssec_* wrappers.
+
+
+The source for this project is available in subversion, at
+http://svn.verisignlabs.com/main/dnssec/sectools/trunk.  Source for
+the modified DNSjava library can be found in subversion at
+http://svn.verisignlabs.com/main/dnssec/dnsjava/trunk.
 
  ---
 

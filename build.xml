@@ -23,7 +23,7 @@
   <property name="build.src" value="src" />
 
   <property name="packages" value="com.verisignlabs.dnssec.*" />
-  <property name="doc.dir" value="doc" />
+  <property name="doc.dir" value="docs" />
   <property name="javadoc.dest" value="${doc.dir}/javadoc" />
 
   <property name="lib.dir" value="lib" />
