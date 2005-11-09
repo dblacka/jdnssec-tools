@@ -870,8 +870,8 @@ public class SignUtils
     {
       types = ENT_NSEC3_TYPES;
     }
-    ProtoNSEC3 r = new ProtoNSEC3(hash, zonename, DClass.IN, ttl, optIn,
-        NSEC3Record.SHA1_DIGEST_ID, iterations, salt, null, types);
+    ProtoNSEC3 r = new ProtoNSEC3(hash, name, zonename, DClass.IN, ttl,
+        optIn, NSEC3Record.SHA1_DIGEST_ID, iterations, salt, null, types);
 
     log.finer("Generated: " + r);
     return r;

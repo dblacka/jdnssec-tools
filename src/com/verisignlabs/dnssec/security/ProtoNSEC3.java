@@ -35,12 +35,13 @@ import org.xbill.DNS.utils.base32;
 
 public class ProtoNSEC3
 {
+  private Name    originalOwner;
   private boolean optInFlag;
   private byte    hashAlg;
   private int     iterations;
   private byte[]  salt;
   private byte[]  next;
-  private byte[]  owner;     // cached numerical owner value.
+  private byte[]  owner;        // cached numerical owner value.
   private TypeMap typemap;
   private Name    zone;
   private Name    name;
@@ -50,11 +51,12 @@ public class ProtoNSEC3
   /**
    * Creates an NSEC3 Record from the given data.
    * 
+   * @param originalOwner TODO
    * @param next The following name in an ordered list of the zone
    * @param types An array containing the types present.
    */
-  public ProtoNSEC3(byte[] owner, Name zone, int dclass, long ttl,
-      boolean optInFlag, byte hashAlg, int iterations, byte[] salt,
+  public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass,
+      long ttl, boolean optInFlag, byte hashAlg, int iterations, byte[] salt,
       byte[] next, TypeMap typemap)
   {
     this.zone = zone;
@@ -67,14 +69,15 @@ public class ProtoNSEC3
     this.salt = salt;
     this.next = next;
     this.typemap = typemap;
+    this.originalOwner = originalOwner;
   }
 
-  public ProtoNSEC3(byte[] owner, Name zone, int dclass, long ttl,
-      boolean optInFlag, byte hashAlg, int iterations, byte[] salt,
+  public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass,
+      long ttl, boolean optInFlag, byte hashAlg, int iterations, byte[] salt,
       byte[] next, int[] types)
   {
-    this(owner, zone, dclass, ttl, optInFlag, hashAlg, iterations, salt,
-        next, TypeMap.fromTypes(types));
+    this(owner, originalOwner, zone, dclass, ttl, optInFlag, hashAlg,
+        iterations, salt, next, TypeMap.fromTypes(types));
   }
 
   private String hashToString(byte[] hash)
@@ -177,8 +180,11 @@ public class ProtoNSEC3
 
   public NSEC3Record getNSEC3Record()
   {
+    String comment = (originalOwner == null)
+        ? "(unknown original ownername)"
+        : originalOwner.toString();
     return new NSEC3Record(getName(), dclass, ttl, optInFlag, hashAlg,
-        iterations, salt, next, getTypes());
+        iterations, salt, next, getTypes(), comment);
   }
 
   public void mergeTypes(TypeMap new_types)
@@ -189,7 +195,7 @@ public class ProtoNSEC3
       if (!typemap.get(nt[i])) typemap.set(nt[i]);
     }
   }
-  
+
   public int compareTo(ProtoNSEC3 o)
   {
     if (o == null) return 1;
@@ -230,9 +236,11 @@ public class ProtoNSEC3
       sb.append(" ");
       sb.append(Type.string(types[i]));
     }
+    if (originalOwner != null) sb.append(" ; " + originalOwner);
+
     return sb.toString();
   }
-  
+
   public static class Comparator implements java.util.Comparator
   {
 
@@ -240,6 +248,6 @@ public class ProtoNSEC3
     {
       return ((ProtoNSEC3) o1).compareTo((ProtoNSEC3) o2);
     }
-    
+
   }
 }
