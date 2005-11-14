@@ -30,9 +30,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
-import org.xbill.DNS.DNSSEC;
-import org.xbill.DNS.RRSIGRecord;
-import org.xbill.DNS.RRset;
+import org.apache.commons.cli.Options;
+import org.xbill.DNS.*;
 
 import com.verisignlabs.dnssec.security.BINDKeyUtils;
 import com.verisignlabs.dnssec.security.DnsKeyPair;
@@ -116,14 +115,11 @@ public class VerifyZone
 
       zonefile = cl_args[0];
 
-      if (cl_args.length < 2)
+      if (cl_args.length >= 2)
       {
-        System.err.println("error: at least one trusted key is required");
-        usage();
+        keyfiles = new String[cl_args.length - 1];
+        System.arraycopy(cl_args, 1, keyfiles, 0, keyfiles.length);
       }
-
-      keyfiles = new String[cl_args.length - 1];
-      System.arraycopy(cl_args, 1, keyfiles, 0, keyfiles.length);
     }
 
     /**
@@ -170,7 +166,7 @@ public class VerifyZone
       // print our own usage statement:
       f.printHelp(out,
           75,
-          "verifyZone.sh [..options..] zonefile " + "keyfile [keyfile...]",
+          "verifyZone.sh [..options..] zonefile " + "[keyfile [keyfile...]]",
           null,
           opts,
           HelpFormatter.DEFAULT_LEFT_PAD,
@@ -247,6 +243,27 @@ public class VerifyZone
     return result;
   }
 
+  private static List getTrustedKeysFromZone(List records)
+  {
+    List res = new ArrayList();
+    Name zonename = null;
+    for (Iterator i = records.iterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+      if (r.getType() == Type.SOA)
+      {
+        zonename = r.getName();
+      }
+      
+      if (r.getName().equals(zonename)  && r.getType() == Type.DNSKEY)
+      {
+        DnsKeyPair pair = new DnsKeyPair((DNSKEYRecord) r);
+        res.add(pair);
+      }
+    }
+    
+    return res;
+  }
   private static List getTrustedKeys(String[] keyfiles, File inDirectory)
       throws IOException
   {
@@ -266,9 +283,17 @@ public class VerifyZone
   public static void execute(CLIState state) throws Exception
   {
 
-    List keypairs = getTrustedKeys(state.keyfiles, state.keydir);
 
     List records = ZoneUtils.readZoneFile(state.zonefile, null);
+    List keypairs = null;
+    if (state.keyfiles != null)
+    {
+      keypairs = getTrustedKeys(state.keyfiles, state.keydir);
+    }
+    else
+    {
+      keypairs = getTrustedKeysFromZone(records);
+    }
     Collections.sort(records, new RecordComparator());
 
     log.fine("verifying signatures...");

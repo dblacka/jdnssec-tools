@@ -29,7 +29,6 @@ import java.util.*;
 import java.util.logging.Logger;
 
 import org.xbill.DNS.*;
-import org.xbill.DNS.utils.base16;
 import org.xbill.DNS.utils.base64;
 
 /**

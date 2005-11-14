@@ -100,6 +100,13 @@ public class DnsKeyPair
     setPrivateKeyString(privateKeyString);
   }
 
+  public DnsKeyPair(DNSKEYRecord keyRecord)
+  {
+    this();
+    setDNSKEYRecord(keyRecord);
+    setPrivateKeyString(null);
+  }
+  
   public DnsKeyPair(Name keyName, int algorithm, PublicKey publicKey,
       PrivateKey privateKey)
   {
