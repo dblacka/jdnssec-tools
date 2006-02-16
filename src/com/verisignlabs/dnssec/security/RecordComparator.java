@@ -60,6 +60,19 @@ public class RecordComparator implements Comparator
     return 1;
   }
 
+  private int compareRDATA(Record a, Record b)
+  {
+    byte[] a_rdata = a.rdataToWireCanonical();
+    byte[] b_rdata = b.rdataToWireCanonical();
+    
+    for (int i = 0; i < a_rdata.length && i < b_rdata.length; i++) 
+    {
+      int n = (a_rdata[i] & 0xFF) - (b_rdata[i] & 0xFF);
+      if (n != 0) return n;
+    }
+    return (a_rdata.length - b_rdata.length);
+  }
+  
   public int compare(Object o1, Object o2) throws ClassCastException
   {
     Record a = (Record) o1;
@@ -92,6 +105,6 @@ public class RecordComparator implements Comparator
 
     if (sig_type != 0) return sig_type;
 
-    return 0;
+    return compareRDATA(a, b);
   }
 }

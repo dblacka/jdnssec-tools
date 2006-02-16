@@ -132,12 +132,12 @@ public class SignZone
       if (cli.hasOption('3')) useNsec3 = true;
       if (cli.hasOption('O')) useOptIn = true;
 
-      if (useOptIn && ! useNsec3)
+      if (useOptIn && !useNsec3)
       {
         System.err.println("OptIn not supported without NSEC3 -- ignored.");
         useOptIn = false;
       }
-      
+
       if (cli.hasOption('F')) fullySignKeyset = true;
 
       if ((optstr = cli.getOptionValue('d')) != null)
@@ -182,7 +182,15 @@ public class SignZone
 
       outputfile = cli.getOptionValue('f');
 
-      kskFiles = cli.getOptionValues('k');
+      // FIXME: this is a bit awkward, because we really want -k to repeat,
+      // but the CLI classes don't do it quite right. Instead we just convert
+      // our single argument to an array.
+      String kskFile = cli.getOptionValue('k');
+      if (kskFile != null)
+      {
+        kskFiles = new String[1];
+        kskFiles[0] = kskFile;
+      }
 
       if ((optstr = cli.getOptionValue('I')) != null)
       {
@@ -194,7 +202,7 @@ public class SignZone
       {
         salt = base16.fromString(optstr);
       }
-      
+
       if ((optstr = cli.getOptionValue('R')) != null)
       {
         int length = parseInt(optstr, 0);
@@ -205,23 +213,26 @@ public class SignZone
           random.nextBytes(salt);
         }
       }
-      
+
       if ((optstr = cli.getOptionValue("iterations")) != null)
       {
         iterations = parseInt(optstr, iterations);
       }
-      
+
       String[] files = cli.getArgs();
 
-      if (files.length < 2)
+      if (files.length < 1)
       {
         System.err.println("error: missing zone file and/or key files");
         usage();
       }
 
       zonefile = files[0];
-      keyFiles = new String[files.length - 1];
-      System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
+      if (files.length > 1)
+      {
+        keyFiles = new String[files.length - 1];
+        System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
+      }
     }
 
     /**
@@ -264,9 +275,10 @@ public class SignZone
       opts.addOption(OptionBuilder.hasArg().withArgName("outfile")
           .withDescription("file the signed zone is written to "
               + "(default is <origin>.signed).").create('f'));
-      opts.addOption(OptionBuilder.hasArgs().withArgName("KSK file")
-          .withLongOpt("ksk-file").withDescription("this key is a key "
-              + "signing key (may repeat).").create('k'));
+      opts.addOption(OptionBuilder.hasArg()
+          .withArgName("KSK file").withLongOpt("ksk-file")
+          .withDescription("this key is the key signing key.")
+          .create('k'));
       opts.addOption(OptionBuilder.hasArg().withArgName("file")
           .withLongOpt("include-file")
           .withDescription("include names in this "
@@ -742,7 +754,7 @@ public class SignZone
 
     // Sort the zone
     Collections.sort(records, new RecordComparator());
-
+    
     // Remove duplicate records
     SignUtils.removeDuplicateRecords(records);
 
@@ -857,6 +869,20 @@ public class SignZone
       }
     }
 
+    // If there are no ZSKs defined at this point (yet there are KSKs
+    // provided), all KSKs will be treated as ZSKs, as well.
+    if (keypairs == null || keypairs.size() == 0)
+    {
+      keypairs = kskpairs;
+    }
+    
+    // If there *still* aren't any ZSKs defined, bail.
+    if (keypairs == null || keypairs.size() == 0)
+    {
+      System.err.println("No zone signing keys could be determined.");
+      state.usage();
+    }
+    
     // Read in the zone
     List records = ZoneUtils.readZoneFile(state.zonefile, null);
     if (records == null || records.size() == 0)
@@ -910,7 +936,7 @@ public class SignZone
         records.add(((DnsKeyPair) i.next()).getDNSKEYRecord());
       }
     }
-
+    
     // read in the keysets, if any.
     List keysetrecs = getKeysets(state.keysetDirectory, zonename);
     if (keysetrecs != null)
