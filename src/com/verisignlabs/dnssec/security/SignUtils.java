@@ -49,7 +49,6 @@ public class SignUtils
   public static final int    RR_DELEGATION   = 1;
   public static final int    RR_GLUE         = 2;
   public static final int    RR_INVALID      = 3;
-  private static final int[] ENT_NSEC3_TYPES = {Type.RRSIG, Type.NSEC3};
 
   private static Logger      log;
 
@@ -531,7 +530,8 @@ public class SignUtils
       this.typemap.add(new Integer(type));
 
       // Opt-In support.
-      if (type != Type.NS && type != Type.NSEC && type != Type.RRSIG)
+      if (type != Type.NS && type != Type.NSEC && type != Type.RRSIG
+          && type != Type.NSEC3)
       {
         isSecureNode = true;
       }
@@ -827,7 +827,6 @@ public class SignUtils
 
     // Add our default types.
     node.addType(Type.RRSIG);
-    node.addType(Type.NSEC3);
 
     // Check for ENTs -- note this will generate duplicate ENTs because it
     // doesn't use any context.
@@ -865,10 +864,6 @@ public class SignUtils
         iterations,
         salt);
 
-    if (types == null)
-    {
-      types = ENT_NSEC3_TYPES;
-    }
     ProtoNSEC3 r = new ProtoNSEC3(hash, name, zonename, DClass.IN, ttl,
         optIn, NSEC3Record.SHA1_DIGEST_ID, iterations, salt, null, types);
 

@@ -113,6 +113,7 @@
     <include name="${sectools-distname}/bin/jdnssec-signzone" />
     <include name="${sectools-distname}/bin/jdnssec-keygen" />
     <include name="${sectools-distname}/bin/jdnssec-verifyzone" />
+    <include name="${sectools-distname}/bin/jdnssec-zoneformat" />
   </patternset>
 
   <patternset id="src.files">

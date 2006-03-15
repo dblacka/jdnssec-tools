@@ -49,6 +49,7 @@ public class TypeMap
   public static TypeMap fromTypes(int[] types)
   {
     TypeMap m = new TypeMap();
+    if (types == null) return m;
     for (int i = 0; i < types.length; i++)
     {
       m.set(types[i]);
