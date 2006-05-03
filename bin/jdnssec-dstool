@@ -1,0 +1,14 @@
+#! /bin/sh
+
+thisdir=`dirname $0`
+basedir=`cd $thisdir/..; pwd`
+
+ulimit -n `ulimit -H -n`
+
+# set the classpath
+for i in $basedir/lib/*.jar $basedir/lib/*.zip; do
+  CLASSPATH="$CLASSPATH":"$i"
+done
+export CLASSPATH
+
+exec java com.verisignlabs.dnssec.cl.DSTool "$@"
