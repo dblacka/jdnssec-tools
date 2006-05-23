@@ -106,7 +106,7 @@ public class DnsKeyPair
     setDNSKEYRecord(keyRecord);
     setPrivateKeyString(null);
   }
-  
+
   public DnsKeyPair(Name keyName, int algorithm, PublicKey publicKey,
       PrivateKey privateKey)
   {
@@ -146,35 +146,8 @@ public class DnsKeyPair
   /** @return the appropriate Signature object for this keypair. */
   protected Signature getSignature()
   {
-    Signature s = null;
-
-    // First try and deduce the algorithm from the KEYRecord (which
-    // will be specific), then try and deduce it from the private key.
-    // We should have one or the other.
-    try
-    {
-      switch (getDNSKEYAlgorithm())
-      {
-        case DNSSEC.RSAMD5 :
-          s = Signature.getInstance("MD5withRSA");
-          break;
-        case DNSSEC.DSA :
-          s = Signature.getInstance("SHA1withDSA");
-          break;
-        case DNSSEC.RSASHA1 :
-          s = Signature.getInstance("SHA1withRSA");
-          break;
-        case -1 :
-          s = null;
-          break;
-      }
-    }
-    catch (NoSuchAlgorithmException e)
-    {
-      log.severe("error getting Signature object: " + e);
-    }
-
-    return s;
+    DnsKeyAlgorithm algorithms = DnsKeyAlgorithm.getInstance();
+    return algorithms.getSignature(getDNSKEYAlgorithm());
   }
 
   /**
@@ -184,8 +157,16 @@ public class DnsKeyPair
   {
     if (mPublicKey == null && getDNSKEYRecord() != null)
     {
-      DnsKeyConverter conv = getKeyConverter();
-      setPublic(conv.parseDNSKEYRecord(getDNSKEYRecord()));
+      try
+      {
+        DnsKeyConverter conv = getKeyConverter();
+        setPublic(conv.parseDNSKEYRecord(getDNSKEYRecord()));
+      }
+      catch (NoSuchAlgorithmException e)
+      {
+        log.severe(e.toString());
+        return null;
+      }
     }
 
     return mPublicKey;
@@ -220,6 +201,7 @@ public class DnsKeyPair
 
   /**
    * @return the opaque private key string, null if one doesn't exist.
+   * @throws NoSuchAlgorithmException
    */
   public String getPrivateKeyString()
   {
@@ -304,6 +286,7 @@ public class DnsKeyPair
   /**
    * @return a Signature object initialized for verifying, or null if this key
    *         pair does not have a valid public key.
+   * @throws NoSuchAlgorithmException
    */
   public Signature getVerifier()
   {

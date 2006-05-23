@@ -33,12 +33,7 @@ import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.xbill.DNS.*;
 
-import com.verisignlabs.dnssec.security.BINDKeyUtils;
-import com.verisignlabs.dnssec.security.DnsKeyPair;
-import com.verisignlabs.dnssec.security.DnsSecVerifier;
-import com.verisignlabs.dnssec.security.RecordComparator;
-import com.verisignlabs.dnssec.security.SignUtils;
-import com.verisignlabs.dnssec.security.ZoneUtils;
+import com.verisignlabs.dnssec.security.*;
 
 /**
  * This class forms the command line implementation of a DNSSEC zone
@@ -67,6 +62,40 @@ public class VerifyZone
     public CLIState()
     {
       setupCLI();
+    }
+
+    /**
+     * Set up the command line options.
+     * 
+     * @return a set of command line options.
+     */
+    private void setupCLI()
+    {
+      opts = new Options();
+
+      // boolean options
+      opts.addOption("h", "help", false, "Print this message.");
+      opts.addOption("s",
+          "strict",
+          false,
+          "Zone will only be considered valid if all "
+              + "signatures could be cryptographically verified");
+
+      // Argument options
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("keydir")
+          .withArgName("dir").withDescription("directory to find "
+              + "trusted key files").create('d'));
+
+      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
+          .withArgName("level")
+          .withDescription("verbosity level -- 0 is silence, "
+              + "5 is debug information, 6 is trace information.\n"
+              + "default is level 5.").create('v'));
+
+      opts.addOption(OptionBuilder.hasArg()
+          .withArgName("alias:original:mnemonic").withLongOpt("alg-alias")
+          .withDescription("Define an alias for an algorithm").create('A'));
+
     }
 
     public void parseCommandLine(String[] args)
@@ -105,6 +134,15 @@ public class VerifyZone
         keydir = new File(optstr);
       }
 
+      String[] optstrs = null;
+      if ((optstrs = cli.getOptionValues('A')) != null)
+      {
+        for (int i = 0; i < optstrs.length; i++)
+        {
+          addArgAlias(optstrs[i]);
+        }
+      }
+      
       String[] cl_args = cli.getArgs();
 
       if (cl_args.length < 1)
@@ -122,40 +160,25 @@ public class VerifyZone
       }
     }
 
-    /**
-     * Set up the command line options.
-     * 
-     * @return a set of command line options.
-     */
-    private void setupCLI()
+    private void addArgAlias(String s)
     {
-      opts = new Options();
-
-      // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("s",
-          "strict",
-          false,
-          "Zone will only be considered valid if all "
-              + "signatures could be cryptographically verified");
-
-      // Argument options
-      OptionBuilder.hasArg();
-      OptionBuilder.withLongOpt("keydir");
-      OptionBuilder.withArgName("dir");
-      OptionBuilder.withDescription("directory to find trusted key files");
-      opts.addOption(OptionBuilder.create('d'));
-
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information.\n"
-          + "default is level 5.");
-      opts.addOption(OptionBuilder.create('v'));
-
+      if (s == null) return;
+      
+      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+      
+      String[] v = s.split(":");
+      if (v.length < 2) return;
+      
+      int alias = parseInt(v[0], -1);
+      if (alias <= 0) return;
+      int orig = parseInt(v[1], -1);
+      if (orig <= 0) return;
+      String mn = null;
+      if (v.length > 2) mn = v[2];
+      
+      algs.addAlias(alias, mn, orig);
     }
-
+    
     /** Print out the usage and help statements, then quit. */
     public void usage()
     {
@@ -209,7 +232,9 @@ public class VerifyZone
 
     for (Iterator i = keypairs.iterator(); i.hasNext();)
     {
-      verifier.addTrustedKey((DnsKeyPair) i.next());
+      DnsKeyPair pair = (DnsKeyPair) i.next();
+      if (pair.getPublic() == null) continue;
+      verifier.addTrustedKey(pair);
     }
 
     List rrsets = SignUtils.assembleIntoRRsets(records);
@@ -254,16 +279,17 @@ public class VerifyZone
       {
         zonename = r.getName();
       }
-      
-      if (r.getName().equals(zonename)  && r.getType() == Type.DNSKEY)
+
+      if (r.getName().equals(zonename) && r.getType() == Type.DNSKEY)
       {
         DnsKeyPair pair = new DnsKeyPair((DNSKEYRecord) r);
         res.add(pair);
       }
     }
-    
+
     return res;
   }
+
   private static List getTrustedKeys(String[] keyfiles, File inDirectory)
       throws IOException
   {
@@ -282,7 +308,6 @@ public class VerifyZone
 
   public static void execute(CLIState state) throws Exception
   {
-
 
     List records = ZoneUtils.readZoneFile(state.zonefile, null);
     List keypairs = null;

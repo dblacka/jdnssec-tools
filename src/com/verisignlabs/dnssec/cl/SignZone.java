@@ -44,13 +44,7 @@ import org.xbill.DNS.TextParseException;
 import org.xbill.DNS.Type;
 import org.xbill.DNS.utils.base16;
 
-import com.verisignlabs.dnssec.security.BINDKeyUtils;
-import com.verisignlabs.dnssec.security.DnsKeyPair;
-import com.verisignlabs.dnssec.security.DnsSecVerifier;
-import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
-import com.verisignlabs.dnssec.security.RecordComparator;
-import com.verisignlabs.dnssec.security.SignUtils;
-import com.verisignlabs.dnssec.security.ZoneUtils;
+import com.verisignlabs.dnssec.security.*;
 
 /**
  * This class forms the command line implementation of a DNSSEC zone signer.
@@ -91,6 +85,76 @@ public class SignZone
       setupCLI();
     }
 
+    /**
+     * Set up the command line options.
+     * 
+     * @return a set of command line options.
+     */
+    private void setupCLI()
+    {
+      opts = new Options();
+
+      // boolean options
+      opts.addOption("h", "help", false, "Print this message.");
+      opts.addOption("a", "verify", false, "verify generated signatures>");
+      opts.addOption("F",
+          "fully-sign-keyset",
+          false,
+          "sign the zone apex keyset with all available keys.");
+
+      // Argument options
+      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
+          .withArgName("level").withDescription("verbosity level")
+          .create('v'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("dir")
+          .withLongOpt("keyset-directory")
+          .withDescription("directory to find keyset files (default '.').")
+          .create('d'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("dir")
+          .withLongOpt("key-directory")
+          .withDescription("directory to find key files (default '.').")
+          .create('D'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("time/offset")
+          .withLongOpt("start-time")
+          .withDescription("signature starting time "
+              + "(default is now - 1 hour)").create('s'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("time/offset")
+          .withLongOpt("expire-time")
+          .withDescription("signature expiration time "
+              + "(default is start-time + 30 days).").create('e'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("outfile")
+          .withDescription("file the signed zone is written to "
+              + "(default is <origin>.signed).").create('f'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("KSK file")
+          .withLongOpt("ksk-file")
+          .withDescription("this key is the key signing key.").create('k'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("file")
+          .withLongOpt("include-file")
+          .withDescription("include names in this "
+              + "file in the NSEC/NSEC3 chain.").create('I'));
+
+      opts.addOption(OptionBuilder.hasArg()
+          .withArgName("alias:original:mnemonic").withLongOpt("alg-alias")
+          .withDescription("Define an alias for an algorithm").create('A'));
+      // NSEC3 options
+      opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
+      opts.addOption("O",
+          "use-opt-in",
+          false,
+          "generate a fully Opt-In zone.");
+
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("salt")
+          .withArgName("hex value").withDescription("supply a salt value.")
+          .create('S'));
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("random-salt")
+          .withArgName("length").withDescription("generate a random salt.")
+          .create('R'));
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("iterations")
+          .withArgName("value")
+          .withDescription("use this value for the iterations in NSEC3.")
+          .create());
+    }
+
     public void parseCommandLine(String[] args)
         throws org.apache.commons.cli.ParseException, ParseException,
         IOException
@@ -99,6 +163,7 @@ public class SignZone
       CommandLine cli = cli_parser.parse(opts, args);
 
       String optstr = null;
+      String[] optstrs = null;
 
       if (cli.hasOption('h')) usage();
 
@@ -138,6 +203,14 @@ public class SignZone
         useOptIn = false;
       }
 
+      if ((optstrs = cli.getOptionValues('A')) != null)
+      {
+        for (int i = 0; i < optstrs.length; i++)
+        {
+          addArgAlias(optstrs[i]);
+        }
+      }
+      
       if (cli.hasOption('F')) fullySignKeyset = true;
 
       if ((optstr = cli.getOptionValue('d')) != null)
@@ -182,15 +255,7 @@ public class SignZone
 
       outputfile = cli.getOptionValue('f');
 
-      // FIXME: this is a bit awkward, because we really want -k to repeat,
-      // but the CLI classes don't do it quite right. Instead we just convert
-      // our single argument to an array.
-      String kskFile = cli.getOptionValue('k');
-      if (kskFile != null)
-      {
-        kskFiles = new String[1];
-        kskFiles[0] = kskFile;
-      }
+      kskFiles = cli.getOptionValues('k');
 
       if ((optstr = cli.getOptionValue('I')) != null)
       {
@@ -235,74 +300,25 @@ public class SignZone
       }
     }
 
-    /**
-     * Set up the command line options.
-     * 
-     * @return a set of command line options.
-     */
-    private void setupCLI()
+    private void addArgAlias(String s)
     {
-      opts = new Options();
+      if (s == null) return;
 
-      // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("a", "verify", false, "verify generated signatures>");
-      opts.addOption("F",
-          "fully-sign-keyset",
-          false,
-          "sign the zone apex keyset with all available keys.");
+      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
-      // Argument options
-      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
-          .withArgName("level").withDescription("verbosity level")
-          .create('v'));
-      opts.addOption(OptionBuilder.hasArg().withArgName("dir")
-          .withLongOpt("keyset-directory")
-          .withDescription("directory to find keyset files (default '.').")
-          .create('d'));
-      opts.addOption(OptionBuilder.hasArg().withArgName("dir")
-          .withLongOpt("key-directory")
-          .withDescription("directory to find key files (default '.').")
-          .create('D'));
-      opts.addOption(OptionBuilder.hasArg().withArgName("time/offset")
-          .withLongOpt("start-time")
-          .withDescription("signature starting time "
-              + "(default is now - 1 hour)").create('s'));
-      opts.addOption(OptionBuilder.hasArg().withArgName("time/offset")
-          .withLongOpt("expire-time")
-          .withDescription("signature expiration time "
-              + "(default is start-time + 30 days).").create('e'));
-      opts.addOption(OptionBuilder.hasArg().withArgName("outfile")
-          .withDescription("file the signed zone is written to "
-              + "(default is <origin>.signed).").create('f'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("KSK file").withLongOpt("ksk-file")
-          .withDescription("this key is the key signing key.")
-          .create('k'));
-      opts.addOption(OptionBuilder.hasArg().withArgName("file")
-          .withLongOpt("include-file")
-          .withDescription("include names in this "
-              + "file in the NSEC/NSEC3 chain.").create('I'));
+      String[] v = s.split(":");
+      if (v.length < 2) return;
 
-      // NSEC3 options
-      opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
-      opts.addOption("O",
-          "use-opt-in",
-          false,
-          "generate a fully Opt-In zone.");
+      int alias = parseInt(v[0], -1);
+      if (alias <= 0) return;
+      int orig = parseInt(v[1], -1);
+      if (orig <= 0) return;
+      String mn = null;
+      if (v.length > 2) mn = v[2];
 
-      opts.addOption(OptionBuilder.hasArg().withLongOpt("salt")
-          .withArgName("hex value").withDescription("supply a salt value.")
-          .create('S'));
-      opts.addOption(OptionBuilder.hasArg().withLongOpt("random-salt")
-          .withArgName("length").withDescription("generate a random salt.")
-          .create('R'));
-      opts.addOption(OptionBuilder.hasArg().withLongOpt("iterations")
-          .withArgName("value")
-          .withDescription("use this value for the iterations in NSEC3.")
-          .create());
+      algs.addAlias(alias, mn, orig);
     }
-
+    
     /** Print out the usage and help statements, then quit. */
     private void usage()
     {

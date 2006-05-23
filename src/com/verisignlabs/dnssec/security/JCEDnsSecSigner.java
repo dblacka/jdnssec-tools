@@ -22,7 +22,6 @@ package com.verisignlabs.dnssec.security;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.interfaces.DSAPublicKey;
@@ -34,7 +33,6 @@ import java.util.List;
 import java.util.ListIterator;
 
 import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
@@ -54,10 +52,7 @@ import org.xbill.DNS.Type;
  */
 public class JCEDnsSecSigner
 {
-  private DnsKeyConverter  mKeyConverter;
-
-  private KeyPairGenerator mRSAKeyGenerator;
-  private KeyPairGenerator mDSAKeyGenerator;
+  private DnsKeyConverter mKeyConverter;
 
   /**
    * Cryptographically generate a new DNSSEC key.
@@ -73,32 +68,11 @@ public class JCEDnsSecSigner
   public DnsKeyPair generateKey(Name owner, long ttl, int dclass,
       int algorithm, int flags, int keysize) throws NoSuchAlgorithmException
   {
-    KeyPair pair;
+    DnsKeyAlgorithm algorithms = DnsKeyAlgorithm.getInstance();
 
     if (ttl < 0) ttl = 86400; // set to a reasonable default.
 
-    switch (algorithm)
-    {
-      case DNSSEC.RSAMD5 :
-      case DNSSEC.RSASHA1 :
-        if (mRSAKeyGenerator == null)
-        {
-          mRSAKeyGenerator = KeyPairGenerator.getInstance("RSA");
-        }
-        mRSAKeyGenerator.initialize(keysize);
-        pair = mRSAKeyGenerator.generateKeyPair();
-        break;
-      case DNSSEC.DSA :
-        if (mDSAKeyGenerator == null)
-        {
-          mDSAKeyGenerator = KeyPairGenerator.getInstance("DSA");
-        }
-        mDSAKeyGenerator.initialize(keysize);
-        pair = mDSAKeyGenerator.generateKeyPair();
-        break;
-      default :
-        throw new NoSuchAlgorithmException("Alg " + algorithm);
-    }
+    KeyPair pair = algorithms.generateKeyPair(algorithm, keysize);
 
     if (mKeyConverter == null)
     {
@@ -111,6 +85,7 @@ public class JCEDnsSecSigner
         flags,
         algorithm,
         pair.getPublic());
+
     DnsKeyPair dnspair = new DnsKeyPair();
     dnspair.setDNSKEYRecord(keyrec);
     dnspair.setPublic(pair.getPublic()); // keep from conv. the keyrec back.
@@ -173,11 +148,12 @@ public class JCEDnsSecSigner
       signer.update(sign_data);
       byte[] sig = signer.sign();
 
+      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
       // Convert to RFC 2536 format, if necessary.
-      if (pair.getDNSKEYAlgorithm() == DNSSEC.DSA)
+      if (algs.baseType(pair.getDNSKEYAlgorithm()) == DnsKeyAlgorithm.DSA)
       {
-        sig = SignUtils.convertDSASignature(((DSAPublicKey) pair.getPublic()).getParams(),
-            sig);
+        sig = SignUtils.convertDSASignature(((DSAPublicKey) pair.getPublic())
+            .getParams(), sig);
       }
       RRSIGRecord sigrec = SignUtils.generateRRSIG(sig, presig);
       sigs.add(sigrec);
@@ -234,8 +210,8 @@ public class JCEDnsSecSigner
    */
   private Name addRRset(List toList, Name zonename, RRset rrset,
       List keysigningkeypairs, List zonekeypairs, Date start, Date expire,
-      boolean fullySignKeyset, Name last_cut) throws IOException,
-      GeneralSecurityException
+      boolean fullySignKeyset, Name last_cut)
+      throws IOException, GeneralSecurityException
   {
     // add the records themselves
     for (Iterator i = rrset.rrs(); i.hasNext();)
@@ -243,10 +219,8 @@ public class JCEDnsSecSigner
       toList.add(i.next());
     }
 
-    int type = SignUtils.recordSecType(zonename,
-        rrset.getName(),
-        rrset.getType(),
-        last_cut);
+    int type = SignUtils.recordSecType(zonename, rrset.getName(), rrset
+        .getType(), last_cut);
 
     // we don't sign non-normal sets (delegations, glue, invalid).
     // we also don't sign the zone key set unless we've been asked.

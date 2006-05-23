@@ -157,13 +157,6 @@ public class SignUtils
     // Caculate the offset where the RDATA begins (we have to skip
     // past the length byte)
 
-    // FIXME: currently, draft-ietf-dnsext-dnssec-records-06 has us
-    // sorting by length first, then bytes. This can be accomplished
-    // by not skipping past the RDLENGTH field, I think.
-    // FIXME update: I pointed this out as an error, and subsequent
-    // versions should correct this, setting the standard back to
-    // bytes, then length.
-
     int offset = rrset.getName().toWireCanonical().length + 10;
     ByteArrayComparator bac = new ByteArrayComparator(offset, false);
 

@@ -44,7 +44,6 @@ import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPrivateKeySpec;
 
 import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.KEYRecord;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.security.KEYConverter;
@@ -68,10 +67,34 @@ public class DnsKeyConverter
   {
   }
 
-  /** Given a DNS KEY record, return the JCA public key */
+  /**
+   * Given a DNS KEY record, return the JCA public key
+   * 
+   * @throws NoSuchAlgorithmException
+   */
   public PublicKey parseDNSKEYRecord(DNSKEYRecord pKeyRecord)
+      throws NoSuchAlgorithmException
   {
     if (pKeyRecord.getKey() == null) return null;
+
+    // FIXME: this won't work at all with alg aliases.
+    // For now, instead of re-implementing parseRecord (or adding this stuff
+    // to DNSjava), we will just translate the algorithm back to a standard
+    // algorithm. Note that this will unnecessarily convert RSAMD5 to RSASHA1.
+
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+    int standard_alg = algs.standardAlgorithm(pKeyRecord.getAlgorithm());
+
+    if (standard_alg <= 0)
+      throw new NoSuchAlgorithmException("DNSKEY algorithm "
+          + pKeyRecord.getAlgorithm() + " is unrecognized");
+
+    if (pKeyRecord.getAlgorithm() != standard_alg)
+    {
+      pKeyRecord = new DNSKEYRecord(pKeyRecord.getName(), pKeyRecord
+          .getDClass(), pKeyRecord.getTTL(), pKeyRecord.getFlags(),
+          pKeyRecord.getProtocol(), standard_alg, pKeyRecord.getKey());
+    }
 
     return KEYConverter.parseRecord(pKeyRecord);
   }
@@ -104,15 +127,15 @@ public class DnsKeyConverter
   public PrivateKey convertEncodedPrivateKey(byte[] key, int algorithm)
   {
     PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(key);
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
     try
     {
-      switch (algorithm)
+      switch (algs.baseType(algorithm))
       {
-        case DNSSEC.RSAMD5 :
-        case DNSSEC.RSASHA1 :
+        case DnsKeyAlgorithm.RSA :
           return mRSAKeyFactory.generatePrivate(spec);
-        case DNSSEC.DSA :
+        case DnsKeyAlgorithm.DSA :
           return mDSAKeyFactory.generatePrivate(spec);
       }
     }
@@ -122,11 +145,23 @@ public class DnsKeyConverter
     return null;
   }
 
+  private int parseInt(String s, int def)
+  {
+    try
+    {
+      return Integer.parseInt(s);
+    }
+    catch (NumberFormatException e)
+    {
+      return def;
+    }
+  }
+
   /**
    * @return a JCA private key, given a BIND9-style textual encoding
    */
-  public PrivateKey parsePrivateKeyString(String key) throws IOException,
-      NoSuchAlgorithmException
+  public PrivateKey parsePrivateKeyString(String key)
+      throws IOException, NoSuchAlgorithmException
   {
     StringTokenizer lines = new StringTokenizer(key, "\n");
 
@@ -149,11 +184,24 @@ public class DnsKeyConverter
       }
       else if (line.startsWith("Algorithm: "))
       {
-        if (val.startsWith("1 ")) return parsePrivateRSA(lines);
-        if (val.startsWith("5 ")) return parsePrivateRSA(lines);
-        if (val.startsWith("2 ")) return parsePrivateDH(lines);
-        if (val.startsWith("3 ")) return parsePrivateDSA(lines);
-        throw new IOException("unsupported private key algorithm: " + val);
+        // here we assume that the value looks like # (MNEM) or just the
+        // number.
+        String[] toks = val.split("\\s", 2);
+        val = toks[0];
+        int alg = parseInt(val, -1);
+        DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+
+        switch (algs.baseType(alg))
+        {
+          case DnsKeyAlgorithm.RSA :
+            return parsePrivateRSA(lines);
+          case DnsKeyAlgorithm.DSA :
+            return parsePrivateDSA(lines);
+          case DnsKeyAlgorithm.DH :
+            return parsePrivateDH(lines);
+          default :
+            throw new IOException("unsupported private key algorithm: " + val);
+        }
       }
     }
     return null;
@@ -390,11 +438,11 @@ public class DnsKeyConverter
     }
     else if (priv instanceof DSAPrivateKey && pub instanceof DSAPublicKey)
     {
-      return generatePrivateDSA((DSAPrivateKey) priv, (DSAPublicKey) pub);
+      return generatePrivateDSA((DSAPrivateKey) priv, (DSAPublicKey) pub, alg);
     }
     else if (priv instanceof DHPrivateKey && pub instanceof DHPublicKey)
     {
-      return generatePrivateDH((DHPrivateKey) priv, (DHPublicKey) pub);
+      return generatePrivateDH((DHPrivateKey) priv, (DHPublicKey) pub, alg);
     }
 
     return null;
@@ -426,16 +474,11 @@ public class DnsKeyConverter
   {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
     out.println("Private-key-format: v1.2");
-    if (algorithm == DNSSEC.RSAMD5)
-    {
-      out.println("Algorithm: 1 (RSAMD5)");
-    }
-    else
-    {
-      out.println("Algorithm: 5 (RSASHA1)");
-    }
+    out.println("Algorithm: " + algorithm + " ("
+        + algs.algToString(algorithm) + ")");
     out.print("Modulus: ");
     out.println(b64BigInt(key.getModulus()));
     out.print("PublicExponent: ");
@@ -457,15 +500,18 @@ public class DnsKeyConverter
   }
 
   /** Given a DH key pair, return the BIND9-style text encoding */
-  private String generatePrivateDH(DHPrivateKey key, DHPublicKey pub)
+  private String generatePrivateDH(DHPrivateKey key, DHPublicKey pub,
+      int algorithm)
   {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
     DHParameterSpec p = key.getParams();
 
     out.println("Private-key-format: v1.2");
-    out.println("Algorithm: 2 (DH)");
+    out.println("Algorithm: " + algorithm + " ("
+        + algs.algToString(algorithm) + ")");
     out.print("Prime(p): ");
     out.println(b64BigInt(p.getP()));
     out.print("Generator(g): ");
@@ -479,15 +525,18 @@ public class DnsKeyConverter
   }
 
   /** Given a DSA key pair, return the BIND9-style text encoding */
-  private String generatePrivateDSA(DSAPrivateKey key, DSAPublicKey pub)
+  private String generatePrivateDSA(DSAPrivateKey key, DSAPublicKey pub,
+      int algorithm)
   {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
     DSAParams p = key.getParams();
 
     out.println("Private-key-format: v1.2");
-    out.println("Algorithm: 3 (DSA)");
+    out.println("Algorithm: " + algorithm + " ("
+        + algs.algToString(algorithm) + ")");
     out.print("Prime(p): ");
     out.println(b64BigInt(p.getP()));
     out.print("Subprime(q): ");

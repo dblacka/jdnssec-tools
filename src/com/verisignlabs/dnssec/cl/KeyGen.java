@@ -27,10 +27,10 @@ import java.util.logging.Logger;
 import org.apache.commons.cli.*;
 import org.xbill.DNS.DClass;
 import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
 
 import com.verisignlabs.dnssec.security.BINDKeyUtils;
+import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
 import com.verisignlabs.dnssec.security.DnsKeyPair;
 import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
 
@@ -64,6 +64,73 @@ public class KeyGen
     public CLIState()
     {
       setupCLI();
+    }
+
+    /**
+     * Set up the command line options.
+     * 
+     * @return a set of command line options.
+     */
+    private void setupCLI()
+    {
+      opts = new Options();
+
+      // boolean options
+      opts.addOption("h", "help", false, "Print this message.");
+      opts.addOption("k",
+          "kskflag",
+          false,
+          "Key is a key-signing-key (sets the SEP flag).");
+
+      // Argument options
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("nametype");
+      OptionBuilder.withArgName("type");
+      OptionBuilder.withDescription("ZONE | OTHER (default ZONE)");
+      opts.addOption(OptionBuilder.create('n'));
+
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("verbose");
+      OptionBuilder.withArgName("level");
+      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
+          + "5 is debug information, " + "6 is trace information.\n"
+          + "default is level 5.");
+      opts.addOption(OptionBuilder.create('v'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("algorithm");
+      OptionBuilder
+          .withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA | alias, "
+              + "RSASHA1 is default.");
+      opts.addOption(OptionBuilder.create('a'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("size");
+      OptionBuilder.withDescription("key size, in bits. (default = 1024)\n"
+          + "RSA|RSASHA1|RSAMD5: [512..4096]\n"
+          + "DSA:                [512..1024]\n"
+          + "DH:                 [128..4096]");
+      opts.addOption(OptionBuilder.create('b'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("file");
+      OptionBuilder.withLongOpt("output-file");
+      OptionBuilder
+          .withDescription("base filename for the public/private key files");
+      opts.addOption(OptionBuilder.create('f'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("keydir");
+      OptionBuilder.withArgName("dir");
+      OptionBuilder.withDescription("place generated key files in this "
+          + "directory");
+      opts.addOption(OptionBuilder.create('d'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("alg-alias");
+      OptionBuilder.withArgName("alias:original:mnemonic");
+      OptionBuilder.withDescription("define an alias for an algorithm");
+      opts.addOption(OptionBuilder.create('A'));
     }
 
     public void parseCommandLine(String[] args)
@@ -111,6 +178,16 @@ public class KeyGen
           zoneKey = false;
         }
       }
+
+      String[] optstrs;
+      if ((optstrs = cli.getOptionValues('A')) != null)
+      {
+        for (int i = 0; i < optstrs.length; i++)
+        {
+          addArgAlias(optstrs[i]);
+        }
+      }
+
       if ((optstr = cli.getOptionValue('a')) != null)
       {
         algorithm = parseAlg(optstr);
@@ -137,64 +214,25 @@ public class KeyGen
       owner = cl_args[0];
     }
 
-    /**
-     * Set up the command line options.
-     * 
-     * @return a set of command line options.
-     */
-    private void setupCLI()
+    private void addArgAlias(String s)
     {
-      opts = new Options();
-
-      // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("k",
-          "kskflag",
-          false,
-          "Key is a key-signing-key (sets the SEP flag).");
-
-      // Argument options
-      OptionBuilder.hasArg();
-      OptionBuilder.withLongOpt("nametype");
-      OptionBuilder.withArgName("type");
-      OptionBuilder.withDescription("ZONE | OTHER (default ZONE)");
-      opts.addOption(OptionBuilder.create('n'));
-
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, " + "6 is trace information.\n"
-          + "default is level 5.");
-      opts.addOption(OptionBuilder.create('v'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("algorithm");
-      OptionBuilder.withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA, "
-          + "RSASHA1 is default.");
-      opts.addOption(OptionBuilder.create('a'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("size");
-      OptionBuilder.withDescription("key size, in bits. (default = 1024)\n"
-          + "RSA|RSASHA1|RSAMD5: [512..4096]\n"
-          + "DSA:                [512..1024]\n"
-          + "DH:                 [128..4096]");
-      opts.addOption(OptionBuilder.create('b'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("file");
-      OptionBuilder.withLongOpt("output-file");
-      OptionBuilder.withDescription("base filename for the public/private key files");
-      opts.addOption(OptionBuilder.create('f'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withLongOpt("keydir");
-      OptionBuilder.withArgName("dir");
-      OptionBuilder.withDescription("place generated key files in this directory");
-      opts.addOption(OptionBuilder.create('d'));
+      if (s == null) return;
+      
+      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+      
+      String[] v = s.split(":");
+      if (v.length < 2) return;
+      
+      int alias = parseInt(v[0], -1);
+      if (alias <= 0) return;
+      int orig = parseInt(v[1], -1);
+      if (orig <= 0) return;
+      String mn = null;
+      if (v.length > 2) mn = v[2];
+      
+      algs.addAlias(alias, mn, orig);
     }
-
+    
     /** Print out the usage and help statements, then quit. */
     private void usage()
     {
@@ -239,34 +277,12 @@ public class KeyGen
 
   private static int parseAlg(String s)
   {
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+
     int alg = parseInt(s, -1);
     if (alg > 0) return alg;
 
-    s = s.toUpperCase();
-
-    if (s.equals("RSA"))
-    {
-      return DNSSEC.RSASHA1;
-    }
-    else if (s.equals("RSAMD5"))
-    {
-      return DNSSEC.RSA;
-    }
-    else if (s.equals("DH"))
-    {
-      return DNSSEC.DH;
-    }
-    else if (s.equals("DSA"))
-    {
-      return DNSSEC.DSA;
-    }
-    else if (s.equals("RSASHA1"))
-    {
-      return DNSSEC.RSASHA1;
-    }
-
-    // default
-    return DNSSEC.RSASHA1;
+    return algs.stringToAlgorithm(s);
   }
 
   public static void execute(CLIState state) throws Exception

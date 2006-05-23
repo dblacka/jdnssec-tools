@@ -263,14 +263,18 @@ public class DnsSecVerifier implements Verifier
     {
       byte[] data = SignUtils.generateSigData(rrset, sigrec);
 
+      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+      
       Signature signer = keypair.getVerifier();
       signer.update(data);
 
       byte[] sig = sigrec.getSignature();
-      if (sigrec.getAlgorithm() == DNSSEC.DSA)
+      
+      if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.DSA)
       {
         sig = SignUtils.convertDSASignature(sig);
       }
+      
       if (!signer.verify(sig))
       {
         log.info("Signature failed to verify cryptographically");
