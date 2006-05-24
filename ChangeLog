@@ -1,0 +1,110 @@
+2006-05-24  David Blacka  <davidb@verisignlabs.com>
+
+	* Add some error checking for the NSEC3 command line parameters
+	for jdnssec-signzone.
+
+	* Update local dnsjava build to 2.0.1.
+
+2006-05-23  David Blacka  <davidb@verisignlabs.com>
+
+	* Add support for algorithm aliases.  This feature is so that the
+	user can declare the DNSKEY algorithm x is the same as algorithm 5
+	(e.g.).  So far, this only works with straight integer algorithm
+	identifiers (no private alg support yet).
+
+	* Fix jdnssec-signzone so that you can specify multiple KSKs on
+	the command line.  Apparently, commons-cli actually does handle
+	repeating command line options correctly.
+
+2006-05-03  David Blacka  <davidb@verisignlabs.com>
+
+	* Add preliminary implementation of jdnssec-dstool.  This is a
+	simple command line tool that takes a DNSKEY record and converts
+	it into a DS record (or a DLV record).  Right now, it requires
+	that the key is stored in a file ending with '.key'.
+
+	* release version 0.6.0.
+
+2006-03-15  David Blacka  <davidb@verisignlabs.com>
+
+	* Type map changes for NSEC3, corresponding to changes in draft
+	-05pre.  Essentially: NSEC3 and RRSIG bits are not set for most
+	(all) NSEC3 records any longer.
+
+2006-03-06  David Blacka  <davidb@verisignlabs.com>
+
+	* release version 0.5.0.
+
+2006-02-16  David Blacka  <davidb@verisignlabs.com>
+
+	* Make RecordComparator also compare RDATA so the removeDuplicates
+	step actually works reliabled.  This was masked by the dupicate
+	suppression in org.xbill.DNS.RRset.
+
+	* Only allow one command line specified KSK since commons-cli
+	doesn't seem to handle multi-arg options correctly.
+
+	* Do not croak on the lack of the command-line keys for now.
+
+	* New version of local dnsjava build containing NSEC3 changes
+	corresponding to the -04pre draft.
+
+2005-11-16  David Blacka  <davidb@verisignlabs.com>
+
+	* Make jdnssec-verifyzone work with just the zone (which is
+	self-signed anyway).
+
+	* release version 0.4.2.
+
+2005-11-09  David Blacka  <davidb@verisignlabs.com>
+
+	* Add original ownername comments to the NSEC3 generation.
+	
+2005-11-08  David Blacka  <davidb@verisignlabs.com>
+
+	* New zone formatter.
+
+	* Misc bug fixes.
+
+	* release version 0.4.1.
+
+2005-11-07  David Blacka  <davidb@verisignlabs.com>
+
+	* Update the local dnsjava build with a bugfix.
+
+	* Fix ordering problem with ProtoNSEC3s.
+
+2005-11-06  David Blacka  <davidb@verisignlabs.com>
+
+	* Actually use the --iterations command line option of
+	jdnssec-signzone.
+
+2005-10-27  David Blacka  <davidb@verisignlabs.com>
+
+	* Add NSEC3 support for jdnssec-signzone.
+
+	* Remove support for plain Opt-In (until private algorithms work).
+
+	* release version 0.4.0.
+	
+2005-08-14  David Blacka  <davidb@verisignlabs.com>
+
+	* Move the signZone function into the SignZone class (from the
+	SignUtils) class.
+
+	* General cleanup.
+
+	* Add local _jdnssec-* shell wrappers.  These use build/classes in
+	the classpath so can be used to run the tools right out of the
+	build area.
+
+2005-08-13  David Blacka  <davidb@verisignlabs.com>
+
+	* Update to DNSjava 2.0.0
+
+	* Refactor command line parsing.
+
+	* Switch to using java.util.logging for logging.
+
+
+
