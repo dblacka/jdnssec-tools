@@ -6,7 +6,7 @@ basedir=`cd $thisdir/..; pwd`
 ulimit -n `ulimit -H -n`
 
 # set the classpath
-for i in $basedir/lib/*.jar $basedir/lib/*.zip; do
+for i in $basedir/lib/*.jar $basedir/lib/*.zip $basedir/build/lib/*.jar; do
   CLASSPATH="$CLASSPATH":"$i"
 done
 export CLASSPATH
