@@ -5,6 +5,17 @@
 
 	* Update local dnsjava build to 2.0.1.
 
+	* Modified the jdnssec-* shell wrappers to also use the local
+	build area version of the jdnssec-tools.jar file.  This allows the
+	standard jdnssec-* wrappers to work right from the build area.
+
+	* Add support of the SHA256 algorithm for DS records.
+
+	* Change the name of the package and jar file to jdnssec-tools
+	(from java-dnssec-tools) for consistency.
+
+	* release version 0.7.0.
+
 2006-05-23  David Blacka  <davidb@verisignlabs.com>
 
 	* Add support for algorithm aliases.  This feature is so that the
@@ -59,7 +70,7 @@
 2005-11-09  David Blacka  <davidb@verisignlabs.com>
 
 	* Add original ownername comments to the NSEC3 generation.
-	
+
 2005-11-08  David Blacka  <davidb@verisignlabs.com>
 
 	* New zone formatter.
@@ -86,7 +97,7 @@
 	* Remove support for plain Opt-In (until private algorithms work).
 
 	* release version 0.4.0.
-	
+
 2005-08-14  David Blacka  <davidb@verisignlabs.com>
 
 	* Move the signZone function into the SignZone class (from the
@@ -105,6 +116,3 @@
 	* Refactor command line parsing.
 
 	* Switch to using java.util.logging for logging.
-
-
-
