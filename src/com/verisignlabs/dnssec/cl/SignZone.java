@@ -266,6 +266,11 @@ public class SignZone
       if ((optstr = cli.getOptionValue('S')) != null)
       {
         salt = base16.fromString(optstr);
+        if (salt == null && !optstr.equals("-"))
+        {
+          System.err.println("error: salt is not valid hexidecimal.");
+          usage();
+        }
       }
 
       if ((optstr = cli.getOptionValue('R')) != null)
@@ -282,6 +287,11 @@ public class SignZone
       if ((optstr = cli.getOptionValue("iterations")) != null)
       {
         iterations = parseInt(optstr, iterations);
+        if (iterations < 0 || iterations > 8388607)
+        {
+          System.err.println("error: iterations value is invalid");
+          usage();
+        }
       }
 
       String[] files = cli.getArgs();
@@ -341,7 +351,6 @@ public class SignZone
       out.flush();
       System.exit(64);
     }
-
   }
 
   /**
