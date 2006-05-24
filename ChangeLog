@@ -3,13 +3,17 @@
 	* Add some error checking for the NSEC3 command line parameters
 	for jdnssec-signzone.
 
-	* Update local dnsjava build to 2.0.1.
+	* Update local dnsjava build to 2.0.1.  This also contains a
+	change to the NSEC3 rdata format (as per the -06pre NSEC3 draft).
+	The change is the addition of a "next hashed owner name" length
+	octet.
 
 	* Modified the jdnssec-* shell wrappers to also use the local
 	build area version of the jdnssec-tools.jar file.  This allows the
 	standard jdnssec-* wrappers to work right from the build area.
 
-	* Add support of the SHA256 algorithm for DS records.
+	* Add support of the SHA256 algorithm for DS records.  This uses
+	the SHA256 class that I obtained from Scott Rose (thanks Scott!).
 
 	* Change the name of the package and jar file to jdnssec-tools
 	(from java-dnssec-tools) for consistency.
