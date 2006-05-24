@@ -56,10 +56,39 @@ public class DSTool
     public boolean  createDLV  = false;
     public String   outputfile = null;
     public String   keyname    = null;
+    public int      digest_id  = DSRecord.SHA1_DIGEST_ID;
 
     public CLIState()
     {
       setupCLI();
+    }
+
+    /**
+     * Set up the command line options.
+     * 
+     * @return a set of command line options.
+     */
+    private void setupCLI()
+    {
+      opts = new Options();
+
+      // boolean options
+      opts.addOption("h", "help", false, "Print this message.");
+
+      opts.addOption(OptionBuilder.withLongOpt("dlv")
+          .withDescription("Generate a DLV record instead.").create());
+
+      // Argument options
+      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
+          .withArgName("level")
+          .withDescription("verbosity level -- 0 is silence, "
+              + "5 is debug information, " + "6 is trace information.\n"
+              + "default is level 5.").create('v'));
+
+      opts.addOption(OptionBuilder.hasArg().withLongOpt("digest")
+          .withArgName("id")
+          .withDescription("The Digest ID to use (numerically): "
+              + "either 1 for SHA1 or 2 for SHA256").create('d'));
     }
 
     public void parseCommandLine(String[] args)
@@ -91,7 +120,9 @@ public class DSTool
 
       outputfile = cli.getOptionValue('f');
       createDLV = cli.hasOption("dlv");
-      
+      String optstr = cli.getOptionValue('d');
+      if (optstr != null) digest_id = parseInt(optstr, digest_id);
+
       String[] cl_args = cli.getArgs();
 
       if (cl_args.length < 1)
@@ -101,32 +132,6 @@ public class DSTool
       }
 
       keyname = cl_args[0];
-    }
-
-    /**
-     * Set up the command line options.
-     * 
-     * @return a set of command line options.
-     */
-    private void setupCLI()
-    {
-      opts = new Options();
-
-      // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
-
-      OptionBuilder.withLongOpt("dlv");
-      OptionBuilder.withDescription("Generate a DLV record instead.");
-      opts.addOption(OptionBuilder.create());
-
-      // Argument options
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, " + "6 is trace information.\n"
-          + "default is level 5.");
-      opts.addOption(OptionBuilder.create('v'));
     }
 
     /** Print out the usage and help statements, then quit. */
@@ -176,15 +181,17 @@ public class DSTool
 
     DnsKeyPair key = BINDKeyUtils.loadKey(state.keyname, null);
     DNSKEYRecord dnskey = key.getDNSKEYRecord();
-    
+
     if ((dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) == 0)
     {
       log.warning("DNSKEY is not an SEP-flagged key.");
     }
-    
-    DSRecord ds = SignUtils.calculateDSRecord(dnskey, dnskey.getTTL());
+
+    DSRecord ds = SignUtils.calculateDSRecord(dnskey,
+        state.digest_id,
+        dnskey.getTTL());
     Record res = ds;
-    
+
     if (state.createDLV)
     {
       log.fine("creating DLV.");

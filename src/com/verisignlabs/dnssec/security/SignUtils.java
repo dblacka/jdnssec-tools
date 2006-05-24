@@ -42,15 +42,15 @@ import org.xbill.DNS.utils.base64;
 
 public class SignUtils
 {
-  private static final int   ASN1_INT        = 0x02;
-  private static final int   ASN1_SEQ        = 0x30;
+  private static final int ASN1_INT      = 0x02;
+  private static final int ASN1_SEQ      = 0x30;
 
-  public static final int    RR_NORMAL       = 0;
-  public static final int    RR_DELEGATION   = 1;
-  public static final int    RR_GLUE         = 2;
-  public static final int    RR_INVALID      = 3;
+  public static final int  RR_NORMAL     = 0;
+  public static final int  RR_DELEGATION = 1;
+  public static final int  RR_GLUE       = 2;
+  public static final int  RR_INVALID    = 3;
 
-  private static Logger      log;
+  private static Logger    log;
 
   static
   {
@@ -712,16 +712,16 @@ public class SignUtils
 
     List nsec3s = finishNSEC3s(proto_nsec3s);
     // DEBUG
-//    for (Iterator i = nsec3s.iterator(); i.hasNext();)
-//    {
-//      NSEC3Record nsec3 = (NSEC3Record) i.next();
-//      log.fine("NSEC3: " + nsec3 + "\nRDATA: "
-//          + base16.toString(nsec3.rdataToWireCanonical()));
-//    }
+    // for (Iterator i = nsec3s.iterator(); i.hasNext();)
+    // {
+    // NSEC3Record nsec3 = (NSEC3Record) i.next();
+    // log.fine("NSEC3: " + nsec3 + "\nRDATA: "
+    // + base16.toString(nsec3.rdataToWireCanonical()));
+    // }
     records.addAll(nsec3s);
   }
 
-  public static void generateOptInNSEC3Records(Name zonename, List records,
+  public static void generateOptOutNSEC3Records(Name zonename, List records,
       List includedNames, byte[] salt, int iterations)
       throws NoSuchAlgorithmException
   {
@@ -1081,8 +1081,9 @@ public class SignUtils
    * @param zonename the name of the zone, used to reliably distinguish the
    *          zone apex from other records.
    * @param records a list of {@link org.xbill.DNS.Record} objects.
+   * @param digest_id The digest algorithm to use.
    */
-  public static void generateDSRecords(Name zonename, List records)
+  public static void generateDSRecords(Name zonename, List records, int digest_id)
   {
 
     for (ListIterator i = records.listIterator(); i.hasNext();)
@@ -1096,7 +1097,9 @@ public class SignUtils
       // Convert non-zone level KEY records into DS records.
       if (r.getType() == Type.DNSKEY && !r_name.equals(zonename))
       {
-        DSRecord ds = calculateDSRecord((DNSKEYRecord) r, r.getTTL());
+        DSRecord ds = calculateDSRecord((DNSKEYRecord) r,
+            DSRecord.SHA1_DIGEST_ID,
+            r.getTTL());
 
         i.set(ds);
       }
@@ -1155,11 +1158,13 @@ public class SignUtils
    * Given a DNSKEY record, generate the DS record from it.
    * 
    * @param keyrec the KEY record in question.
+   * @param digest_id The digest ID.
    * @param ttl the desired TTL for the generated DS record. If zero, or
    *          negative, the original KEY RR's TTL will be used.
    * @return the corresponding {@link org.xbill.DNS.DSRecord}
    */
-  public static DSRecord calculateDSRecord(DNSKEYRecord keyrec, long ttl)
+  public static DSRecord calculateDSRecord(DNSKEYRecord keyrec,
+      int digest_id, long ttl)
   {
     if (keyrec == null) return null;
 
@@ -1172,12 +1177,25 @@ public class SignUtils
 
     try
     {
-      MessageDigest md = MessageDigest.getInstance("SHA");
-
-      byte[] digest = md.digest(os.toByteArray());
-
+      byte[] digest;
+      
+      switch (digest_id)
+      {
+        case DSRecord.SHA1_DIGEST_ID :
+          MessageDigest md = MessageDigest.getInstance("SHA");
+          digest = md.digest(os.toByteArray());
+          break;
+        case DSRecord.SHA256_DIGEST_ID :
+          SHA256 sha = new SHA256();
+          sha.setData(os.toByteArray());
+          digest = sha.getDigest();
+          break;
+        default :
+          throw new IllegalArgumentException("Unknown digest id: " + digest_id);
+      }
+      
       return new DSRecord(keyrec.getName(), keyrec.getDClass(), ttl, keyrec
-          .getFootprint(), keyrec.getAlgorithm(), DSRecord.SHA1_DIGEST_ID,
+          .getFootprint(), keyrec.getAlgorithm(), digest_id,
           digest);
 
     }

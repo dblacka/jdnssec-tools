@@ -34,14 +34,9 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 import org.apache.commons.cli.*;
+import org.apache.commons.cli.Options;
 
-import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.DNSSEC;
-import org.xbill.DNS.Name;
-import org.xbill.DNS.RRset;
-import org.xbill.DNS.Record;
-import org.xbill.DNS.TextParseException;
-import org.xbill.DNS.Type;
+import org.xbill.DNS.*;
 import org.xbill.DNS.utils.base16;
 
 import com.verisignlabs.dnssec.security.*;
@@ -73,12 +68,13 @@ public class SignZone
     public String   outputfile      = null;
     public boolean  verifySigs      = false;
     public boolean  selfSignKeys    = true;
-    public boolean  useOptIn        = false;
+    public boolean  useOptOut       = false;
     public boolean  fullySignKeyset = false;
     public List     includeNames    = null;
     public boolean  useNsec3        = false;
     public byte[]   salt            = null;
     public int      iterations      = 0;
+    public int      digest_id       = DSRecord.SHA1_DIGEST_ID;
 
     public CLIState()
     {
@@ -104,7 +100,7 @@ public class SignZone
 
       // Argument options
       opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
-          .withArgName("level").withDescription("verbosity level")
+          .withArgName("level").withDescription("verbosity level.")
           .create('v'));
       opts.addOption(OptionBuilder.hasArg().withArgName("dir")
           .withLongOpt("keyset-directory")
@@ -127,21 +123,19 @@ public class SignZone
               + "(default is <origin>.signed).").create('f'));
       opts.addOption(OptionBuilder.hasArg().withArgName("KSK file")
           .withLongOpt("ksk-file")
-          .withDescription("this key is the key signing key.").create('k'));
+          .withDescription("this key is a key signing key (may repeat).")
+          .create('k'));
       opts.addOption(OptionBuilder.hasArg().withArgName("file")
           .withLongOpt("include-file")
           .withDescription("include names in this "
               + "file in the NSEC/NSEC3 chain.").create('I'));
 
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("alias:original:mnemonic").withLongOpt("alg-alias")
-          .withDescription("Define an alias for an algorithm").create('A'));
       // NSEC3 options
       opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
       opts.addOption("O",
-          "use-opt-in",
+          "use-opt-out",
           false,
-          "generate a fully Opt-In zone.");
+          "generate a fully Opt-Out zone (only valid with NSEC3).");
 
       opts.addOption(OptionBuilder.hasArg().withLongOpt("salt")
           .withArgName("hex value").withDescription("supply a salt value.")
@@ -152,6 +146,15 @@ public class SignZone
       opts.addOption(OptionBuilder.hasArg().withLongOpt("iterations")
           .withArgName("value")
           .withDescription("use this value for the iterations in NSEC3.")
+          .create());
+
+      opts.addOption(OptionBuilder.hasArg()
+          .withArgName("alias:original:mnemonic").withLongOpt("alg-alias")
+          .withDescription("Define an alias for an algorithm (may repeat).")
+          .create('A'));
+      opts.addOption(OptionBuilder.hasArg().withArgName("id")
+          .withLongOpt("ds-digest")
+          .withDescription("Digest algorithm to use for generated DSs")
           .create());
     }
 
@@ -195,12 +198,12 @@ public class SignZone
 
       if (cli.hasOption('a')) verifySigs = true;
       if (cli.hasOption('3')) useNsec3 = true;
-      if (cli.hasOption('O')) useOptIn = true;
+      if (cli.hasOption('O')) useOptOut = true;
 
-      if (useOptIn && !useNsec3)
+      if (useOptOut && !useNsec3)
       {
-        System.err.println("OptIn not supported without NSEC3 -- ignored.");
-        useOptIn = false;
+        System.err.println("Opt-Out not supported without NSEC3 -- ignored.");
+        useOptOut = false;
       }
 
       if ((optstrs = cli.getOptionValues('A')) != null)
@@ -210,7 +213,7 @@ public class SignZone
           addArgAlias(optstrs[i]);
         }
       }
-      
+
       if (cli.hasOption('F')) fullySignKeyset = true;
 
       if ((optstr = cli.getOptionValue('d')) != null)
@@ -294,6 +297,16 @@ public class SignZone
         }
       }
 
+      if ((optstr = cli.getOptionValue("ds-digest")) != null)
+      {
+        digest_id = parseInt(optstr, -1);
+        if (digest_id < 0)
+        {
+          System.err.println("error: DS digest ID is not a valid identifier");
+          usage();
+        }
+      }
+
       String[] files = cli.getArgs();
 
       if (files.length < 1)
@@ -328,7 +341,7 @@ public class SignZone
 
       algs.addAlias(alias, mn, orig);
     }
-    
+
     /** Print out the usage and help statements, then quit. */
     private void usage()
     {
@@ -477,7 +490,6 @@ public class SignZone
   {
     if (inDirectory == null)
     {
-      // FIXME: dunno how cross-platform this is
       inDirectory = new File(".");
     }
 
@@ -663,33 +675,26 @@ public class SignZone
   /**
    * Given a zone, sign it.
    * 
-   * @param zonename the name of the zone.
-   * @param records the records comprising the zone. They do not have to be in
+   * @param signer A signer (utility) object to use to actually sign stuff.
+   * @param zonename The name of the zone.
+   * @param records The records comprising the zone. They do not have to be in
    *          any particular order, as this method will order them as
    *          necessary.
-   * @param keysigningkeypairs the key pairs that are designated as "key
+   * @param keysigningkeypairs The key pairs that are designated as "key
    *          signing keys".
-   * @param zonekeypair this key pairs that are designated as "zone signing
+   * @param zonekeypair This key pairs that are designated as "zone signing
    *          keys".
-   * @param start the RRSIG inception time.
-   * @param expire the RRSIG expiration time.
-   * @param useOptIn generate Opt-In style NXT records. It will consider any
-   *          insecure delegation to be unsigned. To override this, include
-   *          the name of the insecure delegation in the NXTIncludeNames list.
-   * @param useConservativeOptIn if true, Opt-In NXT records will only be
-   *          generated if there are insecure, unsigned delegations in the
-   *          span. Not effect if useOptIn is false.
-   * @param fullySignKeyset sign the zone apex keyset with all available keys.
-   * @param NXTIncludeNames names that are to be included in the NXT chain
-   *          regardless. This may be null and is only used if useOptIn is
-   *          true.
+   * @param start The RRSIG inception time.
+   * @param expire The RRSIG expiration time.
+   * @param fullySignKeyset Sign the zone apex keyset with all available keys.
+   * @param digest_id The digest identifier to use when generating DS records.
    * 
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
    */
   private static List signZone(JCEDnsSecSigner signer, Name zonename,
       List records, List keysigningkeypairs, List zonekeypairs, Date start,
-      Date expire, boolean fullySignKeyset)
+      Date expire, boolean fullySignKeyset, int digest_id)
       throws IOException, GeneralSecurityException
   {
 
@@ -703,7 +708,7 @@ public class SignZone
     SignUtils.removeDuplicateRecords(records);
 
     // Generate DS records
-    SignUtils.generateDSRecords(zonename, records);
+    SignUtils.generateDSRecords(zonename, records, digest_id);
 
     // Generate the NSEC records
     SignUtils.generateNSECRecords(zonename, records);
@@ -768,10 +773,42 @@ public class SignZone
     return signed_records;
   }
 
+  /**
+   * Given a zone sign it using NSEC3 records.
+   * 
+   * @param signer A signer (utility) object used to actually sign stuff.
+   * @param zonename The name of the zone being signed.
+   * @param records The records comprising the zone. They do not have to be in
+   *          any particular order, as this method will order them as
+   *          necessary.
+   * @param keysigningkeypairs The key pairs that are designated as "key
+   *          signing keys".
+   * @param zonekeypairs This key pairs that are designated as "zone signing
+   *          keys".
+   * @param start The RRSIG inception time.
+   * @param expire The RRSIG expiration time.
+   * @param fullySignKeyset If true then the DNSKEY RRset will be signed by
+   *          all available keys, if false, only the key signing keys.
+   * @param useOptOut If true, insecure delegations will be omitted from the
+   *          NSEC3 chain, and all NSEC3 records will have the Opt-Out flag
+   *          set.
+   * @param includedNames A list of names to include in the NSEC3 chain
+   *          regardless.
+   * @param salt The salt to use for the NSEC3 hashing. null means no salt.
+   * @param iterations The number of iterations to use for the NSEC3 hashing.
+   * @param ds_digest_id The digest algorithm to use when generating DS
+   *          records.
+   * 
+   * @return an ordered list of {@link org.xbill.DNS.Record} objects,
+   *         representing the signed zone.
+   * 
+   * @throws IOException
+   * @throws GeneralSecurityException
+   */
   private static List signZoneNSEC3(JCEDnsSecSigner signer, Name zonename,
       List records, List keysigningkeypairs, List zonekeypairs, Date start,
-      Date expire, boolean fullySignKeyset, boolean useOptIn,
-      List includedNames, byte[] salt, int iterations)
+      Date expire, boolean fullySignKeyset, boolean useOptOut,
+      List includedNames, byte[] salt, int iterations, int ds_digest_id)
       throws IOException, GeneralSecurityException
   {
     // Remove any existing DNSSEC records (NSEC, NSEC3, RRSIG)
@@ -779,17 +816,17 @@ public class SignZone
 
     // Sort the zone
     Collections.sort(records, new RecordComparator());
-    
+
     // Remove duplicate records
     SignUtils.removeDuplicateRecords(records);
 
     // Generate DS records
-    SignUtils.generateDSRecords(zonename, records);
+    SignUtils.generateDSRecords(zonename, records, ds_digest_id);
 
     // Generate NSEC3 records
-    if (useOptIn)
+    if (useOptOut)
     {
-      SignUtils.generateOptInNSEC3Records(zonename,
+      SignUtils.generateOptOutNSEC3Records(zonename,
           records,
           includedNames,
           salt,
@@ -900,14 +937,14 @@ public class SignZone
     {
       keypairs = kskpairs;
     }
-    
+
     // If there *still* aren't any ZSKs defined, bail.
     if (keypairs == null || keypairs.size() == 0)
     {
       System.err.println("No zone signing keys could be determined.");
       state.usage();
     }
-    
+
     // Read in the zone
     List records = ZoneUtils.readZoneFile(state.zonefile, null);
     if (records == null || records.size() == 0)
@@ -941,6 +978,7 @@ public class SignZone
     if (!keyPairsValidForZone(zonename, keypairs)
         || !keyPairsValidForZone(zonename, kskpairs))
     {
+      System.err.println("error: specified keypairs are not valid for the zone.");
       state.usage();
     }
 
@@ -961,7 +999,7 @@ public class SignZone
         records.add(((DnsKeyPair) i.next()).getDNSKEYRecord());
       }
     }
-    
+
     // read in the keysets, if any.
     List keysetrecs = getKeysets(state.keysetDirectory, zonename);
     if (keysetrecs != null)
@@ -984,10 +1022,11 @@ public class SignZone
           state.start,
           state.expire,
           state.fullySignKeyset,
-          state.useOptIn,
+          state.useOptOut,
           state.includeNames,
           state.salt,
-          state.iterations);
+          state.iterations,
+          state.digest_id);
     }
     else
     {
@@ -998,7 +1037,8 @@ public class SignZone
           keypairs,
           state.start,
           state.expire,
-          state.fullySignKeyset);
+          state.fullySignKeyset,
+          state.digest_id);
     }
 
     // write out the signed zone

@@ -264,8 +264,6 @@ public class JCEDnsSecSigner
    *          necessary.
    * @param keysigningkeypairs the key pairs that are designated as "key
    *          signing keys".
-   * @param zonekeypair this key pairs that are designated as "zone signing
-   *          keys".
    * @param start the RRSIG inception time.
    * @param expire the RRSIG expiration time.
    * @param useOptIn generate Opt-In style NXT records. It will consider any
@@ -275,17 +273,20 @@ public class JCEDnsSecSigner
    *          generated if there are insecure, unsigned delegations in the
    *          span. Not effect if useOptIn is false.
    * @param fullySignKeyset sign the zone apex keyset with all available keys.
+   * @param ds_digest_id TODO
+   * @param zonekeypair this key pairs that are designated as "zone signing
+   *          keys".
    * @param NXTIncludeNames names that are to be included in the NXT chain
    *          regardless. This may be null and is only used if useOptIn is
    *          true.
-   * 
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
    */
   public List signZone(Name zonename, List records, List keysigningkeypairs,
       List zonekeypairs, Date start, Date expire, boolean useOptIn,
       boolean useConservativeOptIn, boolean fullySignKeyset,
-      List NSECIncludeNames) throws IOException, GeneralSecurityException
+      List NSECIncludeNames, int ds_digest_id)
+      throws IOException, GeneralSecurityException
   {
 
     // Remove any existing DNSSEC records (NSEC, RRSIG)
@@ -297,7 +298,7 @@ public class JCEDnsSecSigner
     SignUtils.removeDuplicateRecords(records);
 
     // Generate DS records
-    SignUtils.generateDSRecords(zonename, records);
+    SignUtils.generateDSRecords(zonename, records, ds_digest_id);
 
     // Generate NXT records
     if (useOptIn)
