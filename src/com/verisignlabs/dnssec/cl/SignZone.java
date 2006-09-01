@@ -811,7 +811,7 @@ public class SignZone
       List includedNames, byte[] salt, int iterations, int ds_digest_id)
       throws IOException, GeneralSecurityException
   {
-    // Remove any existing DNSSEC records (NSEC, NSEC3, RRSIG)
+    // Remove any existing DNSSEC records (NSEC, NSEC3, NSEC3PARAM, RRSIG)
     SignUtils.removeGeneratedRecords(zonename, records);
 
     // Sort the zone

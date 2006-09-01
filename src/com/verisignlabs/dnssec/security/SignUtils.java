@@ -517,7 +517,7 @@ public class SignUtils
       this.hasOptInSpan = false;
       addType(type);
     }
-
+    
     public void addType(int type)
     {
       this.typemap.add(new Integer(type));
@@ -653,6 +653,9 @@ public class SignUtils
     // For detecting glue.
     Name last_cut = null;
 
+    long nsec3_ttl = 0;
+    long nsec3param_ttl = 0;
+
     for (Iterator i = records.iterator(); i.hasNext();)
     {
       Record r = (Record) i.next();
@@ -667,6 +670,13 @@ public class SignUtils
 
       // note our last delegation point so we can recognize glue.
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
+
+      if (r_type == Type.SOA)
+      {
+        SOARecord soa = (SOARecord) r;
+        nsec3_ttl = soa.getMinimum();
+        nsec3param_ttl = soa.getTTL();
+      }
 
       // For the first iteration, we create our current node.
       if (current_node == null)
@@ -710,7 +720,7 @@ public class SignUtils
         false,
         proto_nsec3s);
 
-    List nsec3s = finishNSEC3s(proto_nsec3s);
+    List nsec3s = finishNSEC3s(proto_nsec3s, nsec3_ttl);
     // DEBUG
     // for (Iterator i = nsec3s.iterator(); i.hasNext();)
     // {
@@ -719,6 +729,11 @@ public class SignUtils
     // + base16.toString(nsec3.rdataToWireCanonical()));
     // }
     records.addAll(nsec3s);
+
+    NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(zonename, DClass.IN,
+        nsec3param_ttl, NSEC3Record.SHA1_DIGEST_ID, iterations, salt);
+    records.add(nsec3param);
+
   }
 
   public static void generateOptOutNSEC3Records(Name zonename, List records,
@@ -730,6 +745,9 @@ public class SignUtils
     NodeInfo last_node = null;
     // For detecting glue.
     Name last_cut = null;
+
+    long nsec3_ttl = 0;
+    long nsec3param_ttl = 0;
 
     HashSet includeSet = null;
     if (includedNames != null)
@@ -751,6 +769,13 @@ public class SignUtils
 
       // note our last delegation point so we can recognize glue.
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
+
+      if (r_type == Type.SOA)
+      {
+        SOARecord soa = (SOARecord) r;
+        nsec3_ttl = soa.getMinimum();
+        nsec3param_ttl = soa.getTTL();
+      }
 
       // For the first iteration, we create our current node.
       if (current_node == null)
@@ -807,8 +832,12 @@ public class SignUtils
         true,
         proto_nsec3s);
 
-    List nsec3s = finishNSEC3s(proto_nsec3s);
+    List nsec3s = finishNSEC3s(proto_nsec3s, nsec3_ttl);
     records.addAll(nsec3s);
+
+    NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(zonename, DClass.IN,
+        nsec3param_ttl, NSEC3Record.SHA1_DIGEST_ID, iterations, salt);
+    records.add(nsec3param);
   }
 
   private static void generateNSEC3ForNode(NodeInfo node, Name zonename,
@@ -820,6 +849,7 @@ public class SignUtils
 
     // Add our default types.
     node.addType(Type.RRSIG);
+    if (node.name.equals(zonename)) node.addType(Type.NSEC3PARAM);
 
     // Check for ENTs -- note this will generate duplicate ENTs because it
     // doesn't use any context.
@@ -864,7 +894,7 @@ public class SignUtils
     return r;
   }
 
-  private static List finishNSEC3s(List nsec3s)
+  private static List finishNSEC3s(List nsec3s, long ttl)
   {
     if (nsec3s == null) return null;
     Collections.sort(nsec3s, new ProtoNSEC3.Comparator());
@@ -921,6 +951,7 @@ public class SignUtils
     for (Iterator i = nsec3s.iterator(); i.hasNext();)
     {
       ProtoNSEC3 p = (ProtoNSEC3) i.next();
+      p.setTTL(ttl);
       res.add(p.getNSEC3Record());
     }
 
@@ -1119,7 +1150,7 @@ public class SignUtils
       Record r = (Record) i.next();
 
       if (r.getType() == Type.RRSIG || r.getType() == Type.NSEC
-          || r.getType() == Type.NSEC3)
+          || r.getType() == Type.NSEC3 || r.getType() == Type.NSEC3PARAM)
       {
         i.remove();
       }

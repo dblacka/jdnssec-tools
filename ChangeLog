@@ -1,3 +1,11 @@
+2006-08-31  David Blacka  <davidb@fury.blacka.com>
+
+	* Modified jdnssec-signzone to set the ttls of NSEC3 records (so
+	far) to the SOA minimum value.
+
+	* Add NSEC3PARAM support for compatibility with the -07 NSEC3
+	draft.
+
 2006-05-24  David Blacka  <davidb@verisignlabs.com>
 
 	* Add some error checking for the NSEC3 command line parameters
