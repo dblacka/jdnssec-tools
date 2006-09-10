@@ -63,16 +63,18 @@ public class JCEDnsSecSigner
    * @param algorithm the DNSSEC algorithm (RSAMD5, RSASHA1, or DSA).
    * @param flags any flags for the KEY RR.
    * @param keysize the size of the key to generate.
+   * @param useLargeExponent if generating an RSA key, use the large exponent.
    * @return a DnsKeyPair with the public and private keys populated.
    */
   public DnsKeyPair generateKey(Name owner, long ttl, int dclass,
-      int algorithm, int flags, int keysize) throws NoSuchAlgorithmException
+      int algorithm, int flags, int keysize, boolean useLargeExponent)
+      throws NoSuchAlgorithmException
   {
     DnsKeyAlgorithm algorithms = DnsKeyAlgorithm.getInstance();
 
     if (ttl < 0) ttl = 86400; // set to a reasonable default.
 
-    KeyPair pair = algorithms.generateKeyPair(algorithm, keysize);
+    KeyPair pair = algorithms.generateKeyPair(algorithm, keysize, useLargeExponent);
 
     if (mKeyConverter == null)
     {

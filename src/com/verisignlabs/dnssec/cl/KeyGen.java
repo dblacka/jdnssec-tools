@@ -54,6 +54,7 @@ public class KeyGen
     private Options opts;
     public int      algorithm  = 5;
     public int      keylength  = 1024;
+    public boolean  useLargeE  = false;
     public String   outputfile = null;
     public File     keydir     = null;
     public boolean  zoneKey    = true;
@@ -81,7 +82,8 @@ public class KeyGen
           "kskflag",
           false,
           "Key is a key-signing-key (sets the SEP flag).");
-
+      opts.addOption("e", "large-exponent", false, "Use large RSA exponent");
+      
       // Argument options
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("nametype");
@@ -164,6 +166,8 @@ public class KeyGen
 
       if (cli.hasOption('k')) kskFlag = true;
 
+      if (cli.hasOption('e')) useLargeE = true;
+      
       outputfile = cli.getOptionValue('f');
 
       if ((optstr = cli.getOptionValue('d')) != null)
@@ -307,11 +311,12 @@ public class KeyGen
         + ", length = " + state.keylength + ")");
 
     DnsKeyPair pair = signer.generateKey(owner_name,
-        state.ttl,
-        DClass.IN,
-        state.algorithm,
-        flags,
-        state.keylength);
+          state.ttl,
+          DClass.IN,
+          state.algorithm,
+          flags,
+          state.keylength,
+          state.useLargeE);
 
     if (state.outputfile != null)
     {

@@ -1,3 +1,9 @@
+2006-09-10  David Blacka  <davidb@fury.blacka.com>
+
+	* Added the "-e" option to jdnssec-keygen, to instruct the key
+	generator to use the (common) large exponent in RSA key
+	generation.
+
 2006-08-31  David Blacka  <davidb@fury.blacka.com>
 
 	* Modified jdnssec-signzone to set the ttls of NSEC3 records (so

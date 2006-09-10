@@ -29,10 +29,12 @@
 
 package com.verisignlabs.dnssec.security;
 
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
@@ -226,7 +228,7 @@ public class DnsKeyAlgorithm
     return (baseType(algorithm) == DSA);
   }
 
-  public KeyPair generateKeyPair(int algorithm, int keysize)
+  public KeyPair generateKeyPair(int algorithm, int keysize, boolean useLargeExp)
       throws NoSuchAlgorithmException
   {
     KeyPair pair = null;
@@ -237,7 +239,27 @@ public class DnsKeyAlgorithm
         {
           mRSAKeyGenerator = KeyPairGenerator.getInstance("RSA");
         }
-        mRSAKeyGenerator.initialize(keysize);
+        
+        RSAKeyGenParameterSpec rsa_spec;
+        if (useLargeExp)
+        {
+          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F4);
+        }
+        else
+        {
+          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F0);
+        }
+        try
+        {
+          mRSAKeyGenerator.initialize(rsa_spec);
+        }
+        catch (InvalidAlgorithmParameterException e)
+        {
+          // Fold the InvalidAlgorithmParameterException into our existing
+          // thrown exception. Ugly, but requires less code change.
+          throw new NoSuchAlgorithmException("invalid key parameter spec");
+        }
+        
         pair = mRSAKeyGenerator.generateKeyPair();
         break;
       case DSA :
@@ -255,6 +277,12 @@ public class DnsKeyAlgorithm
     return pair;
   }
 
+  public KeyPair generateKeyPair(int algorithm, int keysize)
+      throws NoSuchAlgorithmException
+  {
+    return generateKeyPair(algorithm, keysize, false);
+  }
+  
   public static DnsKeyAlgorithm getInstance()
   {
     if (mInstance == null) mInstance = new DnsKeyAlgorithm();
