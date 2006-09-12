@@ -1,3 +1,7 @@
+2006-09-12  David Blacka  <davidb@verisignlabs.com>
+
+	* Released version 0.8.0.
+
 2006-09-10  David Blacka  <davidb@fury.blacka.com>
 
 	* Added the "KeyInfoTool" command line tool as the start of a tool
