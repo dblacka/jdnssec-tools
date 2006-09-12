@@ -74,6 +74,12 @@ public class KeyInfoTool
           .withDescription("verbosity level -- 0 is silence, "
               + "5 is debug information, " + "6 is trace information.\n"
               + "default is level 5.").create('v'));
+      
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("alg-alias");
+      OptionBuilder.withArgName("alias:original:mnemonic");
+      OptionBuilder.withDescription("define an alias for an algorithm");
+      opts.addOption(OptionBuilder.create('A'));
     }
 
     public void parseCommandLine(String[] args)
@@ -103,6 +109,14 @@ public class KeyInfoTool
         }
       }
 
+      String[] optstrs;
+      if ((optstrs = cli.getOptionValues('A')) != null)
+      {
+        for (int i = 0; i < optstrs.length; i++)
+        {
+          addArgAlias(optstrs[i]);
+        }
+      }
       String[] cl_args = cli.getArgs();
 
       if (cl_args.length < 1)
@@ -155,13 +169,33 @@ public class KeyInfoTool
       return def;
     }
   }
-
+  
+  private static void addArgAlias(String s)
+  {
+    if (s == null) return;
+    
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+    
+    String[] v = s.split(":");
+    if (v.length < 2) return;
+    
+    int alias = parseInt(v[0], -1);
+    if (alias <= 0) return;
+    int orig = parseInt(v[1], -1);
+    if (orig <= 0) return;
+    String mn = null;
+    if (v.length > 2) mn = v[2];
+    
+    algs.addAlias(alias, mn, orig);
+  }
+  
+  
   public static void execute(CLIState state) throws Exception
   {
 
     DnsKeyPair key = BINDKeyUtils.loadKey(state.keyname, null);
     DNSKEYRecord dnskey = key.getDNSKEYRecord();
-    DnsKeyAlgorithm dnskeyalg = new DnsKeyAlgorithm();
+    DnsKeyAlgorithm dnskeyalg = DnsKeyAlgorithm.getInstance();
     
     boolean isSEP = (dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) != 0;
     
