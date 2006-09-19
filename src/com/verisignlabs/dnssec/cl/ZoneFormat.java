@@ -41,6 +41,7 @@ import java.util.logging.Logger;
 import org.apache.commons.cli.*;
 import org.xbill.DNS.Master;
 import org.xbill.DNS.Record;
+import org.xbill.DNS.Section;
 
 import com.verisignlabs.dnssec.security.RecordComparator;
 
@@ -177,7 +178,11 @@ public class ZoneFormat
 
     while ((r = master.nextRecord()) != null)
     {
-      res.add(r);
+      // This is a relatively clumsy way to lower-case all of the Names in the
+      // zone.
+      byte[] wire = r.toWireCanonical();
+      Record canon_record = Record.fromWire(wire, Section.ANSWER);
+      res.add(canon_record);
     }
 
     return res;
