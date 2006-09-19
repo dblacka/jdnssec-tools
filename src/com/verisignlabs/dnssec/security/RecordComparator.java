@@ -92,12 +92,12 @@ public class RecordComparator implements Comparator
     if (a_type == Type.RRSIG)
     {
       a_type = ((RRSIGRecord) a).getTypeCovered();
-      sig_type = 1;
+      if (b_type != Type.RRSIG) sig_type = 1;
     }
     if (b_type == Type.RRSIG)
     {
       b_type = ((RRSIGRecord) b).getTypeCovered();
-      sig_type = -1;
+      if (a.getType() != Type.RRSIG) sig_type = -1;
     }
 
     res = compareTypes(a_type, b_type);
