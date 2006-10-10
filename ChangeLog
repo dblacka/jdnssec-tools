@@ -1,3 +1,15 @@
+2006-10-10  David Blacka  <davidb@verisignlabs.com>
+
+	* Released version 0.8.3
+
+	* ZoneFormat: fix RRSIG ordering issue when dealing with multiple
+	RRSIGs for a given RRset.
+
+	* ZoneFormat: lowercase all names in the zone.
+
+	* Fix packaging errors.
+
+
 2006-09-12  David Blacka  <davidb@verisignlabs.com>
 
 	* Released version 0.8.0.

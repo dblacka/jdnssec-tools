@@ -108,12 +108,7 @@
   </target>
 
   <patternset id="exec.files">
-    <!-- FIXME: when we get more command line tools built, make sure
-    to include them here -->
-    <include name="${sectools-distname}/bin/jdnssec-signzone" />
-    <include name="${sectools-distname}/bin/jdnssec-keygen" />
-    <include name="${sectools-distname}/bin/jdnssec-verifyzone" />
-    <include name="${sectools-distname}/bin/jdnssec-zoneformat" />
+    <include name="${sectools-distname}/bin/jdnssec-*" />
   </patternset>
 
   <patternset id="src.files">
