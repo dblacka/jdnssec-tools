@@ -731,7 +731,7 @@ public class SignUtils
     records.addAll(nsec3s);
 
     NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(zonename, DClass.IN,
-        nsec3param_ttl, NSEC3Record.SHA1_DIGEST_ID, iterations, salt);
+        nsec3param_ttl, NSEC3Record.SHA1_DIGEST_ID, (byte) 0, iterations, salt);
     records.add(nsec3param);
 
   }
@@ -836,7 +836,7 @@ public class SignUtils
     records.addAll(nsec3s);
 
     NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(zonename, DClass.IN,
-        nsec3param_ttl, NSEC3Record.SHA1_DIGEST_ID, iterations, salt);
+        nsec3param_ttl, NSEC3Record.SHA1_DIGEST_ID, (byte) 0, iterations, salt);
     records.add(nsec3param);
   }
 
@@ -886,9 +886,10 @@ public class SignUtils
         NSEC3Record.SHA1_DIGEST_ID,
         iterations,
         salt);
-
+    byte flags = (byte) (optIn ? 0x01 : 0x00);
+    
     ProtoNSEC3 r = new ProtoNSEC3(hash, name, zonename, DClass.IN, ttl,
-        optIn, NSEC3Record.SHA1_DIGEST_ID, iterations, salt, null, types);
+        flags, NSEC3Record.SHA1_DIGEST_ID, iterations, salt, null, types);
 
     log.finer("Generated: " + r);
     return r;

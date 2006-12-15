@@ -36,8 +36,8 @@ import org.xbill.DNS.utils.base32;
 public class ProtoNSEC3
 {
   private Name    originalOwner;
-  private boolean optInFlag;
   private byte    hashAlg;
+  private byte    flags;
   private int     iterations;
   private byte[]  salt;
   private byte[]  next;
@@ -50,21 +50,17 @@ public class ProtoNSEC3
 
   /**
    * Creates an NSEC3 Record from the given data.
-   * 
-   * @param originalOwner TODO
-   * @param next The following name in an ordered list of the zone
-   * @param types An array containing the types present.
    */
   public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass,
-      long ttl, boolean optInFlag, byte hashAlg, int iterations, byte[] salt,
+      long ttl, byte hashAlg, byte flags, int iterations, byte[] salt,
       byte[] next, TypeMap typemap)
   {
     this.zone = zone;
     this.owner = owner;
     this.dclass = dclass;
     this.ttl = ttl;
-    this.optInFlag = optInFlag;
     this.hashAlg = hashAlg;
+    this.flags = flags;
     this.iterations = iterations;
     this.salt = salt;
     this.next = next;
@@ -73,10 +69,10 @@ public class ProtoNSEC3
   }
 
   public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass,
-      long ttl, boolean optInFlag, byte hashAlg, int iterations, byte[] salt,
+      long ttl, byte hashAlg, byte flags, int iterations, byte[] salt,
       byte[] next, int[] types)
   {
-    this(owner, originalOwner, zone, dclass, ttl, optInFlag, hashAlg,
+    this(owner, originalOwner, zone, dclass, ttl, hashAlg, flags,
         iterations, salt, next, TypeMap.fromTypes(types));
   }
 
@@ -113,14 +109,20 @@ public class ProtoNSEC3
     this.next = next;
   }
 
+  public byte getFlags() 
+  {
+    return flags;
+  }
+  
   public boolean getOptInFlag()
   {
-    return optInFlag;
+    return (flags & NSEC3Record.OPT_OUT_FLAG) != 0;
   }
 
   public void setOptInFlag(boolean optInFlag)
   {
-    this.optInFlag = optInFlag;
+    if (optInFlag) this.flags |= NSEC3Record.OPT_OUT_FLAG;
+    else this.flags &= ~NSEC3Record.OPT_OUT_FLAG;
   }
 
   public long getTTL()
@@ -183,7 +185,7 @@ public class ProtoNSEC3
     String comment = (originalOwner == null)
         ? "(unknown original ownername)"
         : originalOwner.toString();
-    return new NSEC3Record(getName(), dclass, ttl, optInFlag, hashAlg,
+    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags,
         iterations, salt, next, getTypes(), comment);
   }
 
@@ -218,7 +220,7 @@ public class ProtoNSEC3
     sb.append(' ');
     sb.append(DClass.string(dclass));
     sb.append(" NSEC3 ");
-    sb.append(optInFlag ? '1' : '0');
+    sb.append(flags);
     sb.append(' ');
     sb.append(hashAlg);
     sb.append(' ');
