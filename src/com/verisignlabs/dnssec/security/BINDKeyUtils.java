@@ -118,7 +118,8 @@ public class BINDKeyUtils
       key_buf.append(line);
       key_buf.append('\n');
     }
-
+    in.close();
+    
     return key_buf.toString().trim();
   }
 
