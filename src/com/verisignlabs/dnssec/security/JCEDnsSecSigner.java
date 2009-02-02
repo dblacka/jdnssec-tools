@@ -1,6 +1,6 @@
 // $Id$
 //
-// Copyright (C) 2001-2003 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2009 VeriSign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -43,13 +43,14 @@ import org.xbill.DNS.Type;
  * This class contains routines for signing DNS zones.
  * 
  * In particular, it contains both an ability to sign an individual RRset and
- * the ability to sign and entire zone. It primarily glues together the more
+ * the ability to sign an entire zone. It primarily glues together the more
  * basic primitives found in {@link SignUtils}.
  * 
  * @author David Blacka (original)
  * @author $Author$
  * @version $Revision$
  */
+
 public class JCEDnsSecSigner
 {
   private DnsKeyConverter mKeyConverter;
@@ -57,36 +58,43 @@ public class JCEDnsSecSigner
   /**
    * Cryptographically generate a new DNSSEC key.
    * 
-   * @param owner the KEY RR's owner name.
-   * @param ttl the KEY RR's TTL.
-   * @param dclass the KEY RR's DNS class.
-   * @param algorithm the DNSSEC algorithm (RSAMD5, RSASHA1, or DSA).
-   * @param flags any flags for the KEY RR.
-   * @param keysize the size of the key to generate.
-   * @param useLargeExponent if generating an RSA key, use the large exponent.
+   * @param owner
+   *          the KEY RR's owner name.
+   * @param ttl
+   *          the KEY RR's TTL.
+   * @param dclass
+   *          the KEY RR's DNS class.
+   * @param algorithm
+   *          the DNSSEC algorithm (RSAMD5, RSASHA1, or DSA).
+   * @param flags
+   *          any flags for the KEY RR.
+   * @param keysize
+   *          the size of the key to generate.
+   * @param useLargeExponent
+   *          if generating an RSA key, use the large exponent.
    * @return a DnsKeyPair with the public and private keys populated.
    */
   public DnsKeyPair generateKey(Name owner, long ttl, int dclass,
-      int algorithm, int flags, int keysize, boolean useLargeExponent)
+                                int algorithm, int flags, int keysize,
+                                boolean useLargeExponent)
       throws NoSuchAlgorithmException
   {
     DnsKeyAlgorithm algorithms = DnsKeyAlgorithm.getInstance();
 
     if (ttl < 0) ttl = 86400; // set to a reasonable default.
 
-    KeyPair pair = algorithms.generateKeyPair(algorithm, keysize, useLargeExponent);
+    KeyPair pair = algorithms.generateKeyPair(algorithm, keysize,
+                                              useLargeExponent);
 
     if (mKeyConverter == null)
     {
       mKeyConverter = new DnsKeyConverter();
     }
 
-    DNSKEYRecord keyrec = mKeyConverter.generateDNSKEYRecord(owner,
-        dclass,
-        ttl,
-        flags,
-        algorithm,
-        pair.getPublic());
+    DNSKEYRecord keyrec = mKeyConverter.generateDNSKEYRecord(owner, dclass,
+                                                             ttl, flags,
+                                                             algorithm,
+                                                             pair.getPublic());
 
     DnsKeyPair dnspair = new DnsKeyPair();
     dnspair.setDNSKEYRecord(keyrec);
@@ -99,10 +107,14 @@ public class JCEDnsSecSigner
   /**
    * Sign an RRset.
    * 
-   * @param rrset the RRset to sign -- any existing signatures are ignored.
-   * @param keypars a list of DnsKeyPair objects containing private keys.
-   * @param start the inception time for the resulting RRSIG records.
-   * @param expire the expiration time for the resulting RRSIG records.
+   * @param rrset
+   *          the RRset to sign -- any existing signatures are ignored.
+   * @param keypars
+   *          a list of DnsKeyPair objects containing private keys.
+   * @param start
+   *          the inception time for the resulting RRSIG records.
+   * @param expire
+   *          the expiration time for the resulting RRSIG records.
    * @return a list of RRSIGRecord objects.
    */
   public List signRRset(RRset rrset, List keypairs, Date start, Date expire)
@@ -115,23 +127,20 @@ public class JCEDnsSecSigner
     if (expire == null) expire = new Date(start.getTime() + 1000L);
     if (keypairs.size() == 0) return null;
 
-    // first, pre-calculate the rrset bytes.
+    // first, pre-calculate the RRset bytes.
     byte[] rrset_data = SignUtils.generateCanonicalRRsetData(rrset);
 
     ArrayList sigs = new ArrayList(keypairs.size());
 
-    // for each keypair, sign the rrset.
+    // for each keypair, sign the RRset.
     for (Iterator i = keypairs.iterator(); i.hasNext();)
     {
       DnsKeyPair pair = (DnsKeyPair) i.next();
       DNSKEYRecord keyrec = pair.getDNSKEYRecord();
       if (keyrec == null) continue;
 
-      RRSIGRecord presig = SignUtils.generatePreRRSIG(rrset,
-          keyrec,
-          start,
-          expire,
-          rrset.getTTL());
+      RRSIGRecord presig = SignUtils.generatePreRRSIG(rrset, keyrec, start,
+                                                      expire, rrset.getTTL());
       byte[] sign_data = SignUtils.generateSigData(rrset_data, presig);
 
       Signature signer = pair.getSigner();
@@ -142,8 +151,7 @@ public class JCEDnsSecSigner
         System.out.println("missing private key that goes with:\n"
             + pair.getDNSKEYRecord());
         throw new GeneralSecurityException(
-            "cannot sign without a valid Signer "
-                + "(probably missing private key)");
+            "cannot sign without a valid Signer (probably missing private key)");
       }
 
       // sign the data.
@@ -154,8 +162,9 @@ public class JCEDnsSecSigner
       // Convert to RFC 2536 format, if necessary.
       if (algs.baseType(pair.getDNSKEYAlgorithm()) == DnsKeyAlgorithm.DSA)
       {
-        sig = SignUtils.convertDSASignature(((DSAPublicKey) pair.getPublic())
-            .getParams(), sig);
+        sig = SignUtils.convertDSASignature(
+                                            ((DSAPublicKey) pair.getPublic()).getParams(),
+                                            sig);
       }
       RRSIGRecord sigrec = SignUtils.generateRRSIG(sig, presig);
       sigs.add(sigrec);
@@ -165,11 +174,14 @@ public class JCEDnsSecSigner
   }
 
   /**
-   * Create a completely self-signed KEY RRset.
+   * Create a completely self-signed DNSKEY RRset.
    * 
-   * @param keypairs the public & private keypairs to use in the keyset.
-   * @param start the RRSIG inception time.
-   * @param expire the RRSIG expiration time.
+   * @param keypairs
+   *          the public & private keypairs to use in the keyset.
+   * @param start
+   *          the RRSIG inception time.
+   * @param expire
+   *          the RRSIG expiration time.
    * @return a signed RRset.
    */
   public RRset makeKeySet(List keypairs, Date start, Date expire)
@@ -198,21 +210,30 @@ public class JCEDnsSecSigner
   /**
    * Conditionally sign an RRset and add it to the toList.
    * 
-   * @param toList the list to which we are adding the processed RRsets.
-   * @param zonename the zone apex name.
-   * @param rrset the rrset under consideration.
-   * @param keysigningkeypairs the List of KSKs..
-   * @param zonekeypairs the List of zone keys.
-   * @param start the RRSIG inception time.
-   * @param expire the RRSIG expiration time.
-   * @param fullySignKeyset if true, sign the zone apex keyset with both KSKs
-   *          and ZSKs.
-   * @param last_cut the name of the last delegation point encountered.
+   * @param toList
+   *          the list to which we are adding the processed RRsets.
+   * @param zonename
+   *          the zone apex name.
+   * @param rrset
+   *          the RRset under consideration.
+   * @param kskpairs
+   *          the List of KSKs..
+   * @param zskpairs
+   *          the List of zone keys.
+   * @param start
+   *          the RRSIG inception time.
+   * @param expire
+   *          the RRSIG expiration time.
+   * @param fullySignKeyset
+   *          if true, sign the zone apex keyset with both KSKs and ZSKs.
+   * @param last_cut
+   *          the name of the last delegation point encountered.
+   * 
    * @return the name of the new last_cut.
    */
-  private Name addRRset(List toList, Name zonename, RRset rrset,
-      List keysigningkeypairs, List zonekeypairs, Date start, Date expire,
-      boolean fullySignKeyset, Name last_cut)
+  private Name addRRset(List toList, Name zonename, RRset rrset, List kskpairs,
+                        List zskpairs, Date start, Date expire,
+                        boolean fullySignKeyset, Name last_cut)
       throws IOException, GeneralSecurityException
   {
     // add the records themselves
@@ -221,28 +242,21 @@ public class JCEDnsSecSigner
       toList.add(i.next());
     }
 
-    int type = SignUtils.recordSecType(zonename, rrset.getName(), rrset
-        .getType(), last_cut);
+    int type = SignUtils.recordSecType(zonename, rrset.getName(),
+                                       rrset.getType(), last_cut);
 
     // we don't sign non-normal sets (delegations, glue, invalid).
-    // we also don't sign the zone key set unless we've been asked.
-    if (type == SignUtils.RR_DELEGATION)
-    {
-      return rrset.getName();
-    }
-    if (type == SignUtils.RR_GLUE || type == SignUtils.RR_INVALID)
-    {
-      return last_cut;
-    }
+    if (type == SignUtils.RR_DELEGATION) { return rrset.getName(); }
+    if (type == SignUtils.RR_GLUE || type == SignUtils.RR_INVALID) { return last_cut; }
 
     // check for the zone apex keyset.
     if (rrset.getName().equals(zonename) && rrset.getType() == Type.DNSKEY)
     {
-      // if we have key signing keys, sign the keyset with them,
-      // otherwise we will just sign them with the zonesigning keys.
-      if (keysigningkeypairs != null && keysigningkeypairs.size() > 0)
+      // if we have ksks, sign the keyset with them, otherwise we will just sign
+      // them with the zsks.
+      if (kskpairs != null && kskpairs.size() > 0)
       {
-        List sigs = signRRset(rrset, keysigningkeypairs, start, expire);
+        List sigs = signRRset(rrset, kskpairs, start, expire);
         toList.addAll(sigs);
 
         // If we aren't going to sign with all the keys, bail out now.
@@ -251,69 +265,107 @@ public class JCEDnsSecSigner
     }
 
     // otherwise, we are OK to sign this set.
-    List sigs = signRRset(rrset, zonekeypairs, start, expire);
+    List sigs = signRRset(rrset, zskpairs, start, expire);
     toList.addAll(sigs);
 
     return last_cut;
   }
 
+  // Various NSEC/NSEC3 generation modes
+  private static final int NSEC_MODE         = 0;
+  private static final int NSEC3_MODE        = 1;
+  private static final int NSEC3_OPTOUT_MODE = 2;
+  private static final int NSEC_EXP_OPT_IN   = 3;
+
   /**
-   * Given a zone, sign it.
+   * Master zone signing method. This method handles all of the different zone
+   * signing variants (NSEC with or without Opt-In, NSEC3 with or without
+   * Opt-Out, etc.) External users of this class are expected to use the
+   * appropriate public signZone* methods instead of this.
    * 
-   * @param zonename the name of the zone.
-   * @param records the records comprising the zone. They do not have to be in
-   *          any particular order, as this method will order them as
-   *          necessary.
-   * @param keysigningkeypairs the key pairs that are designated as "key
-   *          signing keys".
-   * @param start the RRSIG inception time.
-   * @param expire the RRSIG expiration time.
-   * @param useOptIn generate Opt-In style NXT records. It will consider any
-   *          insecure delegation to be unsigned. To override this, include
-   *          the name of the insecure delegation in the NXTIncludeNames list.
-   * @param useConservativeOptIn if true, Opt-In NXT records will only be
-   *          generated if there are insecure, unsigned delegations in the
-   *          span. Not effect if useOptIn is false.
-   * @param fullySignKeyset sign the zone apex keyset with all available keys.
-   * @param ds_digest_id TODO
-   * @param zonekeypair this key pairs that are designated as "zone signing
-   *          keys".
-   * @param NXTIncludeNames names that are to be included in the NXT chain
-   *          regardless. This may be null and is only used if useOptIn is
-   *          true.
+   * @param zonename
+   *          The name of the zone
+   * @param records
+   *          The records comprising the zone. They do not have to be in any
+   *          particular order, as this method will order them as necessary.
+   * @param kskpairs
+   *          The key pairs designated as "key signing keys"
+   * @param zskpairs
+   *          The key pairs designated as "zone signing keys"
+   * @param start
+   *          The RRSIG inception time
+   * @param expire
+   *          The RRSIG expiration time
+   * @param fullySignKeyset
+   *          If true, all keys (ksk or zsk) will sign the DNSKEY RRset. If
+   *          false, only the ksks will sign it.
+   * @param ds_digest_alg
+   *          The hash algorithm to use for generating DS records
+   *          (DSRecord.SHA1_DIGEST_ID, e.g.)
+   * @param mode
+   *          The NSEC/NSEC3 generation mode: NSEC_MODE, NSEC3_MODE,
+   *          NSEC3_OPTOUT_MODE, etc.
+   * @param includedNames
+   *          When using an Opt-In/Opt-Out mode, the names listed here will be
+   *          included in the NSEC/NSEC3 chain regardless
+   * @param salt
+   *          When using an NSEC3 mode, use this salt.
+   * @param iterations
+   *          When using an NSEC3 mode, use this number of iterations
+   * @param beConservative
+   *          If true, then only turn on the Opt-In flag when there are insecure
+   *          delegations in the span. Currently this only works for
+   *          NSEC_EXP_OPT_IN mode.
+   * 
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
+   * 
+   * @throws IOException
+   * @throws GeneralSecurityException
    */
-  public List signZone(Name zonename, List records, List keysigningkeypairs,
-      List zonekeypairs, Date start, Date expire, boolean useOptIn,
-      boolean useConservativeOptIn, boolean fullySignKeyset,
-      List NSECIncludeNames, int ds_digest_id)
+  private List signZone(Name zonename, List records, List kskpairs,
+                        List zskpairs, Date start, Date expire,
+                        boolean fullySignKeyset, int ds_digest_alg, int mode,
+                        List includedNames, byte[] salt, int iterations,
+                        boolean beConservative)
       throws IOException, GeneralSecurityException
   {
-
-    // Remove any existing DNSSEC records (NSEC, RRSIG)
+    // Remove any existing generated DNSSEC records (NSEC, NSEC3, NSEC3PARAM,
+    // RRSIG)
     SignUtils.removeGeneratedRecords(zonename, records);
-    // Sort the zone
-    Collections.sort(records, new RecordComparator());
 
-    // Remove any duplicate records.
+    RecordComparator rc = new RecordComparator();
+    // Sort the zone
+    Collections.sort(records, rc);
+
+    // Remove duplicate records
     SignUtils.removeDuplicateRecords(records);
 
-    // Generate DS records
-    SignUtils.generateDSRecords(zonename, records, ds_digest_id);
+    // Generate DS records. This replaces any non-zone-apex DNSKEY RRs with DS
+    // RRs.
+    SignUtils.generateDSRecords(zonename, records, ds_digest_alg);
 
-    // Generate NXT records
-    if (useOptIn)
+    // Generate the NSEC or NSEC3 records based on 'mode'
+    switch (mode)
     {
-      SignUtils.generateOptInNSECRecords(zonename,
-          records,
-          NSECIncludeNames,
-          useConservativeOptIn);
-    }
-    else
-    {
+    case NSEC_MODE:
       SignUtils.generateNSECRecords(zonename, records);
+      break;
+    case NSEC3_MODE:
+      SignUtils.generateNSEC3Records(zonename, records, salt, iterations);
+      break;
+    case NSEC3_OPTOUT_MODE:
+      SignUtils.generateOptOutNSEC3Records(zonename, records, includedNames,
+                                           salt, iterations);
+      break;
+    case NSEC_EXP_OPT_IN:
+      SignUtils.generateOptInNSECRecords(zonename, records, includedNames,
+                                         beConservative);
+      break;
     }
+
+    // Re-sort so we can assemble into rrsets.
+    Collections.sort(records, rc);
 
     // Assemble into RRsets and sign.
     RRset rrset = new RRset();
@@ -325,7 +377,7 @@ public class JCEDnsSecSigner
       Record r = (Record) i.next();
 
       // First record
-      if (rrset.getName() == null)
+      if (rrset.size() == 0)
       {
         rrset.addRR(r);
         continue;
@@ -345,31 +397,155 @@ public class JCEDnsSecSigner
 
       // add the RRset to the list of signed_records, regardless of
       // whether or not we actually end up signing the set.
-      last_cut = addRRset(signed_records,
-          zonename,
-          rrset,
-          keysigningkeypairs,
-          zonekeypairs,
-          start,
-          expire,
-          fullySignKeyset,
-          last_cut);
+      last_cut = addRRset(signed_records, zonename, rrset, kskpairs, zskpairs,
+                          start, expire, fullySignKeyset, last_cut);
 
       rrset.clear();
       rrset.addRR(r);
     }
 
     // add the last RR set
-    addRRset(signed_records,
-        zonename,
-        rrset,
-        keysigningkeypairs,
-        zonekeypairs,
-        start,
-        expire,
-        fullySignKeyset,
-        last_cut);
+    addRRset(signed_records, zonename, rrset, kskpairs, zskpairs, start,
+             expire, fullySignKeyset, last_cut);
 
     return signed_records;
+  }
+
+  /**
+   * Given a zone, sign it using standard NSEC records.
+   * 
+   * @param zonename
+   *          The name of the zone.
+   * @param records
+   *          The records comprising the zone. They do not have to be in any
+   *          particular order, as this method will order them as necessary.
+   * @param kskpairs
+   *          The key pairs that are designated as "key signing keys".
+   * @param zskpairs
+   *          This key pairs that are designated as "zone signing keys".
+   * @param start
+   *          The RRSIG inception time.
+   * @param expire
+   *          The RRSIG expiration time.
+   * @param fullySignKeyset
+   *          Sign the zone apex keyset with all available keys (instead of just
+   *          the key signing keys).
+   * @param ds_digest_alg
+   *          The digest algorithm to use when generating DS records.
+   * 
+   * @return an ordered list of {@link org.xbill.DNS.Record} objects,
+   *         representing the signed zone.
+   */
+  public List signZone(Name zonename, List records, List kskpairs,
+                       List zskpairs, Date start, Date expire,
+                       boolean fullySignKeyset, int ds_digest_alg)
+      throws IOException, GeneralSecurityException
+  {
+    return signZone(zonename, records, kskpairs, zskpairs, start, expire,
+                    fullySignKeyset, ds_digest_alg, NSEC_MODE, null, null, 0,
+                    false);
+  }
+
+  /**
+   * Given a zone, sign it using NSEC3 records.
+   * 
+   * @param signer
+   *          A signer (utility) object used to actually sign stuff.
+   * @param zonename
+   *          The name of the zone being signed.
+   * @param records
+   *          The records comprising the zone. They do not have to be in any
+   *          particular order, as this method will order them as necessary.
+   * @param kskpairs
+   *          The key pairs that are designated as "key signing keys".
+   * @param zskpairs
+   *          This key pairs that are designated as "zone signing keys".
+   * @param start
+   *          The RRSIG inception time.
+   * @param expire
+   *          The RRSIG expiration time.
+   * @param fullySignKeyset
+   *          If true then the DNSKEY RRset will be signed by all available
+   *          keys, if false, only the key signing keys.
+   * @param useOptOut
+   *          If true, insecure delegations will be omitted from the NSEC3
+   *          chain, and all NSEC3 records will have the Opt-Out flag set.
+   * @param includedNames
+   *          A list of names to include in the NSEC3 chain regardless.
+   * @param salt
+   *          The salt to use for the NSEC3 hashing. null means no salt.
+   * @param iterations
+   *          The number of iterations to use for the NSEC3 hashing.
+   * @param ds_digest_alg
+   *          The digest algorithm to use when generating DS records.
+   * 
+   * @return an ordered list of {@link org.xbill.DNS.Record} objects,
+   *         representing the signed zone.
+   * 
+   * @throws IOException
+   * @throws GeneralSecurityException
+   */
+  public List signZoneNSEC3(Name zonename, List records, List kskpairs,
+                            List zskpairs, Date start, Date expire,
+                            boolean fullySignKeyset, boolean useOptOut,
+                            List includedNames, byte[] salt, int iterations,
+                            int ds_digest_alg)
+      throws IOException, GeneralSecurityException
+  {
+    if (useOptOut)
+    {
+      return signZone(zonename, records, kskpairs, zskpairs, start, expire,
+                      fullySignKeyset, ds_digest_alg, NSEC3_OPTOUT_MODE,
+                      includedNames, salt, iterations, false);
+    }
+    else
+    {
+      return signZone(zonename, records, kskpairs, zskpairs, start, expire,
+                      fullySignKeyset, ds_digest_alg, NSEC3_MODE, null, salt,
+                      iterations, false);
+    }
+  }
+
+  /**
+   * Given a zone, sign it using experimental Opt-In NSEC records (see RFC
+   * 4956).
+   * 
+   * @param zonename
+   *          the name of the zone.
+   * @param records
+   *          the records comprising the zone. They do not have to be in any
+   *          particular order, as this method will order them as necessary.
+   * @param kskpairs
+   *          the key pairs that are designated as "key signing keys".
+   * @param zskpairs
+   *          this key pairs that are designated as "zone signing keys".
+   * @param start
+   *          the RRSIG inception time.
+   * @param expire
+   *          the RRSIG expiration time.
+   * @param useConservativeOptIn
+   *          if true, Opt-In NSEC records will only be generated if there are
+   *          insecure, unsigned delegations in the span.
+   * @param fullySignKeyset
+   *          sign the zone apex keyset with all available keys.
+   * @param ds_digest_alg
+   *          The digest algorithm to use when generating DS records.
+   * @param NSECIncludeNames
+   *          names that are to be included in the NSEC chain regardless. This
+   *          may be null.
+   * @return an ordered list of {@link org.xbill.DNS.Record} objects,
+   *         representing the signed zone.
+   */
+  public List signZoneOptIn(Name zonename, List records, List kskpairs,
+                            List zskpairs, Date start, Date expire,
+                            boolean useConservativeOptIn,
+                            boolean fullySignKeyset, List NSECIncludeNames,
+                            int ds_digest_alg)
+      throws IOException, GeneralSecurityException
+  {
+
+    return signZone(zonename, records, kskpairs, zskpairs, start, expire,
+                    fullySignKeyset, ds_digest_alg, NSEC_EXP_OPT_IN,
+                    NSECIncludeNames, null, 0, useConservativeOptIn);
   }
 }
