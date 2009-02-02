@@ -72,8 +72,8 @@ public class ProtoNSEC3
       long ttl, byte hashAlg, byte flags, int iterations, byte[] salt,
       byte[] next, int[] types)
   {
-    this(owner, originalOwner, zone, dclass, ttl, hashAlg, flags,
-        iterations, salt, next, TypeMap.fromTypes(types));
+    this(owner, originalOwner, zone, dclass, ttl, hashAlg, flags, iterations,
+        salt, next, TypeMap.fromTypes(types));
   }
 
   private String hashToString(byte[] hash)
@@ -109,20 +109,21 @@ public class ProtoNSEC3
     this.next = next;
   }
 
-  public byte getFlags() 
+  public byte getFlags()
   {
     return flags;
   }
-  
-  public boolean getOptInFlag()
+
+  public boolean getOptOutFlag()
   {
     return (flags & NSEC3Record.OPT_OUT_FLAG) != 0;
   }
 
-  public void setOptInFlag(boolean optInFlag)
+  public void setOptOutFlag(boolean optOutFlag)
   {
-    if (optInFlag) this.flags |= NSEC3Record.OPT_OUT_FLAG;
-    else this.flags &= ~NSEC3Record.OPT_OUT_FLAG;
+    if (optOutFlag) this.flags |= NSEC3Record.OPT_OUT_FLAG;
+    else
+      this.flags &= ~NSEC3Record.OPT_OUT_FLAG;
   }
 
   public long getTTL()
@@ -182,11 +183,10 @@ public class ProtoNSEC3
 
   public NSEC3Record getNSEC3Record()
   {
-    String comment = (originalOwner == null)
-        ? "(unknown original ownername)"
+    String comment = (originalOwner == null) ? "(unknown original ownername)"
         : originalOwner.toString();
-    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags,
-        iterations, salt, next, getTypes(), comment);
+    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations,
+        salt, next, getTypes(), comment);
   }
 
   public void mergeTypes(TypeMap new_types)
