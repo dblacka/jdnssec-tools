@@ -1,3 +1,15 @@
+2009-02-01  David Blacka  <davidb@verisignlabs.com>
+
+	* DnsKeyAlgorithms: add official aliases from RFC 5155.
+
+	* JCEDnsSecSigner: refactor zone signing methods to remove
+	duplicate code.
+
+	* SignZone: move the signZone() methods to JCEDnsSecSigner
+
+	* BINDKeyUtils: close the private key file after reading it.
+	Patch by Wolfgang Nagele.
+
 2006-12-15  David Blacka  <davidb@verisignlabs.com>
 
 	* Release version 0.8.4
