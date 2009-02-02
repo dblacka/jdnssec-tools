@@ -56,7 +56,7 @@ public class ZoneFormat
   private static class CLIState
   {
     private org.apache.commons.cli.Options opts;
-    public String   file;
+    public String                          file;
 
     public CLIState()
     {
@@ -79,16 +79,16 @@ public class ZoneFormat
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-          case 0 :
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 5 :
-          default :
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6 :
-            rootLogger.setLevel(Level.ALL);
-            break;
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 5:
+        default:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
         }
       }
 
@@ -133,14 +133,9 @@ public class ZoneFormat
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      f.printHelp(out,
-          75,
-          "jdnssec-zoneformat [..options..] zonefile",
-          null,
-          opts,
-          HelpFormatter.DEFAULT_LEFT_PAD,
-          HelpFormatter.DEFAULT_DESC_PAD,
-          null);
+      f.printHelp(out, 75, "jdnssec-zoneformat [..options..] zonefile", null,
+                  opts, HelpFormatter.DEFAULT_LEFT_PAD,
+                  HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -150,8 +145,10 @@ public class ZoneFormat
     /**
      * This is just a convenience method for parsing integers from strings.
      * 
-     * @param s the string to parse.
-     * @param def the default value, if the string doesn't parse.
+     * @param s
+     *          the string to parse.
+     * @param def
+     *          the default value, if the string doesn't parse.
      * @return the parsed integer, or the default.
      */
     private static int parseInt(String s, int def)
@@ -194,13 +191,14 @@ public class ZoneFormat
     RecordComparator cmp = new RecordComparator();
 
     Collections.sort(zone, cmp);
-    
-    for (Iterator i = zone.iterator(); i.hasNext(); )
+
+    for (Iterator i = zone.iterator(); i.hasNext();)
     {
       Record r = (Record) i.next();
       System.out.println(r.toString());
     }
   }
+
   private static void execute(CLIState state) throws IOException
   {
     List z = readZoneFile(state.file);
@@ -217,8 +215,7 @@ public class ZoneFormat
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err.println("error: unknown option encountered: "
-          + e.getMessage());
+      System.err.println("error: unknown option encountered: " + e.getMessage());
       state.usage();
     }
     catch (AlreadySelectedException e)

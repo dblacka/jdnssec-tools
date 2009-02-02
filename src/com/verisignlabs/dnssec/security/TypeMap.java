@@ -12,8 +12,8 @@ import org.xbill.DNS.DNSOutput;
 import org.xbill.DNS.Type;
 
 /**
- * This class represents the multiple type maps of the NSEC record. Currently
- * it is just used to convert the wire format type map to the int array that
+ * This class represents the multiple type maps of the NSEC record. Currently it
+ * is just used to convert the wire format type map to the int array that
  * org.xbill.DNS.NSECRecord uses.
  */
 
@@ -59,8 +59,8 @@ public class TypeMap
   }
 
   /**
-   * Given an array of bytes representing a wire-format type map, construct
-   * the TypeMap object.
+   * Given an array of bytes representing a wire-format type map, construct the
+   * TypeMap object.
    */
   public static TypeMap fromBytes(byte[] map)
   {
@@ -109,7 +109,7 @@ public class TypeMap
   }
 
   protected static void mapToWire(DNSOutput out, int[] types, int base,
-      int start, int end)
+                                  int start, int end)
   {
     // calculate the length of this map by looking at the largest
     // typecode in this section.

@@ -36,8 +36,7 @@ import org.xbill.DNS.*;
 import com.verisignlabs.dnssec.security.*;
 
 /**
- * This class forms the command line implementation of a DNSSEC zone
- * validator.
+ * This class forms the command line implementation of a DNSSEC zone validator.
  * 
  * @author David Blacka (original)
  * @author $Author$
@@ -75,26 +74,31 @@ public class VerifyZone
 
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("s",
-          "strict",
-          false,
-          "Zone will only be considered valid if all "
-              + "signatures could be cryptographically verified");
+      opts.addOption("s", "strict", false,
+                     "Zone will only be considered valid if all "
+                         + "signatures could be cryptographically verified");
 
       // Argument options
-      opts.addOption(OptionBuilder.hasArg().withLongOpt("keydir")
-          .withArgName("dir").withDescription("directory to find "
-              + "trusted key files").create('d'));
+      opts.addOption(OptionBuilder.hasArg()
+          .withLongOpt("keydir")
+          .withArgName("dir")
+          .withDescription("directory to find " + "trusted key files")
+          .create('d'));
 
-      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
+      opts.addOption(OptionBuilder.hasOptionalArg()
+          .withLongOpt("verbose")
           .withArgName("level")
-          .withDescription("verbosity level -- 0 is silence, "
-              + "5 is debug information, 6 is trace information.\n"
-              + "default is level 5.").create('v'));
+          .withDescription(
+                           "verbosity level -- 0 is silence, "
+                               + "5 is debug information, 6 is trace information.\n"
+                               + "default is level 5.")
+          .create('v'));
 
       opts.addOption(OptionBuilder.hasArg()
-          .withArgName("alias:original:mnemonic").withLongOpt("alg-alias")
-          .withDescription("Define an alias for an algorithm").create('A'));
+          .withArgName("alias:original:mnemonic")
+          .withLongOpt("alg-alias")
+          .withDescription("Define an alias for an algorithm")
+          .create('A'));
 
     }
 
@@ -114,16 +118,16 @@ public class VerifyZone
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-          case 0 :
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 5 :
-          default :
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6 :
-            rootLogger.setLevel(Level.ALL);
-            break;
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 5:
+        default:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
         }
       }
 
@@ -142,7 +146,7 @@ public class VerifyZone
           addArgAlias(optstrs[i]);
         }
       }
-      
+
       String[] cl_args = cli.getArgs();
 
       if (cl_args.length < 1)
@@ -163,22 +167,22 @@ public class VerifyZone
     private void addArgAlias(String s)
     {
       if (s == null) return;
-      
+
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
-      
+
       String[] v = s.split(":");
       if (v.length < 2) return;
-      
+
       int alias = parseInt(v[0], -1);
       if (alias <= 0) return;
       int orig = parseInt(v[1], -1);
       if (orig <= 0) return;
       String mn = null;
       if (v.length > 2) mn = v[2];
-      
+
       algs.addAlias(alias, mn, orig);
     }
-    
+
     /** Print out the usage and help statements, then quit. */
     public void usage()
     {
@@ -187,14 +191,10 @@ public class VerifyZone
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      f.printHelp(out,
-          75,
-          "verifyZone.sh [..options..] zonefile " + "[keyfile [keyfile...]]",
-          null,
-          opts,
-          HelpFormatter.DEFAULT_LEFT_PAD,
-          HelpFormatter.DEFAULT_DESC_PAD,
-          null);
+      f.printHelp(out, 75, "verifyZone.sh [..options..] zonefile "
+          + "[keyfile [keyfile...]]", null, opts,
+                  HelpFormatter.DEFAULT_LEFT_PAD,
+                  HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -204,8 +204,10 @@ public class VerifyZone
     /**
      * This is just a convenience method for parsing integers from strings.
      * 
-     * @param s the string to parse.
-     * @param def the default value, if the string doesn't parse.
+     * @param s
+     *          the string to parse.
+     * @param def
+     *          the default value, if the string doesn't parse.
      * @return the parsed integer, or the default.
      */
     private static int parseInt(String s, int def)
@@ -327,19 +329,19 @@ public class VerifyZone
 
     switch (result)
     {
-      case DNSSEC.Failed :
+    case DNSSEC.Failed:
+      System.out.println("zone did not verify.");
+      System.exit(1);
+      break;
+    case DNSSEC.Insecure:
+      if (state.strict)
+      {
         System.out.println("zone did not verify.");
         System.exit(1);
-        break;
-      case DNSSEC.Insecure :
-        if (state.strict)
-        {
-          System.out.println("zone did not verify.");
-          System.exit(1);
-        }
-      case DNSSEC.Secure :
-        System.out.println("zone verified.");
-        break;
+      }
+    case DNSSEC.Secure:
+      System.out.println("zone verified.");
+      break;
     }
     System.exit(0);
   }
@@ -354,8 +356,7 @@ public class VerifyZone
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err.println("error: unknown option encountered: "
-          + e.getMessage());
+      System.err.println("error: unknown option encountered: " + e.getMessage());
       state.usage();
     }
     catch (AlreadySelectedException e)

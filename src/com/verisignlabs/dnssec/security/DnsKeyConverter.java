@@ -77,7 +77,6 @@ public class DnsKeyConverter
   {
     if (pKeyRecord.getKey() == null) return null;
 
-    // FIXME: this won't work at all with alg aliases.
     // For now, instead of re-implementing parseRecord (or adding this stuff
     // to DNSjava), we will just translate the algorithm back to a standard
     // algorithm. Note that this will unnecessarily convert RSAMD5 to RSASHA1.

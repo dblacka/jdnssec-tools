@@ -35,8 +35,7 @@ import com.verisignlabs.dnssec.security.DnsKeyPair;
 import com.verisignlabs.dnssec.security.SignUtils;
 
 /**
- * This class forms the command line implementation of a DNSSEC DS/DLV
- * generator
+ * This class forms the command line implementation of a DNSSEC DS/DLV generator
  * 
  * @author David Blacka (original)
  * @author $Author: davidb $
@@ -76,19 +75,22 @@ public class DSTool
       opts.addOption("h", "help", false, "Print this message.");
 
       opts.addOption(OptionBuilder.withLongOpt("dlv")
-          .withDescription("Generate a DLV record instead.").create());
+          .withDescription("Generate a DLV record instead.")
+          .create());
 
       // Argument options
-      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
+      opts.addOption(OptionBuilder.hasOptionalArg()
+          .withLongOpt("verbose")
           .withArgName("level")
-          .withDescription("verbosity level -- 0 is silence, "
-              + "5 is debug information, " + "6 is trace information.\n"
-              + "default is level 5.").create('v'));
+          .withDescription("verbosity level -- 0 is silence, 5 is debug information, 6 is trace information.\n"
+                           + "default is level 5.")
+          .create('v'));
 
-      opts.addOption(OptionBuilder.hasArg().withLongOpt("digest")
+      opts.addOption(OptionBuilder.hasArg()
+          .withLongOpt("digest")
           .withArgName("id")
-          .withDescription("The Digest ID to use (numerically): "
-              + "either 1 for SHA1 or 2 for SHA256").create('d'));
+          .withDescription("The Digest ID to use (numerically): either 1 for SHA1 or 2 for SHA256")
+          .create('d'));
     }
 
     public void parseCommandLine(String[] args)
@@ -105,14 +107,14 @@ public class DSTool
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-          case 0 :
+          case 0:
             rootLogger.setLevel(Level.OFF);
             break;
-          case 5 :
-          default :
+          case 5:
+          default:
             rootLogger.setLevel(Level.FINE);
             break;
-          case 6 :
+          case 6:
             rootLogger.setLevel(Level.ALL);
             break;
         }
@@ -142,14 +144,9 @@ public class DSTool
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      f.printHelp(out,
-          75,
-          "jdnssec-dstool [..options..] keyfile",
-          null,
-          opts,
-          HelpFormatter.DEFAULT_LEFT_PAD,
-          HelpFormatter.DEFAULT_DESC_PAD,
-          null);
+      f.printHelp(out, 75, "jdnssec-dstool [..options..] keyfile", null, opts,
+                  HelpFormatter.DEFAULT_LEFT_PAD,
+                  HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -159,8 +156,10 @@ public class DSTool
   /**
    * This is just a convenience method for parsing integers from strings.
    * 
-   * @param s the string to parse.
-   * @param def the default value, if the string doesn't parse.
+   * @param s
+   *          the string to parse.
+   * @param def
+   *          the default value, if the string doesn't parse.
    * @return the parsed integer, or the default.
    */
   private static int parseInt(String s, int def)
@@ -187,17 +186,16 @@ public class DSTool
       log.warning("DNSKEY is not an SEP-flagged key.");
     }
 
-    DSRecord ds = SignUtils.calculateDSRecord(dnskey,
-        state.digest_id,
-        dnskey.getTTL());
+    DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digest_id,
+                                              dnskey.getTTL());
     Record res = ds;
 
     if (state.createDLV)
     {
       log.fine("creating DLV.");
-      DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(),
-          ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
-          ds.getDigestID(), ds.getDigest());
+      DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(), ds.getTTL(),
+                                    ds.getFootprint(), ds.getAlgorithm(),
+                                    ds.getDigestID(), ds.getDigest());
       res = dlv;
     }
 
@@ -223,14 +221,13 @@ public class DSTool
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err.println("error: unknown option encountered: "
-          + e.getMessage());
+      System.err.println("error: unknown option encountered: " + e.getMessage());
       state.usage();
     }
     catch (AlreadySelectedException e)
     {
-      System.err.println("error: mutually exclusive options have "
-          + "been selected:\n     " + e.getMessage());
+      System.err.println("error: mutually exclusive options have been selected:\n     "
+          + e.getMessage());
       state.usage();
     }
     catch (Exception e)

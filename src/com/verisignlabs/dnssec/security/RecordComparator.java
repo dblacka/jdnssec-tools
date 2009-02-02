@@ -26,10 +26,9 @@ import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
 
 /**
- * This class implements a comparison operator for {@link
- * org.xbill.DNS.Record} objects. It imposes a canonical order consistent with
- * DNSSEC. It does not put records within a RRset into canonical order: see
- * {@link ByteArrayComparator}.
+ * This class implements a comparison operator for {@link org.xbill.DNS.Record}
+ * objects. It imposes a canonical order consistent with DNSSEC. It does not put
+ * records within a RRset into canonical order: see {@link ByteArrayComparator}.
  * 
  * @author David Blacka (original)
  * @author $Author$
@@ -43,8 +42,8 @@ public class RecordComparator implements Comparator
   }
 
   /**
-   * In general, types are compared numerically. However, SOA and NS are
-   * ordered before the rest.
+   * In general, types are compared numerically. However, SOA and NS are ordered
+   * before the rest.
    */
   private int compareTypes(int a, int b)
   {
@@ -64,15 +63,15 @@ public class RecordComparator implements Comparator
   {
     byte[] a_rdata = a.rdataToWireCanonical();
     byte[] b_rdata = b.rdataToWireCanonical();
-    
-    for (int i = 0; i < a_rdata.length && i < b_rdata.length; i++) 
+
+    for (int i = 0; i < a_rdata.length && i < b_rdata.length; i++)
     {
       int n = (a_rdata[i] & 0xFF) - (b_rdata[i] & 0xFF);
       if (n != 0) return n;
     }
     return (a_rdata.length - b_rdata.length);
   }
-  
+
   public int compare(Object o1, Object o2) throws ClassCastException
   {
     Record a = (Record) o1;

@@ -33,7 +33,6 @@ import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
 
-
 /**
  * This class contains a bunch of utility methods that are generally useful in
  * manipulating zones.
@@ -48,11 +47,14 @@ public class ZoneUtils
   /**
    * Load a zone file.
    * 
-   * @param zonefile the filename/path of the zonefile to read.
-   * @param origin the origin to use for the zonefile (may be null if the
-   *          origin is specified in the zone file itself).
+   * @param zonefile
+   *          the filename/path of the zonefile to read.
+   * @param origin
+   *          the origin to use for the zonefile (may be null if the origin is
+   *          specified in the zone file itself).
    * @return a {@link java.util.List} of {@link org.xbill.DNS.Record} objects.
-   * @throws IOException if something goes wrong reading the zone file.
+   * @throws IOException
+   *           if something goes wrong reading the zone file.
    */
   public static List readZoneFile(String zonefile, Name origin)
       throws IOException
@@ -73,10 +75,11 @@ public class ZoneUtils
   /**
    * Write the records out into a zone file.
    * 
-   * @param records a {@link java.util.List} of {@link org.xbill.DNS.Record}
-   *          objects forming a zone.
-   * @param zonefile the file to write to. If null or equal to "-", System.out
-   *          is used.
+   * @param records
+   *          a {@link java.util.List} of {@link org.xbill.DNS.Record} objects
+   *          forming a zone.
+   * @param zonefile
+   *          the file to write to. If null or equal to "-", System.out is used.
    */
   public static void writeZoneFile(List records, String zonefile)
       throws IOException
@@ -103,8 +106,9 @@ public class ZoneUtils
   /**
    * Given just the list of records, determine the zone name (origin).
    * 
-   * @param records a list of {@link org.xbill.DNS.Record} or {@link
-   *          org.xbill.DNS.RRset} objects.
+   * @param records
+   *          a list of {@link org.xbill.DNS.Record} or
+   *          {@link org.xbill.DNS.RRset} objects.
    * @return the zone name, if found. null if one couldn't be found.q
    */
   public static Name findZoneName(List records)

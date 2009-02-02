@@ -21,9 +21,9 @@ package com.verisignlabs.dnssec.security;
 import java.util.Comparator;
 
 /**
- * This class implements a basic comparitor for byte arrays. It is primarily
- * useful for comparing RDATA portions of DNS records in doing DNSSEC
- * canonical ordering.
+ * This class implements a basic comparator for byte arrays. It is primarily
+ * useful for comparing RDATA portions of DNS records in doing DNSSEC canonical
+ * ordering.
  * 
  * @author David Blacka (original)
  * @author $Author$

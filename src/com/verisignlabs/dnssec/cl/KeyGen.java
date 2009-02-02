@@ -78,12 +78,10 @@ public class KeyGen
 
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("k",
-          "kskflag",
-          false,
-          "Key is a key-signing-key (sets the SEP flag).");
+      opts.addOption("k", "kskflag", false,
+                     "Key is a key-signing-key (sets the SEP flag).");
       opts.addOption("e", "large-exponent", false, "Use large RSA exponent");
-      
+
       // Argument options
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("nametype");
@@ -101,9 +99,8 @@ public class KeyGen
 
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("algorithm");
-      OptionBuilder
-          .withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA | alias, "
-              + "RSASHA1 is default.");
+      OptionBuilder.withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA | alias, "
+          + "RSASHA1 is default.");
       opts.addOption(OptionBuilder.create('a'));
 
       OptionBuilder.hasArg();
@@ -117,8 +114,7 @@ public class KeyGen
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("file");
       OptionBuilder.withLongOpt("output-file");
-      OptionBuilder
-          .withDescription("base filename for the public/private key files");
+      OptionBuilder.withDescription("base filename for the public/private key files");
       opts.addOption(OptionBuilder.create('f'));
 
       OptionBuilder.hasArg();
@@ -151,14 +147,14 @@ public class KeyGen
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-          case 0 :
+          case 0:
             rootLogger.setLevel(Level.OFF);
             break;
-          case 5 :
-          default :
+          case 5:
+          default:
             rootLogger.setLevel(Level.FINE);
             break;
-          case 6 :
+          case 6:
             rootLogger.setLevel(Level.ALL);
             break;
         }
@@ -167,7 +163,7 @@ public class KeyGen
       if (cli.hasOption('k')) kskFlag = true;
 
       if (cli.hasOption('e')) useLargeE = true;
-      
+
       outputfile = cli.getOptionValue('f');
 
       if ((optstr = cli.getOptionValue('d')) != null)
@@ -221,22 +217,22 @@ public class KeyGen
     private void addArgAlias(String s)
     {
       if (s == null) return;
-      
+
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
-      
+
       String[] v = s.split(":");
       if (v.length < 2) return;
-      
+
       int alias = parseInt(v[0], -1);
       if (alias <= 0) return;
       int orig = parseInt(v[1], -1);
       if (orig <= 0) return;
       String mn = null;
       if (v.length > 2) mn = v[2];
-      
+
       algs.addAlias(alias, mn, orig);
     }
-    
+
     /** Print out the usage and help statements, then quit. */
     private void usage()
     {
@@ -245,14 +241,9 @@ public class KeyGen
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      f.printHelp(out,
-          75,
-          "jdnssec-keygen [..options..] name",
-          null,
-          opts,
-          HelpFormatter.DEFAULT_LEFT_PAD,
-          HelpFormatter.DEFAULT_DESC_PAD,
-          null);
+      f.printHelp(out, 75, "jdnssec-keygen [..options..] name", null, opts,
+                  HelpFormatter.DEFAULT_LEFT_PAD,
+                  HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -262,8 +253,10 @@ public class KeyGen
   /**
    * This is just a convenience method for parsing integers from strings.
    * 
-   * @param s the string to parse.
-   * @param def the default value, if the string doesn't parse.
+   * @param s
+   *          the string to parse.
+   * @param def
+   *          the default value, if the string doesn't parse.
    * @return the parsed integer, or the default.
    */
   private static int parseInt(String s, int def)
@@ -310,13 +303,9 @@ public class KeyGen
         + state.ttl + ", alg = " + state.algorithm + ", flags = " + flags
         + ", length = " + state.keylength + ")");
 
-    DnsKeyPair pair = signer.generateKey(owner_name,
-          state.ttl,
-          DClass.IN,
-          state.algorithm,
-          flags,
-          state.keylength,
-          state.useLargeE);
+    DnsKeyPair pair = signer.generateKey(owner_name, state.ttl, DClass.IN,
+                                         state.algorithm, flags,
+                                         state.keylength, state.useLargeE);
 
     if (state.outputfile != null)
     {
@@ -338,8 +327,7 @@ public class KeyGen
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err.println("error: unknown option encountered: "
-          + e.getMessage());
+      System.err.println("error: unknown option encountered: " + e.getMessage());
       state.usage();
     }
     catch (AlreadySelectedException e)

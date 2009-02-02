@@ -56,7 +56,7 @@ public class SHA256
   }
 
   // Constants "K"
-  private static final int K[]      = {0x428a2f98, 0x71374491, 0xb5c0fbcf,
+  private static final int K[]      = { 0x428a2f98, 0x71374491, 0xb5c0fbcf,
       0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98,
       0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7,
       0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
@@ -67,7 +67,7 @@ public class SHA256
       0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c,
       0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee,
       0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
-      0xc67178f2                    };
+      0xc67178f2                   };
 
   private int              digest[] = new int[8];
   private byte             data[];
@@ -160,11 +160,11 @@ public class SHA256
     int aBlock[];
     byte byteBlock[];
 
-//    for (int n = 0; n < data.length; n++)
-//    {
-//      System.out.print(Integer.toHexString(data[n]) + " ");
-//    }
-//    System.out.println("\n\n");
+    // for (int n = 0; n < data.length; n++)
+    // {
+    // System.out.print(Integer.toHexString(data[n]) + " ");
+    // }
+    // System.out.println("\n\n");
     if (data.length > 64)
     {
       int n = data.length / 64;
@@ -200,8 +200,7 @@ public class SHA256
   }
 
   /*
-   * this is the method that actually performs the digest and returns the
-   * result
+   * this is the method that actually performs the digest and returns the result
    */
   private void transform(int block[])
   {
@@ -242,14 +241,14 @@ public class SHA256
       B = A;
       A = T1 + T2;
 
-//      System.out.println("A: " + Integer.toHexString(A));
-//      System.out.println("B: " + Integer.toHexString(B));
-//      System.out.println("C: " + Integer.toHexString(C));
-//      System.out.println("D: " + Integer.toHexString(D));
-//      System.out.println("E: " + Integer.toHexString(E));
-//      System.out.println("F: " + Integer.toHexString(F));
-//      System.out.println("G: " + Integer.toHexString(G));
-//      System.out.println("H: " + Integer.toHexString(H) + "\n");
+      // System.out.println("A: " + Integer.toHexString(A));
+      // System.out.println("B: " + Integer.toHexString(B));
+      // System.out.println("C: " + Integer.toHexString(C));
+      // System.out.println("D: " + Integer.toHexString(D));
+      // System.out.println("E: " + Integer.toHexString(E));
+      // System.out.println("F: " + Integer.toHexString(F));
+      // System.out.println("G: " + Integer.toHexString(G));
+      // System.out.println("H: " + Integer.toHexString(H) + "\n");
 
     }
 

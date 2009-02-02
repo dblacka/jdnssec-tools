@@ -26,10 +26,10 @@ import org.xbill.DNS.*;
 
 /**
  * This class forms the basis for representing public/private key pairs in a
- * DNSSEC context. It is possible to get a JCA public and private key from
- * this object, as well as a DNSKEYRecord encoding of the public key. This
- * class is implemented as a UNION of all the functionality needed for handing
- * native java, BIND, and possibly other underlying DNSKEY engines.
+ * DNSSEC context. It is possible to get a JCA public and private key from this
+ * object, as well as a DNSKEYRecord encoding of the public key. This class is
+ * implemented as a UNION of all the functionality needed for handing native
+ * java, BIND, and possibly other underlying DNSKEY engines.
  * 
  * JCA == Java Cryptography Architecture.
  * 
@@ -47,8 +47,8 @@ public class DnsKeyPair
   protected DNSKEYRecord    mPublicKeyRecord;
 
   /**
-   * This is a precalcuated cache of the KEYRecord converted into a JCA public
-   * key.
+   * This is a pre-calculated cache of the DNSKEYRecord converted into a JCA
+   * public key.
    */
   private PublicKey         mPublicKey;
 
@@ -59,8 +59,8 @@ public class DnsKeyPair
   protected String          mPrivateKeyString;
 
   /**
-   * The private key in JCA format. This is the base encoding for instances
-   * were JCA private keys are used.
+   * The private key in JCA format. This is the base encoding for instances where
+   * JCA private keys are used.
    */
   protected PrivateKey      mPrivateKey;
 
@@ -73,7 +73,7 @@ public class DnsKeyPair
   protected Signature       mSigner;
 
   /**
-   * a caches Signature used for verifying (intialized with the public key)
+   * a caches Signature used for verifying (initialized with the public key)
    */
   protected Signature       mVerifier;
 
@@ -113,12 +113,8 @@ public class DnsKeyPair
     this();
 
     DnsKeyConverter conv = new DnsKeyConverter();
-    DNSKEYRecord keyrec = conv.generateDNSKEYRecord(keyName,
-        DClass.IN,
-        0,
-        0,
-        algorithm,
-        publicKey);
+    DNSKEYRecord keyrec = conv.generateDNSKEYRecord(keyName, DClass.IN, 0, 0,
+                                                    algorithm, publicKey);
     setDNSKEYRecord(keyrec);
     setPrivate(privateKey);
   }
@@ -208,9 +204,8 @@ public class DnsKeyPair
     if (mPrivateKeyString == null && mPrivateKey != null)
     {
       PublicKey pub = getPublic();
-      mPrivateKeyString = BINDKeyUtils.convertPrivateKey(mPrivateKey,
-          pub,
-          getDNSKEYAlgorithm());
+      mPrivateKeyString = BINDKeyUtils.convertPrivateKey(mPrivateKey, pub,
+                                                         getDNSKEYAlgorithm());
     }
 
     return mPrivateKeyString;
@@ -231,9 +226,9 @@ public class DnsKeyPair
   }
 
   /**
-   * Sets the private key from the encoded form (PKCS#8). This routine
-   * requires that the public key already be assigned. Currently it can only
-   * handle DSA and RSA keys.
+   * Sets the private key from the encoded form (PKCS#8). This routine requires
+   * that the public key already be assigned. Currently it can only handle DSA
+   * and RSA keys.
    */
   public void setEncodedPrivate(byte[] encoded)
   {
@@ -275,7 +270,7 @@ public class DnsKeyPair
       }
       else
       {
-        // do not return an unitialized signer.
+        // do not return an uninitialized signer.
         return null;
       }
     }
@@ -301,11 +296,12 @@ public class DnsKeyPair
           mVerifier.initVerify(pk);
         }
         catch (InvalidKeyException e)
-        {}
+        {
+        }
       }
       else
       {
-        // do not return an unitialized verifier
+        // do not return an uninitialized verifier
         return null;
       }
     }

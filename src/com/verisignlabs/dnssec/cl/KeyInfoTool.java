@@ -32,8 +32,7 @@ import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
 import com.verisignlabs.dnssec.security.DnsKeyPair;
 
 /**
- * This class forms the command line implementation of a DNSSEC DS/DLV
- * generator
+ * This class forms the command line implementation of a DNSSEC DS/DLV generator
  * 
  * @author David Blacka (original)
  * @author $Author: davidb $
@@ -49,7 +48,7 @@ public class KeyInfoTool
   private static class CLIState
   {
     private Options opts;
-    public String   keyname    = null;
+    public String   keyname = null;
 
     public CLIState()
     {
@@ -69,12 +68,16 @@ public class KeyInfoTool
       opts.addOption("h", "help", false, "Print this message.");
 
       // Argument options
-      opts.addOption(OptionBuilder.hasOptionalArg().withLongOpt("verbose")
+      opts.addOption(OptionBuilder.hasOptionalArg()
+          .withLongOpt("verbose")
           .withArgName("level")
-          .withDescription("verbosity level -- 0 is silence, "
-              + "5 is debug information, " + "6 is trace information.\n"
-              + "default is level 5.").create('v'));
-      
+          .withDescription(
+                           "verbosity level -- 0 is silence, "
+                               + "5 is debug information, "
+                               + "6 is trace information.\n"
+                               + "default is level 5.")
+          .create('v'));
+
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("alg-alias");
       OptionBuilder.withArgName("alias:original:mnemonic");
@@ -96,14 +99,14 @@ public class KeyInfoTool
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-          case 0 :
+          case 0:
             rootLogger.setLevel(Level.OFF);
             break;
-          case 5 :
-          default :
+          case 5:
+          default:
             rootLogger.setLevel(Level.FINE);
             break;
-          case 6 :
+          case 6:
             rootLogger.setLevel(Level.ALL);
             break;
         }
@@ -136,14 +139,9 @@ public class KeyInfoTool
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      f.printHelp(out,
-          75,
-          "jdnssec-keyinfo [..options..] keyfile",
-          null,
-          opts,
-          HelpFormatter.DEFAULT_LEFT_PAD,
-          HelpFormatter.DEFAULT_DESC_PAD,
-          null);
+      f.printHelp(out, 75, "jdnssec-keyinfo [..options..] keyfile", null, opts,
+                  HelpFormatter.DEFAULT_LEFT_PAD,
+                  HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -153,8 +151,10 @@ public class KeyInfoTool
   /**
    * This is just a convenience method for parsing integers from strings.
    * 
-   * @param s the string to parse.
-   * @param def the default value, if the string doesn't parse.
+   * @param s
+   *          the string to parse.
+   * @param def
+   *          the default value, if the string doesn't parse.
    * @return the parsed integer, or the default.
    */
   private static int parseInt(String s, int def)
@@ -169,48 +169,48 @@ public class KeyInfoTool
       return def;
     }
   }
-  
+
   private static void addArgAlias(String s)
   {
     if (s == null) return;
-    
+
     DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
-    
+
     String[] v = s.split(":");
     if (v.length < 2) return;
-    
+
     int alias = parseInt(v[0], -1);
     if (alias <= 0) return;
     int orig = parseInt(v[1], -1);
     if (orig <= 0) return;
     String mn = null;
     if (v.length > 2) mn = v[2];
-    
+
     algs.addAlias(alias, mn, orig);
   }
-  
-  
+
   public static void execute(CLIState state) throws Exception
   {
 
     DnsKeyPair key = BINDKeyUtils.loadKey(state.keyname, null);
     DNSKEYRecord dnskey = key.getDNSKEYRecord();
     DnsKeyAlgorithm dnskeyalg = DnsKeyAlgorithm.getInstance();
-    
+
     boolean isSEP = (dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) != 0;
-    
+
     System.out.println("Name: " + dnskey.getName());
     System.out.println("SEP: " + isSEP);
-    
-    System.out.println("Algorithm: " + dnskeyalg.algToString(dnskey.getAlgorithm()));
+
+    System.out.println("Algorithm: "
+        + dnskeyalg.algToString(dnskey.getAlgorithm()));
     System.out.println("ID: " + dnskey.getFootprint());
-    if (dnskeyalg.baseType(dnskey.getAlgorithm()) == dnskeyalg.RSA)
+    if (dnskeyalg.baseType(dnskey.getAlgorithm()) == DnsKeyAlgorithm.RSA)
     {
       RSAPublicKey pub = (RSAPublicKey) key.getPublic();
       System.out.println("RSA Public Exponent: " + pub.getPublicExponent());
       System.out.println("RSA Modulus: " + pub.getModulus());
     }
-    
+
   }
 
   public static void main(String[] args)
@@ -223,8 +223,7 @@ public class KeyInfoTool
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err.println("error: unknown option encountered: "
-          + e.getMessage());
+      System.err.println("error: unknown option encountered: " + e.getMessage());
       state.usage();
     }
     catch (AlreadySelectedException e)

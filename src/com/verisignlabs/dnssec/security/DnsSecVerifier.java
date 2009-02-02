@@ -95,10 +95,7 @@ public class DnsSecVerifier implements Verifier
       {
         DnsKeyPair p = (DnsKeyPair) i.next();
         if (p.getDNSKEYAlgorithm() == algorithm
-            && p.getDNSKEYFootprint() == keyid)
-        {
-          return p;
-        }
+            && p.getDNSKEYFootprint() == keyid) { return p; }
       }
       return null;
     }
@@ -154,7 +151,7 @@ public class DnsSecVerifier implements Verifier
   }
 
   private DnsKeyPair findCachedKey(Cache cache, Name name, int algorithm,
-      int footprint)
+                                   int footprint)
   {
     RRset[] keysets = cache.findAnyRecords(name, Type.KEY);
     if (keysets == null) return null;
@@ -167,17 +164,15 @@ public class DnsSecVerifier implements Verifier
       if (!(o instanceof DNSKEYRecord)) continue;
       DNSKEYRecord keyrec = (DNSKEYRecord) o;
       if (keyrec.getAlgorithm() == algorithm
-          && keyrec.getFootprint() == footprint)
-      {
-        return new DnsKeyPair(keyrec, (PrivateKey) null);
-      }
+          && keyrec.getFootprint() == footprint) { return new DnsKeyPair(
+          keyrec, (PrivateKey) null); }
     }
 
     return null;
   }
 
   private DnsKeyPair findKey(Cache cache, Name name, int algorithm,
-      int footprint)
+                             int footprint)
   {
     DnsKeyPair pair = mKeyStore.find(name, algorithm, footprint);
     if (pair == null && cache != null)
@@ -238,9 +233,9 @@ public class DnsSecVerifier implements Verifier
   /**
    * Verify an RRset against a particular signature.
    * 
-   * @return DNSSEC.Secure if the signature verfied, DNSSEC.Failed if it did
-   *         not verify (for any reason), and DNSSEC.Insecure if verification
-   *         could not be completed (usually because the public key was not
+   * @return DNSSEC.Secure if the signature verfied, DNSSEC.Failed if it did not
+   *         verify (for any reason), and DNSSEC.Insecure if verification could
+   *         not be completed (usually because the public key was not
    *         available).
    */
   public byte verifySignature(RRset rrset, RRSIGRecord sigrec, Cache cache)
@@ -248,10 +243,8 @@ public class DnsSecVerifier implements Verifier
     byte result = validateSignature(rrset, sigrec);
     if (result != DNSSEC.Secure) return result;
 
-    DnsKeyPair keypair = findKey(cache,
-        sigrec.getSigner(),
-        sigrec.getAlgorithm(),
-        sigrec.getFootprint());
+    DnsKeyPair keypair = findKey(cache, sigrec.getSigner(),
+                                 sigrec.getAlgorithm(), sigrec.getFootprint());
 
     if (keypair == null)
     {
@@ -264,17 +257,17 @@ public class DnsSecVerifier implements Verifier
       byte[] data = SignUtils.generateSigData(rrset, sigrec);
 
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
-      
+
       Signature signer = keypair.getVerifier();
       signer.update(data);
 
       byte[] sig = sigrec.getSignature();
-      
+
       if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.DSA)
       {
         sig = SignUtils.convertDSASignature(sig);
       }
-      
+
       if (!signer.verify(sig))
       {
         log.info("Signature failed to verify cryptographically");
@@ -299,8 +292,8 @@ public class DnsSecVerifier implements Verifier
   /**
    * Verifies an RRset. This routine does not modify the RRset.
    * 
-   * @return DNSSEC.Secure if the set verified, DNSSEC.Failed if it did not,
-   *         and DNSSEC.Insecure if verification could not complete.
+   * @return DNSSEC.Secure if the set verified, DNSSEC.Failed if it did not, and
+   *         DNSSEC.Insecure if verification could not complete.
    */
   public int verify(RRset rrset, Cache cache)
   {
