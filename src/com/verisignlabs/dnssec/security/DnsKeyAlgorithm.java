@@ -41,13 +41,13 @@ import java.util.logging.Logger;
 import org.xbill.DNS.DNSSEC;
 
 /**
- * This class handles translated DNS signing algorithm identifiers into
- * various usable java implementations.
+ * This class handles translated DNS signing algorithm identifiers into various
+ * usable java implementations.
  * 
  * Besides centralizing the logic surrounding matching a DNSKEY algorithm
  * identifier with various crypto implementations, it also handles algorithm
- * aliasing -- that is, defining a new algorithm identifier to be equivalent
- * to an existing identifier.
+ * aliasing -- that is, defining a new algorithm identifier to be equivalent to
+ * an existing identifier.
  * 
  * @author David Blacka (orig)
  * @author $Author: davidb $ (latest)
@@ -74,9 +74,8 @@ public class DnsKeyAlgorithm
   }
 
   /**
-   * This is a mapping of algorithm identifier to Entry. The Entry contains
-   * the data needed to map the algorithm to the various crypto
-   * implementations.
+   * This is a mapping of algorithm identifier to Entry. The Entry contains the
+   * data needed to map the algorithm to the various crypto implementations.
    */
   private HashMap                mAlgorithmMap;
   /**
@@ -84,8 +83,8 @@ public class DnsKeyAlgorithm
    */
   private HashMap                mMnemonicToIdMap;
   /**
-   * This is a mapping of identifiers to preferred mnemonic -- the preferred
-   * one is the first defined one
+   * This is a mapping of identifiers to preferred mnemonic -- the preferred one
+   * is the first defined one
    */
   private HashMap                mIdToMnemonicMap;
 
@@ -105,7 +104,7 @@ public class DnsKeyAlgorithm
     mAlgorithmMap = new HashMap();
     mMnemonicToIdMap = new HashMap();
     mIdToMnemonicMap = new HashMap();
-    
+
     // Load the standard DNSSEC algorithms.
     addAlgorithm(DNSSEC.RSAMD5, new Entry("MD5withRSA", RSA));
     addMnemonic("RSAMD5", DNSSEC.RSAMD5);
@@ -119,6 +118,10 @@ public class DnsKeyAlgorithm
     addAlgorithm(DNSSEC.RSASHA1, new Entry("SHA1withRSA", RSA));
     addMnemonic("RSASHA1", DNSSEC.RSASHA1);
     addMnemonic("RSA", DNSSEC.RSASHA1);
+
+    // Load the (now) standard aliases
+    addAlias(6, "DSA-NSEC3-SHA1", DNSSEC.DSA);
+    addAlias(7, "RSA-NSEC3-SHA1", DNSSEC.RSASHA1);
   }
 
   private void addAlgorithm(int algorithm, Entry entry)
@@ -131,7 +134,7 @@ public class DnsKeyAlgorithm
   {
     Integer a = new Integer(alg);
     mMnemonicToIdMap.put(m.toUpperCase(), a);
-    if (! mIdToMnemonicMap.containsKey(a))
+    if (!mIdToMnemonicMap.containsKey(a))
     {
       mIdToMnemonicMap.put(a, m);
     }
@@ -200,7 +203,7 @@ public class DnsKeyAlgorithm
   {
     return (String) mIdToMnemonicMap.get(new Integer(algorithm));
   }
-  
+
   public int baseType(int algorithm)
   {
     Entry entry = getEntry(algorithm);
@@ -212,14 +215,14 @@ public class DnsKeyAlgorithm
   {
     switch (baseType(algorithm))
     {
-      case RSA :
-        return DNSSEC.RSASHA1;
-      case DSA :
-        return DNSSEC.DSA;
-      case DH :
-        return DNSSEC.DH;
-      default :
-        return UNKNOWN;
+    case RSA:
+      return DNSSEC.RSASHA1;
+    case DSA:
+      return DNSSEC.DSA;
+    case DH:
+      return DNSSEC.DH;
+    default:
+      return UNKNOWN;
     }
   }
 
@@ -234,44 +237,46 @@ public class DnsKeyAlgorithm
     KeyPair pair = null;
     switch (baseType(algorithm))
     {
-      case RSA :
-        if (mRSAKeyGenerator == null)
-        {
-          mRSAKeyGenerator = KeyPairGenerator.getInstance("RSA");
-        }
-        
-        RSAKeyGenParameterSpec rsa_spec;
-        if (useLargeExp)
-        {
-          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F4);
-        }
-        else
-        {
-          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F0);
-        }
-        try
-        {
-          mRSAKeyGenerator.initialize(rsa_spec);
-        }
-        catch (InvalidAlgorithmParameterException e)
-        {
-          // Fold the InvalidAlgorithmParameterException into our existing
-          // thrown exception. Ugly, but requires less code change.
-          throw new NoSuchAlgorithmException("invalid key parameter spec");
-        }
-        
-        pair = mRSAKeyGenerator.generateKeyPair();
-        break;
-      case DSA :
-        if (mDSAKeyGenerator == null)
-        {
-          mDSAKeyGenerator = KeyPairGenerator.getInstance("DSA");
-        }
-        mDSAKeyGenerator.initialize(keysize);
-        pair = mDSAKeyGenerator.generateKeyPair();
-        break;
-      default :
-        throw new NoSuchAlgorithmException("Alg " + algorithm);
+    case RSA:
+      if (mRSAKeyGenerator == null)
+      {
+        mRSAKeyGenerator = KeyPairGenerator.getInstance("RSA");
+      }
+
+      RSAKeyGenParameterSpec rsa_spec;
+      if (useLargeExp)
+      {
+        rsa_spec = new RSAKeyGenParameterSpec(keysize,
+            RSAKeyGenParameterSpec.F4);
+      }
+      else
+      {
+        rsa_spec = new RSAKeyGenParameterSpec(keysize,
+            RSAKeyGenParameterSpec.F0);
+      }
+      try
+      {
+        mRSAKeyGenerator.initialize(rsa_spec);
+      }
+      catch (InvalidAlgorithmParameterException e)
+      {
+        // Fold the InvalidAlgorithmParameterException into our existing
+        // thrown exception. Ugly, but requires less code change.
+        throw new NoSuchAlgorithmException("invalid key parameter spec");
+      }
+
+      pair = mRSAKeyGenerator.generateKeyPair();
+      break;
+    case DSA:
+      if (mDSAKeyGenerator == null)
+      {
+        mDSAKeyGenerator = KeyPairGenerator.getInstance("DSA");
+      }
+      mDSAKeyGenerator.initialize(keysize);
+      pair = mDSAKeyGenerator.generateKeyPair();
+      break;
+    default:
+      throw new NoSuchAlgorithmException("Alg " + algorithm);
     }
 
     return pair;
@@ -282,7 +287,7 @@ public class DnsKeyAlgorithm
   {
     return generateKeyPair(algorithm, keysize, false);
   }
-  
+
   public static DnsKeyAlgorithm getInstance()
   {
     if (mInstance == null) mInstance = new DnsKeyAlgorithm();
