@@ -1,6 +1,25 @@
+2009-02-04  David Blacka  <davidb@fury.blacka.com>
+
+	* SignUtils: use JDK-native SHA-256 code instead of broken
+	contributed implementation.
+
+	* DnsKeyAlgorithm: Add RSASHA256 and RSASHA512 algorithm, guessing
+	at the code points.  Note, these require Java 5 or later, or an
+	alternate crypto provider.
+
+	* ZoneUtils: add a method to find specific RRs in a list of RRs
+	or RRsets.
+
+	* SignZone: make jdnssec-signzone a bit more aggressive in finding
+	keys. Now it will look for keyfiles matching keys at the zone
+	apex, and, failing that, just look for keyfiles named after the
+	zone.  Specifying any keys at all on the command line will
+	override this behavior.
+
+
 2009-02-01  David Blacka  <davidb@verisignlabs.com>
 
-	* DnsKeyAlgorithms: add official aliases from RFC 5155.
+	* DnsKeyAlgorithm: add official aliases from RFC 5155.
 
 	* JCEDnsSecSigner: refactor zone signing methods to remove
 	duplicate code.
