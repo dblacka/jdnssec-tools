@@ -138,4 +138,37 @@ public class ZoneUtils
 
     return null;
   }
+  
+  public static List findRRs(List records, Name name, int type)
+  {
+    List res = new ArrayList();
+    for (Iterator i = records.iterator(); i.hasNext();)
+    {
+      Object o = i.next();
+      
+      if (o instanceof Record)
+      {
+        Record r = (Record) o;
+        if (r.getName().equals(name) && r.getType() == type) 
+        {
+          res.add(r);
+        }
+              }
+      else if (o instanceof RRset) 
+      {
+        RRset r = (RRset) o;
+        if (r.getName().equals(name) && r.getType() == type)
+        {
+          for (Iterator j = r.rrs(); j.hasNext();)
+          {
+            res.add(j.next());
+          }
+        }
+      }
+    }
+    
+    return res;
+  }
+  
 }
+

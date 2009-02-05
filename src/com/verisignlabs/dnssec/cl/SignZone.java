@@ -52,6 +52,7 @@ import org.xbill.DNS.Name;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.TextParseException;
+import org.xbill.DNS.Type;
 import org.xbill.DNS.utils.base16;
 
 import com.verisignlabs.dnssec.security.BINDKeyUtils;
@@ -117,80 +118,88 @@ public class SignZone
       opts.addOption("F", "fully-sign-keyset", false,
                      "sign the zone apex keyset with all available keys.");
 
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("verbose");
+      OptionBuilder.withArgName("level");
+      OptionBuilder.withDescription("verbosity level.");
       // Argument options
-      opts.addOption(OptionBuilder.hasOptionalArg()
-          .withLongOpt("verbose")
-          .withArgName("level")
-          .withDescription("verbosity level.")
-          .create('v'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("dir")
-          .withLongOpt("keyset-directory")
-          .withDescription("directory to find keyset files (default '.').")
-          .create('d'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("dir")
-          .withLongOpt("key-directory")
-          .withDescription("directory to find key files (default '.').")
-          .create('D'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("time/offset")
-          .withLongOpt("start-time")
-          .withDescription("signature starting time (default is now - 1 hour)")
-          .create('s'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("time/offset")
-          .withLongOpt("expire-time")
-          .withDescription(
-                           "signature expiration time (default is start-time + 30 days).")
-          .create('e'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("outfile")
-          .withDescription(
-                           "file the signed zone is written to (default is <origin>.signed).")
-          .create('f'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("KSK file")
-          .withLongOpt("ksk-file")
-          .withDescription("this key is a key signing key (may repeat).")
-          .create('k'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("file")
-          .withLongOpt("include-file")
-          .withDescription("include names in this file in the NSEC/NSEC3 chain.")
-          .create('I'));
+      opts.addOption(OptionBuilder.create('v'));
+      
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("dir");
+      OptionBuilder.withLongOpt("keyset-directory");
+      OptionBuilder.withDescription("directory to find keyset files (default '.').");
+      opts.addOption(OptionBuilder.create('d'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("dir");
+      OptionBuilder.withLongOpt("key-directory");
+      OptionBuilder.withDescription("directory to find key files (default '.').");
+      opts.addOption(OptionBuilder.create('D'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("time/offset");
+      OptionBuilder.withLongOpt("start-time");
+      OptionBuilder.withDescription("signature starting time (default is now - 1 hour)");
+      opts.addOption(OptionBuilder.create('s'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("time/offset");
+      OptionBuilder.withLongOpt("expire-time");
+      OptionBuilder.withDescription("signature expiration time (default is start-time + 30 days).");
+      opts.addOption(OptionBuilder.create('e'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("outfile");
+      OptionBuilder.withDescription("file the signed zone is written to (default is <origin>.signed).");
+      opts.addOption(OptionBuilder.create('f'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("KSK file");
+      OptionBuilder.withLongOpt("ksk-file");
+      OptionBuilder.withDescription("this key is a key signing key (may repeat).");
+      opts.addOption(OptionBuilder.create('k'));
+   
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("file");
+      OptionBuilder.withLongOpt("include-file");
+      OptionBuilder.withDescription("include names in this file in the NSEC/NSEC3 chain.");
+      opts.addOption(OptionBuilder.create('I'));
 
       // NSEC3 options
       opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
       opts.addOption("O", "use-opt-out", false,
                      "generate a fully Opt-Out zone (only valid with NSEC3).");
 
-      opts.addOption(OptionBuilder.hasArg()
-          .withLongOpt("salt")
-          .withArgName("hex value")
-          .withDescription("supply a salt value.")
-          .create('S'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withLongOpt("random-salt")
-          .withArgName("length")
-          .withDescription("generate a random salt.")
-          .create('R'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withLongOpt("iterations")
-          .withArgName("value")
-          .withDescription("use this value for the iterations in NSEC3.")
-          .create());
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("salt");
+      OptionBuilder.withArgName("hex value");
+      OptionBuilder.withDescription("supply a salt value.");
+      opts.addOption(OptionBuilder.create('S'));
+      
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("random-salt");
+      OptionBuilder.withArgName("length");
+      OptionBuilder.withDescription("generate a random salt.");
+      opts.addOption(OptionBuilder.create('R'));
+      
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("iterations");
+      OptionBuilder.withArgName("value");
+      OptionBuilder.withDescription("use this value for the iterations in NSEC3.");
+      opts.addOption(OptionBuilder.create());
 
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("alias:original:mnemonic")
-          .withLongOpt("alg-alias")
-          .withDescription("Define an alias for an algorithm (may repeat).")
-          .create('A'));
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("id")
-          .withLongOpt("ds-digest")
-          .withDescription("Digest algorithm to use for generated DSs")
-          .create());
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("alias:original:mnemonic");
+      OptionBuilder.withLongOpt("alg-alias");
+      OptionBuilder.withDescription("Define an alias for an algorithm (may repeat).");
+      opts.addOption(OptionBuilder.create('A'));
+      
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("id");
+      OptionBuilder.withLongOpt("ds-digest");
+      OptionBuilder.withDescription("Digest algorithm to use for generated DSs");
+      opts.addOption(OptionBuilder.create());
     }
 
     public void parseCommandLine(String[] args)
@@ -212,19 +221,19 @@ public class SignZone
 
         switch (value)
         {
-        case 0:
-          rootLogger.setLevel(Level.OFF);
-          break;
-        case 4:
-        default:
-          rootLogger.setLevel(Level.INFO);
-          break;
-        case 5:
-          rootLogger.setLevel(Level.FINE);
-          break;
-        case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
+          case 0:
+            rootLogger.setLevel(Level.OFF);
+            break;
+          case 4:
+          default:
+            rootLogger.setLevel(Level.INFO);
+            break;
+          case 5:
+            rootLogger.setLevel(Level.FINE);
+            break;
+          case 6:
+            rootLogger.setLevel(Level.ALL);
+            break;
         }
         Handler[] handlers = rootLogger.getHandlers();
         for (int i = 0; i < handlers.length; i++)
@@ -385,7 +394,7 @@ public class SignZone
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      out.println("usage: signZone.sh [..options..] "
+      out.println("usage: jdnssec-signzone [..options..] "
           + "zone_file [key_file ...] ");
       f.printHelp(out, 75, "signZone.sh", null, opts,
                   HelpFormatter.DEFAULT_LEFT_PAD,
@@ -496,6 +505,69 @@ public class SignZone
     }
 
     return keys;
+  }
+
+  private static List getKeys(List dnskeyrrs, File inDirectory)
+      throws IOException
+  {
+    List res = new ArrayList();
+    for (Iterator i = dnskeyrrs.iterator(); i.hasNext();)
+    {
+      // Construct a public-key-only DnsKeyPair just so we can calculate the
+      // base name.
+      DnsKeyPair pub = new DnsKeyPair((DNSKEYRecord) i.next());
+      DnsKeyPair pair = BINDKeyUtils.loadKeyPair(BINDKeyUtils.keyFileBase(pub),
+                                                 inDirectory);
+      if (pair != null)
+      {
+        res.add(pair);
+      }
+    }
+
+    if (res.size() > 0) return res;
+    return null;
+  }
+
+  private static class KeyFileFilter implements FileFilter
+  {
+    private String prefix;
+
+    public KeyFileFilter(Name origin)
+    {
+      prefix = "K" + origin.toString();
+    }
+
+    public boolean accept(File pathname)
+    {
+      if (!pathname.isFile()) return false;
+      String name = pathname.getName();
+      if (name.startsWith(prefix) && name.endsWith(".private")) return true;
+      return false;
+    }
+  }
+
+  private static List findZoneKeys(File inDirectory, Name zonename)
+      throws IOException
+  {
+    if (inDirectory == null)
+    {
+      inDirectory = new File(".");
+    }
+
+    // get the list of "K<zone>.*.private files.
+    FileFilter filter = new KeyFileFilter(zonename);
+    File[] files = inDirectory.listFiles(filter);
+
+    // read in all of the records
+    ArrayList keys = new ArrayList();
+    for (int i = 0; i < files.length; i++)
+    {
+      DnsKeyPair p = BINDKeyUtils.loadKeyPair(files[i].getName(), inDirectory);
+      keys.add(p);
+    }
+
+    if (keys.size() > 0) return keys;
+    return null;
   }
 
   /**
@@ -651,14 +723,41 @@ public class SignZone
 
   public static void execute(CLIState state) throws Exception
   {
-    // Load the key pairs.
+    // Read in the zone
+    List records = ZoneUtils.readZoneFile(state.zonefile, null);
+    if (records == null || records.size() == 0)
+    {
+      System.err.println("error: empty zone file");
+      state.usage();
+    }
 
-    // FIXME: should we do what BIND 9.3.x snapshots do and look at
-    // zone apex DNSKEY RRs, and from that be able to load all of the
-    // keys?
+    // calculate the zone name.
+    Name zonename = ZoneUtils.findZoneName(records);
+    if (zonename == null)
+    {
+      System.err.println("error: invalid zone file - no SOA");
+      state.usage();
+    }
+
+    // Load the key pairs.
 
     List keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
     List kskpairs = getKeys(state.kskFiles, 0, state.keyDirectory);
+
+    // If we didn't get any keys on the command line, look at the zone apex for
+    // any public keys.
+    if (keypairs == null && kskpairs == null)
+    {
+      List dnskeys = ZoneUtils.findRRs(records, zonename, Type.DNSKEY);
+      keypairs = getKeys(dnskeys, state.keyDirectory);
+    }
+
+    // If we *still* don't have any key pairs, look for keys the key directory
+    // that match
+    if (keypairs == null && kskpairs == null)
+    {
+      keypairs = findZoneKeys(state.keyDirectory, zonename);
+    }
 
     // If we don't have any KSKs, but we do have more than one zone
     // signing key (presumably), presume that the zone signing keys
@@ -691,22 +790,6 @@ public class SignZone
     if (keypairs == null || keypairs.size() == 0)
     {
       System.err.println("No zone signing keys could be determined.");
-      state.usage();
-    }
-
-    // Read in the zone
-    List records = ZoneUtils.readZoneFile(state.zonefile, null);
-    if (records == null || records.size() == 0)
-    {
-      System.err.println("error: empty zone file");
-      state.usage();
-    }
-
-    // calculate the zone name.
-    Name zonename = ZoneUtils.findZoneName(records);
-    if (zonename == null)
-    {
-      System.err.println("error: invalid zone file - no SOA");
       state.usage();
     }
 
