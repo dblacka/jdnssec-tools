@@ -74,23 +74,23 @@ public class DSTool
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
 
-      opts.addOption(OptionBuilder.withLongOpt("dlv")
-          .withDescription("Generate a DLV record instead.")
-          .create());
+      OptionBuilder.withLongOpt("dlv");
+      OptionBuilder.withDescription("Generate a DLV record instead.");
+      opts.addOption(OptionBuilder.create());
 
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("verbose");
+      OptionBuilder.withArgName("level");
+      OptionBuilder.withDescription("verbosity level -- 0 is silence, 5 is debug information, 6 is trace information.\n"
+          + "default is level 5.");
       // Argument options
-      opts.addOption(OptionBuilder.hasOptionalArg()
-          .withLongOpt("verbose")
-          .withArgName("level")
-          .withDescription("verbosity level -- 0 is silence, 5 is debug information, 6 is trace information.\n"
-                           + "default is level 5.")
-          .create('v'));
+      opts.addOption(OptionBuilder.create('v'));
 
-      opts.addOption(OptionBuilder.hasArg()
-          .withLongOpt("digest")
-          .withArgName("id")
-          .withDescription("The Digest ID to use (numerically): either 1 for SHA1 or 2 for SHA256")
-          .create('d'));
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("digest");
+      OptionBuilder.withArgName("id");
+      OptionBuilder.withDescription("The Digest ID to use (numerically): either 1 for SHA1 or 2 for SHA256");
+      opts.addOption(OptionBuilder.create('d'));
     }
 
     public void parseCommandLine(String[] args)

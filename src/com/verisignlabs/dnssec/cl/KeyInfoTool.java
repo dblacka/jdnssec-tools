@@ -32,7 +32,7 @@ import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
 import com.verisignlabs.dnssec.security.DnsKeyPair;
 
 /**
- * This class forms the command line implementation of a DNSSEC DS/DLV generator
+ * This class forms the command line implementation of a key introspection tool.
  * 
  * @author David Blacka (original)
  * @author $Author: davidb $
@@ -67,16 +67,14 @@ public class KeyInfoTool
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
 
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("verbose");
+      OptionBuilder.withArgName("level");
+      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
+          + "5 is debug information, 6 is trace information.\n"
+          + "default is level 5.");
       // Argument options
-      opts.addOption(OptionBuilder.hasOptionalArg()
-          .withLongOpt("verbose")
-          .withArgName("level")
-          .withDescription(
-                           "verbosity level -- 0 is silence, "
-                               + "5 is debug information, "
-                               + "6 is trace information.\n"
-                               + "default is level 5.")
-          .create('v'));
+      opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("alg-alias");

@@ -45,6 +45,14 @@ import org.xbill.DNS.Section;
 
 import com.verisignlabs.dnssec.security.RecordComparator;
 
+/**
+ * This class forms the command line implementation of a zone file normalizer.
+ * That is, a tool to rewrite zones in a consistent, comparable format.
+ * 
+ * @author David Blacka (original)
+ * @author $Author: davidb $
+ * @version $Revision: 2218 $
+ */
 public class ZoneFormat
 {
   // private static Logger log;
@@ -79,16 +87,16 @@ public class ZoneFormat
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-        case 0:
-          rootLogger.setLevel(Level.OFF);
-          break;
-        case 5:
-        default:
-          rootLogger.setLevel(Level.FINE);
-          break;
-        case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
+          case 0:
+            rootLogger.setLevel(Level.OFF);
+            break;
+          case 5:
+          default:
+            rootLogger.setLevel(Level.FINE);
+            break;
+          case 6:
+            rootLogger.setLevel(Level.ALL);
+            break;
         }
       }
 

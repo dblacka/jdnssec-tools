@@ -93,22 +93,21 @@ public class KeyGen
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
       OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, " + "6 is trace information.\n"
+          + "5 is debug information, 6 is trace information.\n"
           + "default is level 5.");
       opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("algorithm");
-      OptionBuilder.withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA | alias, "
-          + "RSASHA1 is default.");
+      OptionBuilder.withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA "
+          + "| RSA-NSEC3-SHA1 | DSA-NSEC3-SHA1 "
+          + "| RSASHA256 | RSASHA512 | alias, RSASHA1 is default.");
       opts.addOption(OptionBuilder.create('a'));
 
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("size");
       OptionBuilder.withDescription("key size, in bits. (default = 1024)\n"
-          + "RSA|RSASHA1|RSAMD5: [512..4096]\n"
-          + "DSA:                [512..1024]\n"
-          + "DH:                 [128..4096]");
+          + "RSA: [512..4096]\n" + "DSA: [512..1024]\n" + "DH:  [128..4096]");
       opts.addOption(OptionBuilder.create('b'));
 
       OptionBuilder.hasArg();

@@ -79,27 +79,25 @@ public class VerifyZone
                          + "signatures could be cryptographically verified");
 
       // Argument options
-      opts.addOption(OptionBuilder.hasArg()
-          .withLongOpt("keydir")
-          .withArgName("dir")
-          .withDescription("directory to find " + "trusted key files")
-          .create('d'));
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("keydir");
+      OptionBuilder.withArgName("dir");
+      OptionBuilder.withDescription("directory to find " + "trusted key files");
+      opts.addOption(OptionBuilder.create('d'));
 
-      opts.addOption(OptionBuilder.hasOptionalArg()
-          .withLongOpt("verbose")
-          .withArgName("level")
-          .withDescription(
-                           "verbosity level -- 0 is silence, "
-                               + "5 is debug information, 6 is trace information.\n"
-                               + "default is level 5.")
-          .create('v'));
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("verbose");
+      OptionBuilder.withArgName("level");
+      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
+          + "5 is debug information, 6 is trace information.\n"
+          + "default is level 5.");
+      opts.addOption(OptionBuilder.create('v'));
 
-      opts.addOption(OptionBuilder.hasArg()
-          .withArgName("alias:original:mnemonic")
-          .withLongOpt("alg-alias")
-          .withDescription("Define an alias for an algorithm")
-          .create('A'));
-
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("alias:original:mnemonic");
+      OptionBuilder.withLongOpt("alg-alias");
+      OptionBuilder.withDescription("Define an alias for an algorithm");
+      opts.addOption(OptionBuilder.create('A'));
     }
 
     public void parseCommandLine(String[] args)
@@ -118,16 +116,16 @@ public class VerifyZone
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-        case 0:
-          rootLogger.setLevel(Level.OFF);
-          break;
-        case 5:
-        default:
-          rootLogger.setLevel(Level.FINE);
-          break;
-        case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
+          case 0:
+            rootLogger.setLevel(Level.OFF);
+            break;
+          case 5:
+          default:
+            rootLogger.setLevel(Level.FINE);
+            break;
+          case 6:
+            rootLogger.setLevel(Level.ALL);
+            break;
         }
       }
 
@@ -191,7 +189,7 @@ public class VerifyZone
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      f.printHelp(out, 75, "verifyZone.sh [..options..] zonefile "
+      f.printHelp(out, 75, "jdnssec-verifyzone [..options..] zonefile "
           + "[keyfile [keyfile...]]", null, opts,
                   HelpFormatter.DEFAULT_LEFT_PAD,
                   HelpFormatter.DEFAULT_DESC_PAD, null);
@@ -329,19 +327,19 @@ public class VerifyZone
 
     switch (result)
     {
-    case DNSSEC.Failed:
-      System.out.println("zone did not verify.");
-      System.exit(1);
-      break;
-    case DNSSEC.Insecure:
-      if (state.strict)
-      {
+      case DNSSEC.Failed:
         System.out.println("zone did not verify.");
         System.exit(1);
-      }
-    case DNSSEC.Secure:
-      System.out.println("zone verified.");
-      break;
+        break;
+      case DNSSEC.Insecure:
+        if (state.strict)
+        {
+          System.out.println("zone did not verify.");
+          System.exit(1);
+        }
+      case DNSSEC.Secure:
+        System.out.println("zone verified.");
+        break;
     }
     System.exit(0);
   }
