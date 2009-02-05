@@ -1,5 +1,8 @@
-2009-02-04  David Blacka  <davidb@fury.blacka.com>
+2009-02-04  David Blacka  <davidb@verisignlabs.com>
 
+	* update to dnsjava-2.0.1-vrsn-4 (updated typecodes for
+	NSEC3/NSEC3PARAM).
+	
 	* SignUtils: use JDK-native SHA-256 code instead of broken
 	contributed implementation.
 
