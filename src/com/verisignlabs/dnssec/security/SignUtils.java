@@ -1235,17 +1235,17 @@ public class SignUtils
     try
     {
       byte[] digest;
-
+      MessageDigest md;
+      
       switch (digest_alg)
       {
         case DSRecord.SHA1_DIGEST_ID:
-          MessageDigest md = MessageDigest.getInstance("SHA");
+          md = MessageDigest.getInstance("SHA");
           digest = md.digest(os.toByteArray());
           break;
         case DSRecord.SHA256_DIGEST_ID:
-          SHA256 sha = new SHA256();
-          sha.setData(os.toByteArray());
-          digest = sha.getDigest();
+          md = MessageDigest.getInstance("SHA-256");
+          digest = md.digest(os.toByteArray());
           break;
         default:
           throw new IllegalArgumentException("Unknown digest id: " + digest_alg);
