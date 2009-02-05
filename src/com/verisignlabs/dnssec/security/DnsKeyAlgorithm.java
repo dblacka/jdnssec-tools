@@ -122,6 +122,17 @@ public class DnsKeyAlgorithm
     // Load the (now) standard aliases
     addAlias(6, "DSA-NSEC3-SHA1", DNSSEC.DSA);
     addAlias(7, "RSA-NSEC3-SHA1", DNSSEC.RSASHA1);
+
+    // And the hopefully-soon-to-be standard new RSA algorithms.
+    // see http://tools.ietf.org/wg/dnsext/draft-ietf-dnsext-dnssec-rsasha256
+    // NOTE: the algorithm numbers are educated guesses.
+    // Also NOTE: these algorithms aren't available in Java 1.4's sunprovider
+    // implementation.
+    addAlgorithm(8, new Entry("SHA256withRSA", RSA));
+    addMnemonic("RSASHA256", 8);
+
+    addAlgorithm(9, new Entry("SHA512withRSA", RSA));
+    addMnemonic("RSASHA512", 9);
   }
 
   private void addAlgorithm(int algorithm, Entry entry)
@@ -215,14 +226,14 @@ public class DnsKeyAlgorithm
   {
     switch (baseType(algorithm))
     {
-    case RSA:
-      return DNSSEC.RSASHA1;
-    case DSA:
-      return DNSSEC.DSA;
-    case DH:
-      return DNSSEC.DH;
-    default:
-      return UNKNOWN;
+      case RSA:
+        return DNSSEC.RSASHA1;
+      case DSA:
+        return DNSSEC.DSA;
+      case DH:
+        return DNSSEC.DH;
+      default:
+        return UNKNOWN;
     }
   }
 
@@ -237,46 +248,46 @@ public class DnsKeyAlgorithm
     KeyPair pair = null;
     switch (baseType(algorithm))
     {
-    case RSA:
-      if (mRSAKeyGenerator == null)
-      {
-        mRSAKeyGenerator = KeyPairGenerator.getInstance("RSA");
-      }
+      case RSA:
+        if (mRSAKeyGenerator == null)
+        {
+          mRSAKeyGenerator = KeyPairGenerator.getInstance("RSA");
+        }
 
-      RSAKeyGenParameterSpec rsa_spec;
-      if (useLargeExp)
-      {
-        rsa_spec = new RSAKeyGenParameterSpec(keysize,
-            RSAKeyGenParameterSpec.F4);
-      }
-      else
-      {
-        rsa_spec = new RSAKeyGenParameterSpec(keysize,
-            RSAKeyGenParameterSpec.F0);
-      }
-      try
-      {
-        mRSAKeyGenerator.initialize(rsa_spec);
-      }
-      catch (InvalidAlgorithmParameterException e)
-      {
-        // Fold the InvalidAlgorithmParameterException into our existing
-        // thrown exception. Ugly, but requires less code change.
-        throw new NoSuchAlgorithmException("invalid key parameter spec");
-      }
+        RSAKeyGenParameterSpec rsa_spec;
+        if (useLargeExp)
+        {
+          rsa_spec = new RSAKeyGenParameterSpec(keysize,
+                                                RSAKeyGenParameterSpec.F4);
+        }
+        else
+        {
+          rsa_spec = new RSAKeyGenParameterSpec(keysize,
+                                                RSAKeyGenParameterSpec.F0);
+        }
+        try
+        {
+          mRSAKeyGenerator.initialize(rsa_spec);
+        }
+        catch (InvalidAlgorithmParameterException e)
+        {
+          // Fold the InvalidAlgorithmParameterException into our existing
+          // thrown exception. Ugly, but requires less code change.
+          throw new NoSuchAlgorithmException("invalid key parameter spec");
+        }
 
-      pair = mRSAKeyGenerator.generateKeyPair();
-      break;
-    case DSA:
-      if (mDSAKeyGenerator == null)
-      {
-        mDSAKeyGenerator = KeyPairGenerator.getInstance("DSA");
-      }
-      mDSAKeyGenerator.initialize(keysize);
-      pair = mDSAKeyGenerator.generateKeyPair();
-      break;
-    default:
-      throw new NoSuchAlgorithmException("Alg " + algorithm);
+        pair = mRSAKeyGenerator.generateKeyPair();
+        break;
+      case DSA:
+        if (mDSAKeyGenerator == null)
+        {
+          mDSAKeyGenerator = KeyPairGenerator.getInstance("DSA");
+        }
+        mDSAKeyGenerator.initialize(keysize);
+        pair = mDSAKeyGenerator.generateKeyPair();
+        break;
+      default:
+        throw new NoSuchAlgorithmException("Alg " + algorithm);
     }
 
     return pair;
