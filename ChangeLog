@@ -1,5 +1,13 @@
 2009-02-07  David Blacka  <davidb@verisignlabs.com>
 
+	* SignZone: add argument for setting the TTL of the NSEC3PARAM
+	record.  This is so we can match current dnssec-signzone
+	(9.6.0-p1) behavior of using a TTL of zero.
+
+	* Update dnsjava to 2.0.6-vrsn-2, commons-cli to 1.1
+
+	* SignUtils: fix bug where NSEC3 algorithm and flags were transposed.
+
 	* SignUtils: Make sure to use the SOA minimum value for NSEC TTLs,
 	instead of the ttl of the "node".
 
