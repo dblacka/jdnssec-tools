@@ -151,7 +151,7 @@ public class JCEDnsSecSigner
         System.out.println("missing private key that goes with:\n"
             + pair.getDNSKEYRecord());
         throw new GeneralSecurityException(
-            "cannot sign without a valid Signer (probably missing private key)");
+                                           "cannot sign without a valid Signer (probably missing private key)");
       }
 
       // sign the data.
@@ -246,8 +246,14 @@ public class JCEDnsSecSigner
                                        rrset.getType(), last_cut);
 
     // we don't sign non-normal sets (delegations, glue, invalid).
-    if (type == SignUtils.RR_DELEGATION) { return rrset.getName(); }
-    if (type == SignUtils.RR_GLUE || type == SignUtils.RR_INVALID) { return last_cut; }
+    if (type == SignUtils.RR_DELEGATION)
+    {
+      return rrset.getName();
+    }
+    if (type == SignUtils.RR_GLUE || type == SignUtils.RR_INVALID)
+    {
+      return last_cut;
+    }
 
     // check for the zone apex keyset.
     if (rrset.getName().equals(zonename) && rrset.getType() == Type.DNSKEY)
@@ -316,7 +322,9 @@ public class JCEDnsSecSigner
    *          If true, then only turn on the Opt-In flag when there are insecure
    *          delegations in the span. Currently this only works for
    *          NSEC_EXP_OPT_IN mode.
-   * 
+   * @param nsec3paramttl
+   *          The TTL to use for the generated NSEC3PARAM record. Negative
+   *          values will use the SOA TTL.
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
    * 
@@ -327,7 +335,7 @@ public class JCEDnsSecSigner
                         List zskpairs, Date start, Date expire,
                         boolean fullySignKeyset, int ds_digest_alg, int mode,
                         List includedNames, byte[] salt, int iterations,
-                        boolean beConservative)
+                        long nsec3paramttl, boolean beConservative)
       throws IOException, GeneralSecurityException
   {
     // Remove any existing generated DNSSEC records (NSEC, NSEC3, NSEC3PARAM,
@@ -348,20 +356,21 @@ public class JCEDnsSecSigner
     // Generate the NSEC or NSEC3 records based on 'mode'
     switch (mode)
     {
-    case NSEC_MODE:
-      SignUtils.generateNSECRecords(zonename, records);
-      break;
-    case NSEC3_MODE:
-      SignUtils.generateNSEC3Records(zonename, records, salt, iterations);
-      break;
-    case NSEC3_OPTOUT_MODE:
-      SignUtils.generateOptOutNSEC3Records(zonename, records, includedNames,
-                                           salt, iterations);
-      break;
-    case NSEC_EXP_OPT_IN:
-      SignUtils.generateOptInNSECRecords(zonename, records, includedNames,
-                                         beConservative);
-      break;
+      case NSEC_MODE:
+        SignUtils.generateNSECRecords(zonename, records);
+        break;
+      case NSEC3_MODE:
+        SignUtils.generateNSEC3Records(zonename, records, salt, iterations,
+                                       nsec3paramttl);
+        break;
+      case NSEC3_OPTOUT_MODE:
+        SignUtils.generateOptOutNSEC3Records(zonename, records, includedNames,
+                                             salt, iterations, nsec3paramttl);
+        break;
+      case NSEC_EXP_OPT_IN:
+        SignUtils.generateOptInNSECRecords(zonename, records, includedNames,
+                                           beConservative);
+        break;
     }
 
     // Re-sort so we can assemble into rrsets.
@@ -443,7 +452,7 @@ public class JCEDnsSecSigner
   {
     return signZone(zonename, records, kskpairs, zskpairs, start, expire,
                     fullySignKeyset, ds_digest_alg, NSEC_MODE, null, null, 0,
-                    false);
+                    0, false);
   }
 
   /**
@@ -478,7 +487,9 @@ public class JCEDnsSecSigner
    *          The number of iterations to use for the NSEC3 hashing.
    * @param ds_digest_alg
    *          The digest algorithm to use when generating DS records.
-   * 
+   * @param nsec3paramttl
+   *          The TTL to use for the generated NSEC3PARAM record. Negative
+   *          values will use the SOA TTL.
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
    * 
@@ -489,20 +500,20 @@ public class JCEDnsSecSigner
                             List zskpairs, Date start, Date expire,
                             boolean fullySignKeyset, boolean useOptOut,
                             List includedNames, byte[] salt, int iterations,
-                            int ds_digest_alg)
+                            int ds_digest_alg, long nsec3paramttl)
       throws IOException, GeneralSecurityException
   {
     if (useOptOut)
     {
       return signZone(zonename, records, kskpairs, zskpairs, start, expire,
                       fullySignKeyset, ds_digest_alg, NSEC3_OPTOUT_MODE,
-                      includedNames, salt, iterations, false);
+                      includedNames, salt, iterations, nsec3paramttl, false);
     }
     else
     {
       return signZone(zonename, records, kskpairs, zskpairs, start, expire,
                       fullySignKeyset, ds_digest_alg, NSEC3_MODE, null, salt,
-                      iterations, false);
+                      iterations, nsec3paramttl, false);
     }
   }
 
@@ -546,6 +557,6 @@ public class JCEDnsSecSigner
 
     return signZone(zonename, records, kskpairs, zskpairs, start, expire,
                     fullySignKeyset, ds_digest_alg, NSEC_EXP_OPT_IN,
-                    NSECIncludeNames, null, 0, useConservativeOptIn);
+                    NSECIncludeNames, null, 0, 0, useConservativeOptIn);
   }
 }

@@ -338,16 +338,18 @@ public class SignUtils
   public static byte[] convertDSASignature(DSAParams params, byte[] signature)
       throws SignatureException
   {
-    if (signature[0] != ASN1_SEQ || signature[2] != ASN1_INT) 
+    if (signature[0] != ASN1_SEQ || signature[2] != ASN1_INT)
     {
-      throw new SignatureException("Invalid ASN.1 signature format: expected SEQ, INT"); 
+      throw new SignatureException(
+                                   "Invalid ASN.1 signature format: expected SEQ, INT");
     }
 
     byte r_pad = (byte) (signature[3] - 20);
 
-    if (signature[24 + r_pad] != ASN1_INT) 
-    { 
-      throw new SignatureException("Invalid ASN.1 signature format: expected SEQ, INT, INT"); 
+    if (signature[24 + r_pad] != ASN1_INT)
+    {
+      throw new SignatureException(
+                                   "Invalid ASN.1 signature format: expected SEQ, INT, INT");
     }
 
     log.finer("(start) ASN.1 DSA Sig:\n" + base64.toString(signature));
@@ -503,8 +505,7 @@ public class SignUtils
       // Current record is part of the current RRset.
       if (rrset.getName().equals(r.getName())
           && rrset.getDClass() == r.getDClass()
-          && ((r.getType() == Type.RRSIG && rrset.getType() == ((RRSIGRecord) r).getTypeCovered()) ||
-              rrset.getType() == r.getType()))
+          && ((r.getType() == Type.RRSIG && rrset.getType() == ((RRSIGRecord) r).getTypeCovered()) || rrset.getType() == r.getType()))
       {
         rrset.addRR(r);
         continue;
@@ -585,7 +586,7 @@ public class SignUtils
 
   /**
    * Given a canonical (by name) ordered list of records in a zone, generate the
-   * NXT records in place.
+   * NSEC records in place.
    * 
    * Note that the list that the records are stored in must support the
    * listIterator.add() operation.
@@ -620,8 +621,8 @@ public class SignUtils
         break;
       }
     }
-    if (nsec_ttl == 0) 
-    { 
+    if (nsec_ttl == 0)
+    {
       throw new IllegalArgumentException("Zone did not contain a SOA record");
     }
 
@@ -699,8 +700,31 @@ public class SignUtils
     log.finer("Generated: " + nsec);
   }
 
+  /**
+   * Given a canonical (by name) ordered list of records in a zone, generate the
+   * NSEC3 records in place.
+   * 
+   * Note that the list that the records are stored in must support the
+   * listIterator.add() operation.
+   * 
+   * @param zonename
+   *          the name of the zone (used to distinguish between zone apex NS
+   *          RRsets and delegations).
+   * @param records
+   *          a list of {@link org.xbill.DNS.Record} objects in DNSSEC canonical
+   *          order.
+   * @param salt
+   *          The NSEC3 salt to use (may be null or empty for no salt).
+   * @param iterations
+   *          The number of hash iterations to use.
+   * @param nsec3param_ttl
+   *          The TTL to use for the generated NSEC3PARAM records (NSEC3 records
+   *          will use the SOA minimum)
+   * @throws NoSuchAlgorithmException
+   */
   public static void generateNSEC3Records(Name zonename, List records,
-                                          byte[] salt, int iterations)
+                                          byte[] salt, int iterations,
+                                          long nsec3param_ttl)
       throws NoSuchAlgorithmException
   {
     List proto_nsec3s = new ArrayList();
@@ -710,7 +734,6 @@ public class SignUtils
     Name last_cut = null;
 
     long nsec3_ttl = 0;
-    long nsec3param_ttl = 0;
 
     for (Iterator i = records.iterator(); i.hasNext();)
     {
@@ -731,7 +754,10 @@ public class SignUtils
       {
         SOARecord soa = (SOARecord) r;
         nsec3_ttl = soa.getMinimum();
-        nsec3param_ttl = soa.getTTL();
+        if (nsec3param_ttl < 0)
+        {
+          nsec3param_ttl = soa.getTTL();
+        }
       }
 
       // For the first iteration, we create our current node.
@@ -785,9 +811,38 @@ public class SignUtils
 
   }
 
+  /**
+   * Given a canonical (by name) ordered list of records in a zone, generate the
+   * NSEC3 records in place using Opt-Out NSEC3 records. This means that
+   * non-apex NS RRs (and glue below those delegations) will, by default, not be
+   * included in the NSEC3 chain.
+   * 
+   * Note that the list that the records are stored in must support the
+   * listIterator.add() operation.
+   * 
+   * @param zonename
+   *          the name of the zone (used to distinguish between zone apex NS
+   *          RRsets and delegations).
+   * @param records
+   *          a list of {@link org.xbill.DNS.Record} objects in DNSSEC canonical
+   *          order.
+   * @param includedNames
+   *          A list of {@link org.xbill.DNS.Name} objects. These names will be
+   *          included in the NSEC3 chain (if they exist in the zone)
+   *          regardless.
+   * @param salt
+   *          The NSEC3 salt to use (may be null or empty for no salt).
+   * @param iterations
+   *          The number of hash iterations to use.
+   * @param nsec3param_ttl
+   *          The TTL to use for the generated NSEC3PARAM records (NSEC3 records
+   *          will use the SOA minimum)
+   * @throws NoSuchAlgorithmException
+   */
   public static void generateOptOutNSEC3Records(Name zonename, List records,
                                                 List includedNames,
-                                                byte[] salt, int iterations)
+                                                byte[] salt, int iterations,
+                                                long nsec3param_ttl)
       throws NoSuchAlgorithmException
   {
     List proto_nsec3s = new ArrayList();
@@ -797,7 +852,6 @@ public class SignUtils
     Name last_cut = null;
 
     long nsec3_ttl = 0;
-    long nsec3param_ttl = 0;
 
     HashSet includeSet = null;
     if (includedNames != null)
@@ -824,7 +878,10 @@ public class SignUtils
       {
         SOARecord soa = (SOARecord) r;
         nsec3_ttl = soa.getMinimum();
-        nsec3param_ttl = soa.getTTL();
+        if (nsec3param_ttl < 0)
+        {
+          nsec3param_ttl = soa.getTTL();
+        }
       }
 
       // For the first iteration, we create our current node.
@@ -883,6 +940,25 @@ public class SignUtils
     records.add(nsec3param);
   }
 
+  /**
+   * For a given node (representing all of the RRsets at a given name), generate
+   * all of the necessary NSEC3 records for it. That is, generate the NSEC3 for
+   * the node itself, and for any potential empty non-terminals.
+   * 
+   * @param node
+   *          The node in question.
+   * @param zonename
+   *          The zonename.
+   * @param salt
+   *          The salt to use for the NSEC3 RRs
+   * @param iterations
+   *          The iterations to use for the NSEC3 RRs.
+   * @param optIn
+   *          If true, the NSEC3 will have the Opt-Out flag set.
+   * @param nsec3s
+   *          The current list of NSEC3s -- this will be updated.
+   * @throws NoSuchAlgorithmException
+   */
   private static void generateNSEC3ForNode(NodeInfo node, Name zonename,
                                            byte[] salt, int iterations,
                                            boolean optIn, List nsec3s)
@@ -912,6 +988,27 @@ public class SignUtils
     nsec3s.add(nsec3);
   }
 
+  /**
+   * Create a "prototype" NSEC3 record. Basically, a mutable NSEC3 record.
+   * 
+   * @param name
+   *          The original ownername to use.
+   * @param zonename
+   *          The zonename to use.
+   * @param ttl
+   *          The TTL to use.
+   * @param salt
+   *          The salt to use.
+   * @param iterations
+   *          The number of hash iterations to use.
+   * @param optIn
+   *          The value of the Opt-Out flag.
+   * @param types
+   *          The typecodes present at this name.
+   * @return A mutable NSEC3 record.
+   * 
+   * @throws NoSuchAlgorithmException
+   */
   private static ProtoNSEC3 generateNSEC3(Name name, Name zonename, long ttl,
                                           byte[] salt, int iterations,
                                           boolean optIn, int[] types)
@@ -921,14 +1018,26 @@ public class SignUtils
                                    iterations, salt);
     byte flags = (byte) (optIn ? 0x01 : 0x00);
 
-    ProtoNSEC3 r = new ProtoNSEC3(hash, name, zonename, DClass.IN, ttl, flags,
-                                  NSEC3Record.SHA1_DIGEST_ID, iterations, salt,
-                                  null, types);
+    ProtoNSEC3 r = new ProtoNSEC3(hash, name, zonename, DClass.IN, ttl,
+                                  NSEC3Record.SHA1_DIGEST_ID, flags,
+                                  iterations, salt, null, types);
 
     log.finer("Generated: " + r);
     return r;
   }
 
+  /**
+   * Given a list of {@link ProtoNSEC3} object (mutable NSEC3 RRs), convert the
+   * list into the set of actual {@link org.xbill.DNS.NSEC3Record} objects. This
+   * will remove duplicates and finalize the records.
+   * 
+   * @param nsec3s
+   *          The list of ProtoNSEC3 objects
+   * @param ttl
+   *          The TTL to assign to the finished NSEC3 records. In general, this
+   *          should match the SOA minimum value for the zone.
+   * @return The list of {@link org.xbill.DNS.NSEC3Record} objects.
+   */
   private static List finishNSEC3s(List nsec3s, long ttl)
   {
     if (nsec3s == null) return null;

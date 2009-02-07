@@ -97,6 +97,7 @@ public class SignZone
     public byte[]   salt            = null;
     public int      iterations      = 0;
     public int      digest_id       = DSRecord.SHA1_DIGEST_ID;
+    public long     nsec3paramttl   = -1;
 
     public CLIState()
     {
@@ -124,7 +125,7 @@ public class SignZone
       OptionBuilder.withDescription("verbosity level.");
       // Argument options
       opts.addOption(OptionBuilder.create('v'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("dir");
       OptionBuilder.withLongOpt("keyset-directory");
@@ -159,7 +160,7 @@ public class SignZone
       OptionBuilder.withLongOpt("ksk-file");
       OptionBuilder.withDescription("this key is a key signing key (may repeat).");
       opts.addOption(OptionBuilder.create('k'));
-   
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("file");
       OptionBuilder.withLongOpt("include-file");
@@ -176,13 +177,13 @@ public class SignZone
       OptionBuilder.withArgName("hex value");
       OptionBuilder.withDescription("supply a salt value.");
       opts.addOption(OptionBuilder.create('S'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("random-salt");
       OptionBuilder.withArgName("length");
       OptionBuilder.withDescription("generate a random salt.");
       opts.addOption(OptionBuilder.create('R'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("iterations");
       OptionBuilder.withArgName("value");
@@ -190,11 +191,17 @@ public class SignZone
       opts.addOption(OptionBuilder.create());
 
       OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("nsec3paramttl");
+      OptionBuilder.withArgName("ttl");
+      OptionBuilder.withDescription("use this value for the NSEC3PARAM RR ttl");
+      opts.addOption(OptionBuilder.create());
+
+      OptionBuilder.hasArg();
       OptionBuilder.withArgName("alias:original:mnemonic");
       OptionBuilder.withLongOpt("alg-alias");
       OptionBuilder.withDescription("Define an alias for an algorithm (may repeat).");
       opts.addOption(OptionBuilder.create('A'));
-      
+
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("id");
       OptionBuilder.withLongOpt("ds-digest");
@@ -349,6 +356,11 @@ public class SignZone
           System.err.println("error: DS digest ID is not a valid identifier");
           usage();
         }
+      }
+
+      if ((optstr = cli.getOptionValue("nsec3paramttl")) != null)
+      {
+        nsec3paramttl = parseInt(optstr, -1);
       }
 
       String[] files = cli.getArgs();
@@ -715,7 +727,10 @@ public class SignZone
     {
       DnsKeyPair kp = (DnsKeyPair) i.next();
       Name keyname = kp.getDNSKEYRecord().getName();
-      if (!keyname.equals(zonename)) { return false; }
+      if (!keyname.equals(zonename))
+      {
+        return false;
+      }
     }
 
     return true;
@@ -852,7 +867,8 @@ public class SignZone
                                             state.fullySignKeyset,
                                             state.useOptOut,
                                             state.includeNames, state.salt,
-                                            state.iterations, state.digest_id);
+                                            state.iterations, state.digest_id,
+                                            state.nsec3paramttl);
     }
     else
     {
