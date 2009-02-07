@@ -77,7 +77,7 @@ public class SignUtils
    *          the RRSIG expiration time.
    * @param sig_ttl
    *          the TTL of the resulting RRSIG record.
-   *          
+   * 
    * @return a prototype signature based on the RRset and key information.
    */
   public static RRSIGRecord generatePreRRSIG(RRset rrset, DNSKEYRecord key,
@@ -104,7 +104,7 @@ public class SignUtils
    *          the RRSIG expiration time.
    * @param sig_ttl
    *          the TTL of the result RRSIG record.
-   *          
+   * 
    * @return a prototype signature based on the Record and key information.
    */
   public static RRSIGRecord generatePreRRSIG(Record rec, DNSKEYRecord key,
@@ -122,8 +122,8 @@ public class SignUtils
    * 
    * @param presig
    *          the RRSIG RR prototype.
-   * @return the RDATA portion of the prototype RRSIG record. This forms the first
-   *         part of the data to be signed.
+   * @return the RDATA portion of the prototype RRSIG record. This forms the
+   *         first part of the data to be signed.
    */
   private static byte[] generatePreSigRdata(RRSIGRecord presig)
   {
@@ -338,13 +338,17 @@ public class SignUtils
   public static byte[] convertDSASignature(DSAParams params, byte[] signature)
       throws SignatureException
   {
-    if (signature[0] != ASN1_SEQ || signature[2] != ASN1_INT) { throw new SignatureException(
-                                                                                             "Invalid ASN.1 signature format: expected SEQ, INT"); }
+    if (signature[0] != ASN1_SEQ || signature[2] != ASN1_INT) 
+    {
+      throw new SignatureException("Invalid ASN.1 signature format: expected SEQ, INT"); 
+    }
 
     byte r_pad = (byte) (signature[3] - 20);
 
-    if (signature[24 + r_pad] != ASN1_INT) { throw new SignatureException(
-                                                                          "Invalid ASN.1 signature format: expected SEQ, INT, INT"); }
+    if (signature[24 + r_pad] != ASN1_INT) 
+    { 
+      throw new SignatureException("Invalid ASN.1 signature format: expected SEQ, INT, INT"); 
+    }
 
     log.finer("(start) ASN.1 DSA Sig:\n" + base64.toString(signature));
 
@@ -499,7 +503,8 @@ public class SignUtils
       // Current record is part of the current RRset.
       if (rrset.getName().equals(r.getName())
           && rrset.getDClass() == r.getDClass()
-          && ((r.getType() == Type.RRSIG && rrset.getType() == ((RRSIGRecord) r).getTypeCovered()) || rrset.getType() == r.getType()))
+          && ((r.getType() == Type.RRSIG && rrset.getType() == ((RRSIGRecord) r).getTypeCovered()) ||
+              rrset.getType() == r.getType()))
       {
         rrset.addRR(r);
         continue;
@@ -601,6 +606,24 @@ public class SignUtils
 
     Name last_cut = null;
     int backup;
+    long nsec_ttl = 0;
+
+    // First find the SOA record -- it should be near the beginning -- and get
+    // the soa minimum
+    for (Iterator i = records.iterator(); i.hasNext();)
+    {
+      Object o = i.next();
+      if (o instanceof SOARecord)
+      {
+        SOARecord soa = (SOARecord) o;
+        nsec_ttl = soa.getMinimum();
+        break;
+      }
+    }
+    if (nsec_ttl == 0) 
+    { 
+      throw new IllegalArgumentException("Zone did not contain a SOA record");
+    }
 
     for (ListIterator i = records.listIterator(); i.hasNext();)
     {
@@ -634,7 +657,7 @@ public class SignUtils
       if (last_node != null)
       {
         NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass,
-                                         last_node.ttl, current_node.name,
+                                         nsec_ttl, current_node.name,
                                          last_node.getTypes());
         // Note: we have to add this through the iterator, otherwise
         // the next access via the iterator will generate a
@@ -661,7 +684,7 @@ public class SignUtils
     if (last_node != null)
     {
       NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass,
-                                       last_node.ttl, current_node.name,
+                                       nsec_ttl, current_node.name,
                                        last_node.getTypes());
       records.add(last_node.nsecIndex - 1, nsec);
       log.finer("Generated: " + nsec);
@@ -669,7 +692,7 @@ public class SignUtils
 
     // Generate last NSEC
     NSECRecord nsec = new NSECRecord(current_node.name, current_node.dclass,
-                                     current_node.ttl, zonename,
+                                     nsec_ttl, zonename,
                                      current_node.getTypes());
     records.add(nsec);
 
@@ -1236,7 +1259,7 @@ public class SignUtils
     {
       byte[] digest;
       MessageDigest md;
-      
+
       switch (digest_alg)
       {
         case DSRecord.SHA1_DIGEST_ID:
