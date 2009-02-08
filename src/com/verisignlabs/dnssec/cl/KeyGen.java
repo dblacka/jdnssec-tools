@@ -54,7 +54,7 @@ public class KeyGen
     private Options opts;
     public int      algorithm  = 5;
     public int      keylength  = 1024;
-    public boolean  useLargeE  = false;
+    public boolean  useLargeE  = true;
     public String   outputfile = null;
     public File     keydir     = null;
     public boolean  zoneKey    = true;
@@ -80,7 +80,8 @@ public class KeyGen
       opts.addOption("h", "help", false, "Print this message.");
       opts.addOption("k", "kskflag", false,
                      "Key is a key-signing-key (sets the SEP flag).");
-      opts.addOption("e", "large-exponent", false, "Use large RSA exponent");
+      opts.addOption("e", "large-exponent", false, "Use large RSA exponent (default)");
+      opts.addOption("E", "small-exponent", false, "Use small RSA exponent");
 
       // Argument options
       OptionBuilder.hasArg();
@@ -313,6 +314,7 @@ public class KeyGen
     else
     {
       BINDKeyUtils.writeKeyFiles(pair, state.keydir);
+      System.out.println(BINDKeyUtils.keyFileBase(pair));
     }
   }
 
