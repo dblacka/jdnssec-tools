@@ -20,6 +20,7 @@
 package com.verisignlabs.dnssec.cl;
 
 import java.io.PrintWriter;
+import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -48,7 +49,7 @@ public class KeyInfoTool
   private static class CLIState
   {
     private Options opts;
-    public String   keyname = null;
+    public String[] keynames = null;
 
     public CLIState()
     {
@@ -118,15 +119,13 @@ public class KeyInfoTool
           addArgAlias(optstrs[i]);
         }
       }
-      String[] cl_args = cli.getArgs();
+      keynames = cli.getArgs();
 
-      if (cl_args.length < 1)
+      if (keynames.length < 1)
       {
         System.err.println("error: missing key file ");
         usage();
       }
-
-      keyname = cl_args[0];
     }
 
     /** Print out the usage and help statements, then quit. */
@@ -190,25 +189,49 @@ public class KeyInfoTool
   public static void execute(CLIState state) throws Exception
   {
 
-    DnsKeyPair key = BINDKeyUtils.loadKey(state.keyname, null);
-    DNSKEYRecord dnskey = key.getDNSKEYRecord();
-    DnsKeyAlgorithm dnskeyalg = DnsKeyAlgorithm.getInstance();
-
-    boolean isSEP = (dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) != 0;
-
-    System.out.println("Name: " + dnskey.getName());
-    System.out.println("SEP: " + isSEP);
-
-    System.out.println("Algorithm: "
-        + dnskeyalg.algToString(dnskey.getAlgorithm()));
-    System.out.println("ID: " + dnskey.getFootprint());
-    if (dnskeyalg.baseType(dnskey.getAlgorithm()) == DnsKeyAlgorithm.RSA)
+    for (int i = 0; i < state.keynames.length; ++i)
     {
-      RSAPublicKey pub = (RSAPublicKey) key.getPublic();
-      System.out.println("RSA Public Exponent: " + pub.getPublicExponent());
-      System.out.println("RSA Modulus: " + pub.getModulus());
-    }
+      String keyname = state.keynames[i];
+      DnsKeyPair key = BINDKeyUtils.loadKey(keyname, null);
+      DNSKEYRecord dnskey = key.getDNSKEYRecord();
+      DnsKeyAlgorithm dnskeyalg = DnsKeyAlgorithm.getInstance();
 
+      boolean isSEP = (dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) != 0;
+
+      System.out.println(keyname + ":");
+      System.out.println("Name: " + dnskey.getName());
+      System.out.println("SEP: " + isSEP);
+
+      System.out.println("Algorithm: "
+          + dnskeyalg.algToString(dnskey.getAlgorithm()) + " ("
+          + dnskey.getAlgorithm() + ")");
+      System.out.println("ID: " + dnskey.getFootprint());
+      System.out.println("KeyFileBase: " + BINDKeyUtils.keyFileBase(key));
+      int basetype = dnskeyalg.baseType(dnskey.getAlgorithm());
+      switch (basetype)
+      {
+        case DnsKeyAlgorithm.RSA:
+        {
+          RSAPublicKey pub = (RSAPublicKey) key.getPublic();
+          System.out.println("RSA Public Exponent: " + pub.getPublicExponent());
+          System.out.println("RSA Modulus: " + pub.getModulus());
+          break;
+        }
+        case DnsKeyAlgorithm.DSA:
+        {
+          DSAPublicKey pub = (DSAPublicKey) key.getPublic();
+          System.out.println("DSA base (G): " + pub.getParams().getG());
+          System.out.println("DSA prime (P): " + pub.getParams().getP());
+          System.out.println("DSA subprime (Q): " + pub.getParams().getQ());
+          System.out.println("DSA public (Y): " + pub.getY());
+          break;
+        }
+      }
+      if (state.keynames.length - i > 1) 
+      {
+        System.out.println();
+      }
+    }
   }
 
   public static void main(String[] args)
