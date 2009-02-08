@@ -183,8 +183,8 @@ public class ZoneFormat
 
     while ((r = master.nextRecord()) != null)
     {
-      // This is a relatively clumsy way to lower-case all of the Names in the
-      // zone.
+      // Normalize each record by round-tripping it through canonical wire line
+      // format. Mostly this just lowercases names that are subject to it.
       byte[] wire = r.toWireCanonical();
       Record canon_record = Record.fromWire(wire, Section.ANSWER);
       res.add(canon_record);
@@ -195,7 +195,7 @@ public class ZoneFormat
 
   private static void formatZone(List zone)
   {
-    // Sort both zones.
+    // Put the zone into a consistent (name and RR type) order.
     RecordComparator cmp = new RecordComparator();
 
     Collections.sort(zone, cmp);
