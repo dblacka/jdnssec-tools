@@ -120,14 +120,17 @@ public class DnsKeyAlgorithm
     addMnemonic("RSA", DNSSEC.RSASHA1);
 
     // Load the (now) standard aliases
-    addAlias(6, "DSA-NSEC3-SHA1", DNSSEC.DSA);
-    addAlias(7, "RSA-NSEC3-SHA1", DNSSEC.RSASHA1);
-
+    addAlias(DNSSEC.DSA_NSEC3_SHA1, "DSA-NSEC3-SHA1", DNSSEC.DSA);
+    addAlias(DNSSEC.RSA_NSEC3_SHA1, "RSA-NSEC3-SHA1", DNSSEC.RSASHA1);
+    // Also recognize the BIND 9.6 mnemonics
+    addMnemonic("NSEC3DSA", DNSSEC.DSA_NSEC3_SHA1);
+    addMnemonic("NSEC3RSASHA1", DNSSEC.RSA_NSEC3_SHA1);
+    
     // And the hopefully-soon-to-be standard new RSA algorithms.
     // see http://tools.ietf.org/wg/dnsext/draft-ietf-dnsext-dnssec-rsasha256
     // NOTE: the algorithm numbers are educated guesses.
     // Also NOTE: these algorithms aren't available in Java 1.4's sunprovider
-    // implementation.
+    // implementation (but are in java 1.5's and later).
     addAlgorithm(8, new Entry("SHA256withRSA", RSA));
     addMnemonic("RSASHA256", 8);
 
