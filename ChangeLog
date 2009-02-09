@@ -1,3 +1,14 @@
+2009-02-08  David Blacka  <davidb@verisignlabs.com>
+
+	* KeyGen: make RSA large exponent the default.  Make it possible
+	to select small exponent.
+
+	* KeyInfoTool: add more info to the output, handle multiple files
+	on the command line.
+
+	* DnsKeyAlgorithm: use DNSjava constants, BIND 9.6 mnemonics for
+	NSEC3 key aliases.
+
 2009-02-07  David Blacka  <davidb@verisignlabs.com>
 
 	* SignZone: add argument for setting the TTL of the NSEC3PARAM
