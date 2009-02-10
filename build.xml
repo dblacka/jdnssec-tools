@@ -44,6 +44,8 @@
     <javac srcdir="${build.src}" 
            destdir="${build.dest}"
            classpathref="project.classpath"
+           source="1.4"
+           target="1.4"
            deprecation="true" 
            includes="com/verisignlabs/dnssec/" />
   </target>
