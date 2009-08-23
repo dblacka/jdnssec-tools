@@ -138,23 +138,23 @@ public class ZoneUtils
 
     return null;
   }
-  
+
   public static List findRRs(List records, Name name, int type)
   {
     List res = new ArrayList();
     for (Iterator i = records.iterator(); i.hasNext();)
     {
       Object o = i.next();
-      
+
       if (o instanceof Record)
       {
         Record r = (Record) o;
-        if (r.getName().equals(name) && r.getType() == type) 
+        if (r.getName().equals(name) && r.getType() == type)
         {
           res.add(r);
         }
-              }
-      else if (o instanceof RRset) 
+      }
+      else if (o instanceof RRset)
       {
         RRset r = (RRset) o;
         if (r.getName().equals(name) && r.getType() == type)
@@ -166,9 +166,30 @@ public class ZoneUtils
         }
       }
     }
-    
+
     return res;
   }
-  
-}
 
+  /** This is an alternate way to format an RRset into a string */
+  public static String rrsetToString(RRset rrset, boolean includeSigs)
+  {
+    StringBuffer out = new StringBuffer();
+
+    for (Iterator i = rrset.rrs(false); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+      out.append(r.toString());
+      out.append("\n");
+    }
+    if (includeSigs)
+    {
+      for (Iterator i = rrset.sigs(); i.hasNext();)
+      {
+        Record r = (Record) i.next();
+        out.append(r.toString());
+        out.append("\n");
+      }
+    }
+    return out.toString();
+  }
+}

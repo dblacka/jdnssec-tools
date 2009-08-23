@@ -3,7 +3,10 @@
 thisdir=`dirname $0`
 basedir=`cd $thisdir/..; pwd`
 
-ulimit -n `ulimit -H -n`
+ulimit_max=`ulimit -H -n`
+if [ $ulimit_max != "unlimited" ]; then
+    ulimit -n $ulimit_max
+fi
 
 # set the classpath
 CLASSPATH=$CLASSPATH:$basedir/build/classes

@@ -128,7 +128,7 @@ public class JCEDnsSecSigner
     if (keypairs.size() == 0) return null;
 
     // first, pre-calculate the RRset bytes.
-    byte[] rrset_data = SignUtils.generateCanonicalRRsetData(rrset);
+    byte[] rrset_data = SignUtils.generateCanonicalRRsetData(rrset, 0, 0);
 
     ArrayList sigs = new ArrayList(keypairs.size());
 

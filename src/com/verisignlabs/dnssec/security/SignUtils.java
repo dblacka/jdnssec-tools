@@ -149,24 +149,61 @@ public class SignUtils
     return image.toByteArray();
   }
 
+
   /**
    * Calculate the canonical wire line format of the RRset.
    * 
    * @param rrset
-   *          the RRset to convert.
-   * @return the canonical wire line format of the RRset. This is the second
+   *            the RRset to convert.
+   * @param ttl
+   *            the TTL to use when canonicalizing -- this is generally the
+   *            TTL of the signature if there is a pre-existing signature. If
+   *            not it is just the ttl of the rrset itself.
+   * @param labels
+   *            the labels field of the signature, or 0.
+   * @return the canonical wire line format of the rrset. This is the second
    *         part of data to be signed.
    */
-  public static byte[] generateCanonicalRRsetData(RRset rrset)
+  public static byte[] generateCanonicalRRsetData(RRset rrset, long ttl,
+                                                  int labels)
   {
     DNSOutput image = new DNSOutput();
 
-    // now convert load the wire format records in the RRset into a
+    if (ttl == 0) ttl = rrset.getTTL();
+    Name n = rrset.getName();
+    if (labels == 0)
+    {
+      labels = n.labels();
+    }
+    else
+    {
+      // correct for Name()'s conception of label count.
+      labels++;
+    }
+    boolean wildcardName = false;
+    if (n.labels() != labels)
+    {
+      n = n.wild(n.labels() - labels);
+      wildcardName = true;
+      log.fine("Detected wildcard expansion: " + rrset.getName()
+          + " changed to " + n);
+    }
+
+    // now convert the wire format records in the RRset into a
     // list of byte arrays.
     ArrayList canonical_rrs = new ArrayList();
     for (Iterator i = rrset.rrs(); i.hasNext();)
     {
       Record r = (Record) i.next();
+      if (r.getTTL() != ttl || wildcardName)
+      {
+        // If necessary, we need to create a new record with a new ttl
+        // or ownername.
+        // In the TTL case, this avoids changing the ttl in the
+        // response.
+        r = Record.newRecord(n, r.getType(), r.getDClass(), ttl, r
+            .rdataToWireCanonical());
+      }
       byte[] wire_fmt = r.toWireCanonical();
       canonical_rrs.add(wire_fmt);
     }
@@ -202,7 +239,9 @@ public class SignUtils
   public static byte[] generateSigData(RRset rrset, RRSIGRecord presig)
       throws IOException
   {
-    byte[] rrset_data = generateCanonicalRRsetData(rrset);
+    byte[] rrset_data = generateCanonicalRRsetData(rrset,
+                                                   presig.getOrigTTL(),
+                                                   presig.getLabels());
 
     return generateSigData(rrset_data, presig);
   }

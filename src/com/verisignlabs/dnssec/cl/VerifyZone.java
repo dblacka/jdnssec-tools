@@ -75,8 +75,10 @@ public class VerifyZone
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
       opts.addOption("s", "strict", false,
-                     "Zone will only be considered valid if all "
-                         + "signatures could be cryptographically verified");
+          "Zone will only be considered valid if all "
+              + "signatures could be cryptographically verified");
+      opts.addOption("m", "multiline", false,
+          "log DNS records using 'multiline' format");
 
       // Argument options
       OptionBuilder.hasArg();
@@ -112,24 +114,32 @@ public class VerifyZone
 
       if (cli.hasOption('v'))
       {
-        int value = parseInt(cli.getOptionValue('v'), 5);
+        int value = parseInt(cli.getOptionValue('v'), 1);
         Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-          case 0:
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 5:
-          default:
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6:
-            rootLogger.setLevel(Level.ALL);
-            break;
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 1:
+          rootLogger.setLevel(Level.INFO);
+          break;
+        case 5:
+        default:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
         }
       }
 
       if (cli.hasOption('s')) strict = true;
+
+      if (cli.hasOption('m'))
+      {
+        org.xbill.DNS.Options.set("multiline");
+      }
 
       if ((optstr = cli.getOptionValue('d')) != null)
       {
@@ -191,8 +201,7 @@ public class VerifyZone
       // print our own usage statement:
       f.printHelp(out, 75, "jdnssec-verifyzone [..options..] zonefile "
           + "[keyfile [keyfile...]]", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD, null);
+          HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -223,6 +232,19 @@ public class VerifyZone
 
   }
 
+  private static String reasonListToString(List reasons)
+  {
+    if (reasons == null) return "";
+    StringBuffer out = new StringBuffer();
+    for (Iterator i = reasons.iterator(); i.hasNext();)
+    {
+      out.append("Reason: ");
+      out.append((String) i.next());
+      if (i.hasNext()) out.append("\n");
+    }
+    return out.toString();
+  }
+
   private static byte verifyZoneSignatures(List records, List keypairs)
   {
     // Zone is secure until proven otherwise.
@@ -234,18 +256,24 @@ public class VerifyZone
     {
       DnsKeyPair pair = (DnsKeyPair) i.next();
       if (pair.getPublic() == null) continue;
+      log.info("Adding trusted key: " + pair.getDNSKEYRecord() + " ; keytag = "
+          + pair.getDNSKEYFootprint());
       verifier.addTrustedKey(pair);
     }
 
     List rrsets = SignUtils.assembleIntoRRsets(records);
 
+    List reasons = new ArrayList();
     for (Iterator i = rrsets.iterator(); i.hasNext();)
     {
       RRset rrset = (RRset) i.next();
 
       // We verify each signature separately so that we can report
       // which exact signature failed.
-      for (Iterator j = rrset.sigs(); j.hasNext();)
+      Iterator j = rrset.sigs();
+      // Set the default result based on whether or not this was a signed RRset.
+      byte rrset_result = (byte) (j.hasNext() ? DNSSEC.Failed : DNSSEC.Secure);
+      while (j.hasNext())
       {
         Object o = j.next();
         if (!(o instanceof RRSIGRecord))
@@ -255,14 +283,18 @@ public class VerifyZone
         }
         RRSIGRecord sigrec = (RRSIGRecord) o;
 
-        byte res = verifier.verifySignature(rrset, sigrec, null);
+        reasons.clear();
+        byte res = verifier.verifySignature(rrset, sigrec, null, reasons);
         if (res != DNSSEC.Secure)
         {
-          log.info("Signature failed to verify RRset: " + rrset + "\nsig: "
-              + sigrec);
+          log.info("Signature failed to verify RRset:\n  rr:  "
+              + ZoneUtils.rrsetToString(rrset, false) + "\n  sig: " + sigrec
+              + "\n" + reasonListToString(reasons));
         }
-        if (res < result) result = res;
+        if (res > rrset_result) rrset_result = res;
       }
+      if (rrset_result != DNSSEC.Secure) result = DNSSEC.Failed;
+      
     }
 
     return result;
@@ -327,19 +359,19 @@ public class VerifyZone
 
     switch (result)
     {
-      case DNSSEC.Failed:
+    case DNSSEC.Failed:
+      System.out.println("zone did not verify.");
+      System.exit(1);
+      break;
+    case DNSSEC.Insecure:
+      if (state.strict)
+      {
         System.out.println("zone did not verify.");
         System.exit(1);
-        break;
-      case DNSSEC.Insecure:
-        if (state.strict)
-        {
-          System.out.println("zone did not verify.");
-          System.exit(1);
-        }
-      case DNSSEC.Secure:
-        System.out.println("zone verified.");
-        break;
+      }
+    case DNSSEC.Secure:
+      System.out.println("zone verified.");
+      break;
     }
     System.exit(0);
   }
@@ -354,7 +386,8 @@ public class VerifyZone
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err.println("error: unknown option encountered: " + e.getMessage());
+      System.err
+          .println("error: unknown option encountered: " + e.getMessage());
       state.usage();
     }
     catch (AlreadySelectedException e)

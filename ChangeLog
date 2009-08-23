@@ -1,3 +1,37 @@
+2009-08-23  David Blacka  <davidb@verisignlabs.com>
+
+	* Released version 0.9.4
+
+2009-07-15  David Blacka  <davidb@verisignlabs.com>
+
+	* SignUtils: Fix major issue where the code that generates that
+	canonical RRset given signature data wasn't obeying the "Orig TTL"
+	and "Labels" fields.  This is a major issue with verification,
+	although it doesn't affect signature generation.
+
+	* VerifyZone:  Fix bug where the whole-zone security status was
+	still wrong: unsigned RRsets shouldn't make the zone Bogus.
+
+2009-06-12  David Blacka  <davidb@verisignlabs.com>
+
+	* VerifyZone: Fix bug in verification logic so that RRsets that
+	never find a valid signature (i.e., only have signatures by keys
+	that aren't in the zone) are considered Bogus.  Note that
+	VerifyZone still can't tell if a RRset that should be signed
+	wasn't (or vice versa).
+
+	* dnsjava: Update local copy of dnsjava library.  This version
+	adds NSEC3 agorithms to DNSSECVerifier and KEYConverter, emulates
+	DiG's "OPT PSEUDOSECTION" formatting in Message.toString(), and
+	adds a minimal DHCIDRecord type.  Note that the DNSjava trunk has
+	a different (although functional similar) version of this type.
+
+2009-06-09  David Blacka  <davidb@verisignlabs.com>
+
+	* VerifyZone: Improve the output.
+
+	* SignKeyset: Add a command line tool for just signing DNSKEY RRsets.
+
 2009-02-10  David Blacka  <davidb@verisignlabs.com>
 
 	* Released version 0.9.0

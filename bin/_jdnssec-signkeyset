@@ -16,4 +16,4 @@ for i in $basedir/lib/*.jar $basedir/lib/*.zip; do
 done
 export CLASSPATH
 
-exec java com.verisignlabs.dnssec.cl.VerifyZone "$@"
+exec java com.verisignlabs.dnssec.cl.SignKeyset "$@"
