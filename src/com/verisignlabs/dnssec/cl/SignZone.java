@@ -155,7 +155,7 @@ public class SignZone
       OptionBuilder.withDescription("file the signed zone is written to (default is <origin>.signed).");
       opts.addOption(OptionBuilder.create('f'));
 
-      OptionBuilder.hasArg();
+      OptionBuilder.hasArgs();
       OptionBuilder.withArgName("KSK file");
       OptionBuilder.withLongOpt("ksk-file");
       OptionBuilder.withDescription("this key is a key signing key (may repeat).");
