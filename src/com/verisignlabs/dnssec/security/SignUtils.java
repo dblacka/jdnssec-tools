@@ -1053,7 +1053,7 @@ public class SignUtils
                                           boolean optIn, int[] types)
       throws NoSuchAlgorithmException
   {
-    byte[] hash = NSEC3Record.hash(name, NSEC3Record.SHA1_DIGEST_ID,
+    byte[] hash = nsec3hash(name, NSEC3Record.SHA1_DIGEST_ID,
                                    iterations, salt);
     byte flags = (byte) (optIn ? 0x01 : 0x00);
 
@@ -1433,4 +1433,49 @@ public class SignUtils
       return null;
     }
   }
+
+  /**
+   * Calculate an NSEC3 hash based on a DNS name and NSEC3 hash parameters.
+   *
+   * @param n The name to hash.
+   * @param hash_algorithm The hash algorithm to use.
+   * @param iterations The number of iterations to do.
+   * @param salt The salt to use.
+   * @return The calculated hash as a byte array.
+   * @throws NoSuchAlgorithmException If the hash algorithm is unrecognized.
+   */
+  public static byte[] nsec3hash(Name n, byte hash_algorithm, int iterations,
+      byte[] salt) throws NoSuchAlgorithmException
+  {
+    MessageDigest md;
+
+    switch (hash_algorithm)
+    {
+      case NSEC3Record.SHA1_DIGEST_ID:
+        md = MessageDigest.getInstance("SHA1");
+        break;
+      default :
+        throw new NoSuchAlgorithmException(
+            "Unknown NSEC3 algorithm identifier: " + hash_algorithm);
+    }
+
+    // Construct our wire form.
+    byte[] wire_name = n.toWireCanonical();
+    byte[] res = wire_name; // for the first iteration.
+    for (int i = 0; i <= iterations; i++)
+    {
+      // Concatenate the salt, if it exists.
+      if (salt != null)
+      {
+        byte[] concat = new byte[res.length + salt.length];
+        System.arraycopy(res, 0, concat, 0, res.length);
+        System.arraycopy(salt, 0, concat, res.length, salt.length);
+        res = concat;
+      }
+      res = md.digest(res);
+    }
+
+    return res;
+  }
+
 }

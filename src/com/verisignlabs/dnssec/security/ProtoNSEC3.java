@@ -48,6 +48,7 @@ public class ProtoNSEC3
   private int     dclass;
   private long    ttl;
 
+  static base32 b32 = new base32(base32.Alphabet.BASE32HEX, true, true);
   /**
    * Creates an NSEC3 Record from the given data.
    */
@@ -79,7 +80,7 @@ public class ProtoNSEC3
   private String hashToString(byte[] hash)
   {
     if (hash == null) return null;
-    return base32.toString(hash).toLowerCase();
+    return b32.toString(hash);
   }
 
   public Name getName()
@@ -116,14 +117,14 @@ public class ProtoNSEC3
 
   public boolean getOptOutFlag()
   {
-    return (flags & NSEC3Record.OPT_OUT_FLAG) != 0;
+    return (flags & NSEC3Record.Flags.OPT_OUT) != 0;
   }
 
   public void setOptOutFlag(boolean optOutFlag)
   {
-    if (optOutFlag) this.flags |= NSEC3Record.OPT_OUT_FLAG;
+    if (optOutFlag) this.flags |= NSEC3Record.Flags.OPT_OUT;
     else
-      this.flags &= ~NSEC3Record.OPT_OUT_FLAG;
+      this.flags &= ~NSEC3Record.Flags.OPT_OUT;
   }
 
   public long getTTL()
@@ -183,10 +184,10 @@ public class ProtoNSEC3
 
   public NSEC3Record getNSEC3Record()
   {
-    String comment = (originalOwner == null) ? "(unknown original ownername)"
-        : originalOwner.toString();
+//    String comment = (originalOwner == null) ? "(unknown original ownername)"
+//        : originalOwner.toString();
     return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations,
-        salt, next, getTypes(), comment);
+        salt, next, getTypes());
   }
 
   public void mergeTypes(TypeMap new_types)
@@ -228,8 +229,7 @@ public class ProtoNSEC3
     sb.append(' ');
     sb.append(salt == null ? "-" : base16.toString(salt));
     sb.append(' ');
-    String nextstr = (next == null) ? "(null)" : base32.toString(next)
-        .toLowerCase();
+    String nextstr = (next == null) ? "(null)" : b32.toString(next);
     sb.append(nextstr);
 
     int[] types = getTypes();
