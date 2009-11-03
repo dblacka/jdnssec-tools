@@ -1,3 +1,12 @@
+2009-11-02  David Blacka  <davidb@verisignlabs.com>
+
+	* Released version 0.9.5
+
+2009-11-01  David Blacka  <davidb@verisignlabs.com>
+
+	* Upgrade to DNSJava 2.0.7 (plus a few local changes).
+	* DnsKeyAlogorithm: change the RSASHA512 number to 10.
+
 2009-08-23  David Blacka  <davidb@verisignlabs.com>
 
 	* Released version 0.9.4
