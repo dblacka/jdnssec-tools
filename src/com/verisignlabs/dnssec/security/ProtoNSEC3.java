@@ -184,10 +184,10 @@ public class ProtoNSEC3
 
   public NSEC3Record getNSEC3Record()
   {
-//    String comment = (originalOwner == null) ? "(unknown original ownername)"
-//        : originalOwner.toString();
+    String comment = (originalOwner == null) ? "(unknown original ownername)"
+        : originalOwner.toString();
     return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations,
-        salt, next, getTypes());
+        salt, next, getTypes(), comment);
   }
 
   public void mergeTypes(TypeMap new_types)
