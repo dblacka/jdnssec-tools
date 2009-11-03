@@ -48,7 +48,7 @@ public class ProtoNSEC3
   private int     dclass;
   private long    ttl;
 
-  static base32 b32 = new base32(base32.Alphabet.BASE32HEX, true, true);
+  private static final base32 b32 = new base32(base32.Alphabet.BASE32HEX, false, false);
   /**
    * Creates an NSEC3 Record from the given data.
    */
