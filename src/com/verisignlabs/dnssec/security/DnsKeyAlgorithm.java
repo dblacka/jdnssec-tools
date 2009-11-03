@@ -126,16 +126,14 @@ public class DnsKeyAlgorithm
     addMnemonic("NSEC3DSA", DNSSEC.DSA_NSEC3_SHA1);
     addMnemonic("NSEC3RSASHA1", DNSSEC.RSA_NSEC3_SHA1);
     
-    // And the hopefully-soon-to-be standard new RSA algorithms.
-    // see http://tools.ietf.org/wg/dnsext/draft-ietf-dnsext-dnssec-rsasha256
-    // NOTE: the algorithm numbers are educated guesses.
-    // Also NOTE: these algorithms aren't available in Java 1.4's sunprovider
+    // Algorithms added by RFC 5702.
+    // NOTE: these algorithms aren't available in Java 1.4's sunprovider
     // implementation (but are in java 1.5's and later).
     addAlgorithm(8, new Entry("SHA256withRSA", RSA));
     addMnemonic("RSASHA256", 8);
 
-    addAlgorithm(9, new Entry("SHA512withRSA", RSA));
-    addMnemonic("RSASHA512", 9);
+    addAlgorithm(10, new Entry("SHA512withRSA", RSA));
+    addMnemonic("RSASHA512", 10);
   }
 
   private void addAlgorithm(int algorithm, Entry entry)
