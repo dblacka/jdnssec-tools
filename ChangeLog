@@ -1,7 +1,7 @@
-2010-01-07  David Blacka  <davidb@verisignlabs.com>
+2010-01-09  David Blacka  <davidb@verisignlabs.com>
 
-	* Upgrade to DNSJava 2.0.7-vrsn-2.  This includes a bugfix for
-	typemap wire format calculation.
+	* Upgrade to DNSJava 2.0.8 (plus a few local changes).  2.0.8
+	fixes a major bug in typemap wire conversion.
 
 2009-11-02  David Blacka  <davidb@verisignlabs.com>
 
