@@ -1,3 +1,7 @@
+2010-01-14  David Blacka  <davidb@verisignlabs.com>
+
+	* Released version 0.9.6
+
 2010-01-09  David Blacka  <davidb@verisignlabs.com>
 
 	* Upgrade to DNSJava 2.0.8 (plus a few local changes).  2.0.8
