@@ -89,7 +89,6 @@ public class SignZone
     public Date     expire          = null;
     public String   outputfile      = null;
     public boolean  verifySigs      = false;
-    public boolean  selfSignKeys    = true;
     public boolean  useOptOut       = false;
     public boolean  fullySignKeyset = false;
     public List     includeNames    = null;
@@ -98,6 +97,7 @@ public class SignZone
     public int      iterations      = 0;
     public int      digest_id       = DSRecord.SHA1_DIGEST_ID;
     public long     nsec3paramttl   = -1;
+    public boolean  verboseSigning  = false;
 
     public CLIState()
     {
@@ -118,6 +118,7 @@ public class SignZone
       opts.addOption("a", "verify", false, "verify generated signatures>");
       opts.addOption("F", "fully-sign-keyset", false,
                      "sign the zone apex keyset with all available keys.");
+      opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
 
       OptionBuilder.hasOptionalArg();
       OptionBuilder.withLongOpt("verbose");
@@ -210,8 +211,7 @@ public class SignZone
     }
 
     public void parseCommandLine(String[] args)
-        throws org.apache.commons.cli.ParseException, ParseException,
-        IOException
+        throws org.apache.commons.cli.ParseException, ParseException, IOException
     {
       CommandLineParser cli_parser = new PosixParser();
       CommandLine cli = cli_parser.parse(opts, args);
@@ -250,7 +250,8 @@ public class SignZone
       if (cli.hasOption('a')) verifySigs = true;
       if (cli.hasOption('3')) useNsec3 = true;
       if (cli.hasOption('O')) useOptOut = true;
-
+      if (cli.hasOption('V')) verboseSigning = true;
+      
       if (useOptOut && !useNsec3)
       {
         System.err.println("Opt-Out not supported without NSEC3 -- ignored.");
@@ -406,10 +407,8 @@ public class SignZone
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      out.println("usage: jdnssec-signzone [..options..] "
-          + "zone_file [key_file ...] ");
-      f.printHelp(out, 75, "signZone.sh", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD,
+      out.println("usage: jdnssec-signzone [..options..] " + "zone_file [key_file ...] ");
+      f.printHelp(out, 75, "signZone.sh", null, opts, HelpFormatter.DEFAULT_LEFT_PAD,
                   HelpFormatter.DEFAULT_DESC_PAD,
                   "\ntime/offset = YYYYMMDDHHmmss|+offset|\"now\"+offset\n");
 
@@ -451,8 +450,7 @@ public class SignZone
    *          a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
-  private static boolean verifyZoneSigs(Name zonename, List records,
-                                        List keypairs)
+  private static boolean verifyZoneSigs(Name zonename, List records, List keypairs)
   {
     boolean secure = true;
 
@@ -478,8 +476,7 @@ public class SignZone
 
       if (result != DNSSEC.Secure)
       {
-        log.fine("Signatures did not verify for RRset: (" + result + "): "
-            + rrset);
+        log.fine("Signatures did not verify for RRset: (" + result + "): " + rrset);
         secure = false;
       }
     }
@@ -500,8 +497,8 @@ public class SignZone
    *          the directory to look in (may be null).
    * @return a list of keypair objects.
    */
-  private static List getKeys(String[] keyfiles, int start_index,
-                              File inDirectory) throws IOException
+  private static List getKeys(String[] keyfiles, int start_index, File inDirectory)
+      throws IOException
   {
     if (keyfiles == null) return null;
 
@@ -519,8 +516,7 @@ public class SignZone
     return keys;
   }
 
-  private static List getKeys(List dnskeyrrs, File inDirectory)
-      throws IOException
+  private static List getKeys(List dnskeyrrs, File inDirectory) throws IOException
   {
     List res = new ArrayList();
     for (Iterator i = dnskeyrrs.iterator(); i.hasNext();)
@@ -558,8 +554,7 @@ public class SignZone
     }
   }
 
-  private static List findZoneKeys(File inDirectory, Name zonename)
-      throws IOException
+  private static List findZoneKeys(File inDirectory, Name zonename) throws IOException
   {
     if (inDirectory == null)
     {
@@ -608,8 +603,7 @@ public class SignZone
    *          do not belong in the zone.
    * @return a list of {@link org.xbill.DNS.Record}s found in the keyset files.
    */
-  private static List getKeysets(File inDirectory, Name zonename)
-      throws IOException
+  private static List getKeysets(File inDirectory, Name zonename) throws IOException
   {
     if (inDirectory == null)
     {
@@ -686,8 +680,7 @@ public class SignZone
    *          the time/offset string to parse.
    * @return the calculated time.
    */
-  private static Date convertDuration(Date start, String duration)
-      throws ParseException
+  private static Date convertDuration(Date start, String duration) throws ParseException
   {
     if (start == null) start = new Date();
     if (duration.startsWith("now"))
@@ -854,18 +847,16 @@ public class SignZone
       records.addAll(keysetrecs);
     }
 
-    JCEDnsSecSigner signer = new JCEDnsSecSigner();
+    JCEDnsSecSigner signer = new JCEDnsSecSigner(state.verboseSigning);
 
     // Sign the zone.
     List signed_records;
 
     if (state.useNsec3)
     {
-      signed_records = signer.signZoneNSEC3(zonename, records, kskpairs,
-                                            keypairs, state.start,
-                                            state.expire,
-                                            state.fullySignKeyset,
-                                            state.useOptOut,
+      signed_records = signer.signZoneNSEC3(zonename, records, kskpairs, keypairs,
+                                            state.start, state.expire,
+                                            state.fullySignKeyset, state.useOptOut,
                                             state.includeNames, state.salt,
                                             state.iterations, state.digest_id,
                                             state.nsec3paramttl);
@@ -873,8 +864,8 @@ public class SignZone
     else
     {
       signed_records = signer.signZone(zonename, records, kskpairs, keypairs,
-                                       state.start, state.expire,
-                                       state.fullySignKeyset, state.digest_id);
+                                       state.start, state.expire, state.fullySignKeyset,
+                                       state.digest_id);
     }
 
     // write out the signed zone

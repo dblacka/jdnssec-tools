@@ -109,7 +109,7 @@ public class ZoneUtils
    * @param records
    *          a list of {@link org.xbill.DNS.Record} or
    *          {@link org.xbill.DNS.RRset} objects.
-   * @return the zone name, if found. null if one couldn't be found.q
+   * @return the zone name, if found. null if one couldn't be found.
    */
   public static Name findZoneName(List records)
   {

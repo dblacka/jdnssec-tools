@@ -33,28 +33,38 @@ import org.xbill.DNS.*;
 import org.xbill.DNS.utils.base16;
 import org.xbill.DNS.utils.base32;
 
+/**
+ * This is a class representing a "prototype NSEC3" resource record. These are
+ * used as an intermediate stage (in zone signing) between determining the list
+ * of NSEC3 records and forming them into a viable chain.
+ * 
+ * @author David Blacka (original)
+ * @author $Author: davidb $
+ * @version $Revision: 183 $
+ */
 public class ProtoNSEC3
 {
-  private Name    originalOwner;
-  private byte    hashAlg;
-  private byte    flags;
-  private int     iterations;
-  private byte[]  salt;
-  private byte[]  next;
-  private byte[]  owner;        // cached numerical owner value.
-  private TypeMap typemap;
-  private Name    zone;
-  private Name    name;
-  private int     dclass;
-  private long    ttl;
+  private Name                originalOwner;
+  private byte                hashAlg;
+  private byte                flags;
+  private int                 iterations;
+  private byte[]              salt;
+  private byte[]              next;
+  private byte[]              owner;       // cached numerical owner value.
+  private TypeMap             typemap;
+  private Name                zone;
+  private Name                name;
+  private int                 dclass;
+  private long                ttl;
 
   private static final base32 b32 = new base32(base32.Alphabet.BASE32HEX, false, false);
+
   /**
    * Creates an NSEC3 Record from the given data.
    */
-  public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass,
-      long ttl, byte hashAlg, byte flags, int iterations, byte[] salt,
-      byte[] next, TypeMap typemap)
+  public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass, long ttl,
+                    byte hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
+                    TypeMap typemap)
   {
     this.zone = zone;
     this.owner = owner;
@@ -69,12 +79,12 @@ public class ProtoNSEC3
     this.originalOwner = originalOwner;
   }
 
-  public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass,
-      long ttl, byte hashAlg, byte flags, int iterations, byte[] salt,
-      byte[] next, int[] types)
+  public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass, long ttl,
+                    byte hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
+                    int[] types)
   {
-    this(owner, originalOwner, zone, dclass, ttl, hashAlg, flags, iterations,
-        salt, next, TypeMap.fromTypes(types));
+    this(owner, originalOwner, zone, dclass, ttl, hashAlg, flags, iterations, salt, next,
+         TypeMap.fromTypes(types));
   }
 
   private String hashToString(byte[] hash)
@@ -122,7 +132,8 @@ public class ProtoNSEC3
 
   public void setOptOutFlag(boolean optOutFlag)
   {
-    if (optOutFlag) this.flags |= NSEC3Record.Flags.OPT_OUT;
+    if (optOutFlag)
+      this.flags |= NSEC3Record.Flags.OPT_OUT;
     else
       this.flags &= ~NSEC3Record.Flags.OPT_OUT;
   }
@@ -185,9 +196,9 @@ public class ProtoNSEC3
   public NSEC3Record getNSEC3Record()
   {
     String comment = (originalOwner == null) ? "(unknown original ownername)"
-        : originalOwner.toString();
-    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations,
-        salt, next, getTypes(), comment);
+                                            : originalOwner.toString();
+    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt,
+                           next, getTypes(), comment);
   }
 
   public void mergeTypes(TypeMap new_types)

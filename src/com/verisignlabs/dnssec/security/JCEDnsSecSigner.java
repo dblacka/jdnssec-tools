@@ -38,6 +38,7 @@ import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
+import org.xbill.DNS.utils.hexdump;
 
 /**
  * This class contains routines for signing DNS zones.
@@ -54,6 +55,19 @@ import org.xbill.DNS.Type;
 public class JCEDnsSecSigner
 {
   private DnsKeyConverter mKeyConverter;
+  private boolean         mVerboseSigning = false;
+
+  public JCEDnsSecSigner()
+  {
+    this.mKeyConverter = null;
+    this.mVerboseSigning = false;
+  }
+
+  public JCEDnsSecSigner(boolean verboseSigning)
+  {
+    this.mKeyConverter = null;
+    this.mVerboseSigning = verboseSigning;
+  }
 
   /**
    * Cryptographically generate a new DNSSEC key.
@@ -74,27 +88,23 @@ public class JCEDnsSecSigner
    *          if generating an RSA key, use the large exponent.
    * @return a DnsKeyPair with the public and private keys populated.
    */
-  public DnsKeyPair generateKey(Name owner, long ttl, int dclass,
-                                int algorithm, int flags, int keysize,
-                                boolean useLargeExponent)
+  public DnsKeyPair generateKey(Name owner, long ttl, int dclass, int algorithm,
+                                int flags, int keysize, boolean useLargeExponent)
       throws NoSuchAlgorithmException
   {
     DnsKeyAlgorithm algorithms = DnsKeyAlgorithm.getInstance();
 
     if (ttl < 0) ttl = 86400; // set to a reasonable default.
 
-    KeyPair pair = algorithms.generateKeyPair(algorithm, keysize,
-                                              useLargeExponent);
+    KeyPair pair = algorithms.generateKeyPair(algorithm, keysize, useLargeExponent);
 
     if (mKeyConverter == null)
     {
       mKeyConverter = new DnsKeyConverter();
     }
 
-    DNSKEYRecord keyrec = mKeyConverter.generateDNSKEYRecord(owner, dclass,
-                                                             ttl, flags,
-                                                             algorithm,
-                                                             pair.getPublic());
+    DNSKEYRecord keyrec = mKeyConverter.generateDNSKEYRecord(owner, dclass, ttl, flags,
+                                                             algorithm, pair.getPublic());
 
     DnsKeyPair dnspair = new DnsKeyPair();
     dnspair.setDNSKEYRecord(keyrec);
@@ -127,6 +137,12 @@ public class JCEDnsSecSigner
     if (expire == null) expire = new Date(start.getTime() + 1000L);
     if (keypairs.size() == 0) return null;
 
+    if (mVerboseSigning)
+    {
+      System.out.println("Signing RRset:");
+      System.out.println(ZoneUtils.rrsetToString(rrset, false));
+    }
+
     // first, pre-calculate the RRset bytes.
     byte[] rrset_data = SignUtils.generateCanonicalRRsetData(rrset, 0, 0);
 
@@ -139,9 +155,16 @@ public class JCEDnsSecSigner
       DNSKEYRecord keyrec = pair.getDNSKEYRecord();
       if (keyrec == null) continue;
 
-      RRSIGRecord presig = SignUtils.generatePreRRSIG(rrset, keyrec, start,
-                                                      expire, rrset.getTTL());
+      RRSIGRecord presig = SignUtils.generatePreRRSIG(rrset, keyrec, start, expire,
+                                                      rrset.getTTL());
       byte[] sign_data = SignUtils.generateSigData(rrset_data, presig);
+
+      if (mVerboseSigning)
+      {
+        System.out.println("Canonical pre-signature data to sign with key " + keyrec.getName().toString() + "/"
+            + keyrec.getAlgorithm() + "/" + keyrec.getFootprint() + ":");
+        System.out.println(hexdump.dump(null, sign_data));
+      }
 
       Signature signer = pair.getSigner();
 
@@ -150,23 +173,33 @@ public class JCEDnsSecSigner
         // debug
         System.out.println("missing private key that goes with:\n"
             + pair.getDNSKEYRecord());
-        throw new GeneralSecurityException(
-                                           "cannot sign without a valid Signer (probably missing private key)");
+        throw new GeneralSecurityException("cannot sign without a valid Signer "
+            + "(probably missing private key)");
       }
 
       // sign the data.
       signer.update(sign_data);
       byte[] sig = signer.sign();
 
+      if (mVerboseSigning)
+      {
+        System.out.println("Raw Signature:");
+        System.out.println(hexdump.dump(null, sig));
+      }
+
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
       // Convert to RFC 2536 format, if necessary.
       if (algs.baseType(pair.getDNSKEYAlgorithm()) == DnsKeyAlgorithm.DSA)
       {
-        sig = SignUtils.convertDSASignature(
-                                            ((DSAPublicKey) pair.getPublic()).getParams(),
-                                            sig);
+        DSAPublicKey pk = (DSAPublicKey) pair.getPublic();
+        sig = SignUtils.convertDSASignature(pk.getParams(), sig);
       }
       RRSIGRecord sigrec = SignUtils.generateRRSIG(sig, presig);
+      if (mVerboseSigning)
+      {
+        System.out.println("RRSIG:\n" + sigrec);
+        System.out.println();
+      }
       sigs.add(sigrec);
     }
 
@@ -184,8 +217,8 @@ public class JCEDnsSecSigner
    *          the RRSIG expiration time.
    * @return a signed RRset.
    */
-  public RRset makeKeySet(List keypairs, Date start, Date expire)
-      throws IOException, GeneralSecurityException
+  public RRset makeKeySet(List keypairs, Date start, Date expire) throws IOException,
+      GeneralSecurityException
   {
     // Generate a KEY RR set to sign.
 
@@ -232,9 +265,8 @@ public class JCEDnsSecSigner
    * @return the name of the new last_cut.
    */
   private Name addRRset(List toList, Name zonename, RRset rrset, List kskpairs,
-                        List zskpairs, Date start, Date expire,
-                        boolean fullySignKeyset, Name last_cut)
-      throws IOException, GeneralSecurityException
+                        List zskpairs, Date start, Date expire, boolean fullySignKeyset,
+                        Name last_cut) throws IOException, GeneralSecurityException
   {
     // add the records themselves
     for (Iterator i = rrset.rrs(); i.hasNext();)
@@ -242,8 +274,8 @@ public class JCEDnsSecSigner
       toList.add(i.next());
     }
 
-    int type = SignUtils.recordSecType(zonename, rrset.getName(),
-                                       rrset.getType(), last_cut);
+    int type = SignUtils.recordSecType(zonename, rrset.getName(), rrset.getType(),
+                                       last_cut);
 
     // we don't sign non-normal sets (delegations, glue, invalid).
     if (type == SignUtils.RR_DELEGATION)
@@ -331,11 +363,10 @@ public class JCEDnsSecSigner
    * @throws IOException
    * @throws GeneralSecurityException
    */
-  private List signZone(Name zonename, List records, List kskpairs,
-                        List zskpairs, Date start, Date expire,
-                        boolean fullySignKeyset, int ds_digest_alg, int mode,
-                        List includedNames, byte[] salt, int iterations,
-                        long nsec3paramttl, boolean beConservative)
+  private List signZone(Name zonename, List records, List kskpairs, List zskpairs,
+                        Date start, Date expire, boolean fullySignKeyset,
+                        int ds_digest_alg, int mode, List includedNames, byte[] salt,
+                        int iterations, long nsec3paramttl, boolean beConservative)
       throws IOException, GeneralSecurityException
   {
     // Remove any existing generated DNSSEC records (NSEC, NSEC3, NSEC3PARAM,
@@ -360,12 +391,11 @@ public class JCEDnsSecSigner
         SignUtils.generateNSECRecords(zonename, records);
         break;
       case NSEC3_MODE:
-        SignUtils.generateNSEC3Records(zonename, records, salt, iterations,
-                                       nsec3paramttl);
+        SignUtils.generateNSEC3Records(zonename, records, salt, iterations, nsec3paramttl);
         break;
       case NSEC3_OPTOUT_MODE:
-        SignUtils.generateOptOutNSEC3Records(zonename, records, includedNames,
-                                             salt, iterations, nsec3paramttl);
+        SignUtils.generateOptOutNSEC3Records(zonename, records, includedNames, salt,
+                                             iterations, nsec3paramttl);
         break;
       case NSEC_EXP_OPT_IN:
         SignUtils.generateOptInNSECRecords(zonename, records, includedNames,
@@ -393,8 +423,7 @@ public class JCEDnsSecSigner
       }
 
       // Current record is part of the current RRset.
-      if (rrset.getName().equals(r.getName())
-          && rrset.getDClass() == r.getDClass()
+      if (rrset.getName().equals(r.getName()) && rrset.getDClass() == r.getDClass()
           && rrset.getType() == r.getType())
       {
         rrset.addRR(r);
@@ -406,16 +435,16 @@ public class JCEDnsSecSigner
 
       // add the RRset to the list of signed_records, regardless of
       // whether or not we actually end up signing the set.
-      last_cut = addRRset(signed_records, zonename, rrset, kskpairs, zskpairs,
-                          start, expire, fullySignKeyset, last_cut);
+      last_cut = addRRset(signed_records, zonename, rrset, kskpairs, zskpairs, start,
+                          expire, fullySignKeyset, last_cut);
 
       rrset.clear();
       rrset.addRR(r);
     }
 
     // add the last RR set
-    addRRset(signed_records, zonename, rrset, kskpairs, zskpairs, start,
-             expire, fullySignKeyset, last_cut);
+    addRRset(signed_records, zonename, rrset, kskpairs, zskpairs, start, expire,
+             fullySignKeyset, last_cut);
 
     return signed_records;
   }
@@ -445,14 +474,12 @@ public class JCEDnsSecSigner
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
    */
-  public List signZone(Name zonename, List records, List kskpairs,
-                       List zskpairs, Date start, Date expire,
-                       boolean fullySignKeyset, int ds_digest_alg)
+  public List signZone(Name zonename, List records, List kskpairs, List zskpairs,
+                       Date start, Date expire, boolean fullySignKeyset, int ds_digest_alg)
       throws IOException, GeneralSecurityException
   {
     return signZone(zonename, records, kskpairs, zskpairs, start, expire,
-                    fullySignKeyset, ds_digest_alg, NSEC_MODE, null, null, 0,
-                    0, false);
+                    fullySignKeyset, ds_digest_alg, NSEC_MODE, null, null, 0, 0, false);
   }
 
   /**
@@ -496,24 +523,23 @@ public class JCEDnsSecSigner
    * @throws IOException
    * @throws GeneralSecurityException
    */
-  public List signZoneNSEC3(Name zonename, List records, List kskpairs,
-                            List zskpairs, Date start, Date expire,
-                            boolean fullySignKeyset, boolean useOptOut,
-                            List includedNames, byte[] salt, int iterations,
-                            int ds_digest_alg, long nsec3paramttl)
+  public List signZoneNSEC3(Name zonename, List records, List kskpairs, List zskpairs,
+                            Date start, Date expire, boolean fullySignKeyset,
+                            boolean useOptOut, List includedNames, byte[] salt,
+                            int iterations, int ds_digest_alg, long nsec3paramttl)
       throws IOException, GeneralSecurityException
   {
     if (useOptOut)
     {
       return signZone(zonename, records, kskpairs, zskpairs, start, expire,
-                      fullySignKeyset, ds_digest_alg, NSEC3_OPTOUT_MODE,
-                      includedNames, salt, iterations, nsec3paramttl, false);
+                      fullySignKeyset, ds_digest_alg, NSEC3_OPTOUT_MODE, includedNames,
+                      salt, iterations, nsec3paramttl, false);
     }
     else
     {
       return signZone(zonename, records, kskpairs, zskpairs, start, expire,
-                      fullySignKeyset, ds_digest_alg, NSEC3_MODE, null, salt,
-                      iterations, nsec3paramttl, false);
+                      fullySignKeyset, ds_digest_alg, NSEC3_MODE, null, salt, iterations,
+                      nsec3paramttl, false);
     }
   }
 
@@ -547,16 +573,15 @@ public class JCEDnsSecSigner
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
    */
-  public List signZoneOptIn(Name zonename, List records, List kskpairs,
-                            List zskpairs, Date start, Date expire,
-                            boolean useConservativeOptIn,
+  public List signZoneOptIn(Name zonename, List records, List kskpairs, List zskpairs,
+                            Date start, Date expire, boolean useConservativeOptIn,
                             boolean fullySignKeyset, List NSECIncludeNames,
-                            int ds_digest_alg)
-      throws IOException, GeneralSecurityException
+                            int ds_digest_alg) throws IOException,
+      GeneralSecurityException
   {
 
     return signZone(zonename, records, kskpairs, zskpairs, start, expire,
-                    fullySignKeyset, ds_digest_alg, NSEC_EXP_OPT_IN,
-                    NSECIncludeNames, null, 0, 0, useConservativeOptIn);
+                    fullySignKeyset, ds_digest_alg, NSEC_EXP_OPT_IN, NSECIncludeNames,
+                    null, 0, 0, useConservativeOptIn);
   }
 }

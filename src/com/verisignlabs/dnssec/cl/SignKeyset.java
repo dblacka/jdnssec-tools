@@ -74,7 +74,6 @@ public class SignKeyset {
         private Options opts;
         private File    keyDirectory = null;
         public String[] keyFiles     = null;
-        public String   keysetFile   = null;
         public Date     start        = null;
         public Date     expire       = null;
         public String   inputfile    = null;

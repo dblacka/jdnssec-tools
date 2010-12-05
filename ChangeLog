@@ -1,3 +1,12 @@
+2010-12-05  David Blacka  <davidb@verisignlabs.com>
+
+	* jdnssec-signzone: add a "verbose signing" option.  This will
+	cause the pre-signed bytes and the raw signature bytes to be
+	output when signing.
+	* Other fixes: some minor tweaks and comment fixes.
+	Unfortunately, also a lot of rewrapping and whitespace changes due
+	to Eclipse.  Sigh.
+
 2010-01-14  David Blacka  <davidb@verisignlabs.com>
 
 	* Released version 0.9.6

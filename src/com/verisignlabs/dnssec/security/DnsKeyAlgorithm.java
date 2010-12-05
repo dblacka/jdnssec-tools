@@ -41,7 +41,7 @@ import java.util.logging.Logger;
 import org.xbill.DNS.DNSSEC;
 
 /**
- * This class handles translated DNS signing algorithm identifiers into various
+ * This class handles translating DNS signing algorithm identifiers into various
  * usable java implementations.
  * 
  * Besides centralizing the logic surrounding matching a DNSKEY algorithm
@@ -93,8 +93,7 @@ public class DnsKeyAlgorithm
   /** This is a cache key pair generator for DSA keys. */
   private KeyPairGenerator       mDSAKeyGenerator;
 
-  private Logger                 log       = Logger.getLogger(this.getClass()
-                                               .toString());
+  private Logger                 log       = Logger.getLogger(this.getClass().toString());
 
   /** This is the global instance for this class. */
   private static DnsKeyAlgorithm mInstance = null;
@@ -125,7 +124,7 @@ public class DnsKeyAlgorithm
     // Also recognize the BIND 9.6 mnemonics
     addMnemonic("NSEC3DSA", DNSSEC.DSA_NSEC3_SHA1);
     addMnemonic("NSEC3RSASHA1", DNSSEC.RSA_NSEC3_SHA1);
-    
+
     // Algorithms added by RFC 5702.
     // NOTE: these algorithms aren't available in Java 1.4's sunprovider
     // implementation (but are in java 1.5's and later).

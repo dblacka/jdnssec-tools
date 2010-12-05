@@ -14,7 +14,8 @@ import org.xbill.DNS.Type;
 /**
  * This class represents the multiple type maps of the NSEC record. Currently it
  * is just used to convert the wire format type map to the int array that
- * org.xbill.DNS.NSECRecord uses.
+ * org.xbill.DNS.NSECRecord uses. Note that there is now a very similar class in
+ * DNSjava: {@link org.xbill.DNS.TypeBitmap}.
  */
 
 public class TypeMap
