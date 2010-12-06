@@ -1,5 +1,18 @@
 2010-12-05  David Blacka  <davidb@verisignlabs.com>
 
+	* jdnssec-signzone: Fix a bug that would incorrectly handle
+	delgations below delegations (those should be ignored.)
+
+	* jdnssec-signzone: Make the signer ignore junk below a DNAME.
+	This differs from BIND's dnssec-signzone behavior (currently), but
+	is the correct behavior, as stuff below a DNAME doesn't actually
+	exist in DNS.  Note that if a name in a zone has both a DNAME and
+	a NS RRset (and is not at the apex), then the behavior is a bit
+	undefined.
+
+	* jdnssec-signzone: Fix a bug that would incorrectly set the RRSIG
+	bit for NSEC3 RRs corresponding to insecure delegations.
+
 	* jdnssec-signzone: add a "verbose signing" option.  This will
 	cause the pre-signed bytes and the raw signature bytes to be
 	output when signing.

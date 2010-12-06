@@ -49,6 +49,7 @@ public class SignUtils
   public static final int  RR_DELEGATION = 1;
   public static final int  RR_GLUE       = 2;
   public static final int  RR_INVALID    = 3;
+  public static final int  RR_DNAME      = 4;
 
   private static Logger    log;
 
@@ -478,32 +479,43 @@ public class SignUtils
    *          while iterating over the zone in canonical order.
    */
   public static int recordSecType(Name zonename, Name name, int type,
-                                  Name last_cut)
+                                  Name last_cut, Name last_dname)
   {
     // records not even in the zone itself are invalid.
     if (!name.subdomain(zonename)) return RR_INVALID;
 
-    // records that are at the zonename node are definitely normal.
+    // all records a the zone apex are normal, by definition.
     if (name.equals(zonename)) return RR_NORMAL;
+
+    if (last_cut != null && name.subdomain(last_cut))
+    {
+      // if we are at the same level as a delegation point, but not one of a set of types allowed at 
+      // a delegation point (NS, DS, NSEC), this is glue.
+      if (name.equals(last_cut))
+      {
+        if (type != Type.NS && type != Type.DS && type != Type.NXT && type != Type.NSEC) 
+        {
+          return RR_GLUE;
+        }
+      }
+      // if we are below the delegation point, this is glue.
+      else
+      {
+        return RR_GLUE;
+      }
+        
+    }
+    
+    // if we are below a DNAME, then the RR is invalid.    
+    if (last_dname != null && name.subdomain(last_dname) && name.labels() > last_dname.labels())
+    {
+      return RR_INVALID;
+    }
 
     // since we are not at zone level, any NS records are delegations
     if (type == Type.NS) return RR_DELEGATION;
-
-    if (last_cut != null)
-    {
-      // if we are at the same level as a delegation point, but not an
-      // NS record, then we either a DS record or glue.
-      if (name.equals(last_cut))
-      {
-        if (type == Type.DS || type == Type.NXT || type == Type.NSEC)
-          return RR_NORMAL;
-        // actually, this is probably INVALID, but it could be glue.
-        return RR_GLUE;
-      }
-      // below the delegation, we are glue
-      if (name.subdomain(last_cut)) return RR_GLUE;
-    }
-
+    
+    // and everything else is normal
     return RR_NORMAL;
   }
 
@@ -578,16 +590,16 @@ public class SignUtils
     public boolean hasOptInSpan; // opt-in support.
     public int     nsecIndex;
 
-    public NodeInfo(Record r)
+    public NodeInfo(Record r, int nodeType)
     {
       this.name = r.getName();
-      this.type = r.getType();
+      this.type = nodeType;
       this.ttl = r.getTTL();
       this.dclass = r.getDClass();
       this.typemap = new HashSet();
       this.isSecureNode = false;
       this.hasOptInSpan = false;
-      addType(type);
+      addType(r.getType());
     }
 
     public void addType(int type)
@@ -600,6 +612,10 @@ public class SignUtils
       {
         isSecureNode = true;
       }
+    }
+    
+    public boolean hasType(int type) {
+      return this.typemap.contains(new Integer(type));
     }
 
     public String toString()
@@ -645,6 +661,7 @@ public class SignUtils
     NodeInfo current_node = null;
 
     Name last_cut = null;
+    Name last_dname = null;
     int backup;
     long nsec_ttl = 0;
 
@@ -670,7 +687,7 @@ public class SignUtils
       Record r = (Record) i.next();
       Name r_name = r.getName();
       int r_type = r.getType();
-      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut);
+      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut, last_dname);
 
       // skip irrelevant records
       if (r_sectype == RR_INVALID || r_sectype == RR_GLUE) continue;
@@ -678,10 +695,13 @@ public class SignUtils
       // note our last delegation point so we can recognize glue.
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
 
+      // if this is a DNAME, note it so we can recognize junk
+      if (r_type == Type.DNAME) last_dname = r_name;
+      
       // first node -- initialize
       if (current_node == null)
       {
-        current_node = new NodeInfo(r);
+        current_node = new NodeInfo(r, r_sectype);
         current_node.addType(Type.RRSIG);
         current_node.addType(Type.NSEC);
         continue;
@@ -715,7 +735,7 @@ public class SignUtils
       last_node = current_node;
 
       current_node.nsecIndex = i.previousIndex();
-      current_node = new NodeInfo(r);
+      current_node = new NodeInfo(r, r_sectype);
       current_node.addType(Type.RRSIG);
       current_node.addType(Type.NSEC);
     }
@@ -771,6 +791,8 @@ public class SignUtils
     NodeInfo last_node = null;
     // For detecting glue.
     Name last_cut = null;
+    // For detecting junk below a DNAME
+    Name last_dname = null;
 
     long nsec3_ttl = 0;
 
@@ -781,7 +803,7 @@ public class SignUtils
       int r_type = r.getType();
 
       // Classify this record so we know if we can skip it.
-      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut);
+      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut, last_dname);
 
       // skip irrelevant records
       if (r_sectype == RR_INVALID || r_sectype == RR_GLUE) continue;
@@ -789,6 +811,9 @@ public class SignUtils
       // note our last delegation point so we can recognize glue.
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
 
+      // note our last DNAME point, so we can recognize junk.
+      if (r_type == Type.DNAME) last_dname = r_name;
+      
       if (r_type == Type.SOA)
       {
         SOARecord soa = (SOARecord) r;
@@ -802,7 +827,7 @@ public class SignUtils
       // For the first iteration, we create our current node.
       if (current_node == null)
       {
-        current_node = new NodeInfo(r);
+        current_node = new NodeInfo(r, r_sectype);
         continue;
       }
 
@@ -820,7 +845,7 @@ public class SignUtils
                            proto_nsec3s);
 
       last_node = current_node;
-      current_node = new NodeInfo(r);
+      current_node = new NodeInfo(r, r_sectype);
     }
 
     // process last two nodes.
@@ -889,6 +914,8 @@ public class SignUtils
     NodeInfo last_node = null;
     // For detecting glue.
     Name last_cut = null;
+    // For detecting out-of-zone records below a DNAME
+    Name last_dname = null;
 
     long nsec3_ttl = 0;
 
@@ -905,7 +932,7 @@ public class SignUtils
       int r_type = r.getType();
 
       // Classify this record so we know if we can skip it.
-      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut);
+      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut, last_dname);
 
       // skip irrelevant records
       if (r_sectype == RR_INVALID || r_sectype == RR_GLUE) continue;
@@ -913,6 +940,8 @@ public class SignUtils
       // note our last delegation point so we can recognize glue.
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
 
+      if (r_type == Type.DNAME) last_dname = r_name;
+      
       if (r_type == Type.SOA)
       {
         SOARecord soa = (SOARecord) r;
@@ -926,7 +955,7 @@ public class SignUtils
       // For the first iteration, we create our current node.
       if (current_node == null)
       {
-        current_node = new NodeInfo(r);
+        current_node = new NodeInfo(r, r_sectype);
         continue;
       }
 
@@ -957,7 +986,7 @@ public class SignUtils
         last_node.hasOptInSpan = true;
       }
 
-      current_node = new NodeInfo(r);
+      current_node = new NodeInfo(r, r_sectype);
     }
 
     // process last two nodes.
@@ -1007,7 +1036,9 @@ public class SignUtils
     if (optIn && !node.isSecureNode) return;
 
     // Add our default types.
-    node.addType(Type.RRSIG);
+    if (node.type == RR_NORMAL || (node.type == RR_DELEGATION && node.hasType(Type.DS))) {
+      node.addType(Type.RRSIG);
+    }
     if (node.name.equals(zonename)) node.addType(Type.NSEC3PARAM);
 
     // Check for ENTs -- note this will generate duplicate ENTs because it
@@ -1170,6 +1201,8 @@ public class SignUtils
     NodeInfo current_node = null;
 
     Name last_cut = null;
+    Name last_dname = null;
+    
     int backup;
     HashSet includeSet = null;
 
@@ -1183,7 +1216,7 @@ public class SignUtils
       Record r = (Record) i.next();
       Name r_name = r.getName();
       int r_type = r.getType();
-      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut);
+      int r_sectype = recordSecType(zonename, r_name, r_type, last_cut, last_dname);
 
       // skip irrelevant records
       if (r_sectype == RR_INVALID || r_sectype == RR_GLUE) continue;
@@ -1191,10 +1224,12 @@ public class SignUtils
       // note our last delegation point so we can recognize glue.
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
 
+      if (r_type == Type.DNAME) last_dname = r_name;
+      
       // first node -- initialize
       if (current_node == null)
       {
-        current_node = new NodeInfo(r);
+        current_node = new NodeInfo(r, r_sectype);
         current_node.addType(Type.RRSIG);
         continue;
       }
@@ -1249,7 +1284,7 @@ public class SignUtils
       }
 
       current_node.nsecIndex = i.previousIndex();
-      current_node = new NodeInfo(r);
+      current_node = new NodeInfo(r, r_sectype);
       current_node.addType(Type.RRSIG);
     }
 

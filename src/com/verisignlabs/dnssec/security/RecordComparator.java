@@ -42,7 +42,7 @@ public class RecordComparator implements Comparator
   }
 
   /**
-   * In general, types are compared numerically. However, SOA and NS are ordered
+   * In general, types are compared numerically. However, SOA, NS, and DNAME are ordered
    * before the rest.
    */
   private int compareTypes(int a, int b)
@@ -54,6 +54,9 @@ public class RecordComparator implements Comparator
     if (a == Type.NS) return -1;
     if (b == Type.NS) return 1;
 
+    if (a == Type.DNAME) return -1;
+    if (b == Type.DNAME) return 1;
+    
     if (a < b) return -1;
 
     return 1;

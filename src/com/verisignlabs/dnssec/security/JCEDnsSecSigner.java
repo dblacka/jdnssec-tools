@@ -266,7 +266,7 @@ public class JCEDnsSecSigner
    */
   private Name addRRset(List toList, Name zonename, RRset rrset, List kskpairs,
                         List zskpairs, Date start, Date expire, boolean fullySignKeyset,
-                        Name last_cut) throws IOException, GeneralSecurityException
+                        Name last_cut, Name last_dname) throws IOException, GeneralSecurityException
   {
     // add the records themselves
     for (Iterator i = rrset.rrs(); i.hasNext();)
@@ -275,7 +275,7 @@ public class JCEDnsSecSigner
     }
 
     int type = SignUtils.recordSecType(zonename, rrset.getName(), rrset.getType(),
-                                       last_cut);
+                                       last_cut, last_dname);
 
     // we don't sign non-normal sets (delegations, glue, invalid).
     if (type == SignUtils.RR_DELEGATION)
@@ -410,6 +410,7 @@ public class JCEDnsSecSigner
     RRset rrset = new RRset();
     ArrayList signed_records = new ArrayList();
     Name last_cut = null;
+    Name last_dname = null;
 
     for (ListIterator i = records.listIterator(); i.hasNext();)
     {
@@ -436,7 +437,8 @@ public class JCEDnsSecSigner
       // add the RRset to the list of signed_records, regardless of
       // whether or not we actually end up signing the set.
       last_cut = addRRset(signed_records, zonename, rrset, kskpairs, zskpairs, start,
-                          expire, fullySignKeyset, last_cut);
+                          expire, fullySignKeyset, last_cut, last_dname);
+      if (rrset.getType() == Type.DNAME) last_dname = rrset.getName();
 
       rrset.clear();
       rrset.addRR(r);
@@ -444,7 +446,7 @@ public class JCEDnsSecSigner
 
     // add the last RR set
     addRRset(signed_records, zonename, rrset, kskpairs, zskpairs, start, expire,
-             fullySignKeyset, last_cut);
+             fullySignKeyset, last_cut, last_dname);
 
     return signed_records;
   }
