@@ -1,3 +1,10 @@
+2010-12-06  David Blacka  <davidb@verisignlabs.com>
+
+	* jdnssec-verifyzone: Complete refactored the verification code to
+	more comprehensively check a zone for DNSSEC validity.  Instead of
+	just verifying signatures, it will also check to see if the NSEC
+	or NSEC3 chains are valid.
+
 2010-12-05  David Blacka  <davidb@verisignlabs.com>
 
 	* jdnssec-signzone: Fix a bug that would incorrectly handle

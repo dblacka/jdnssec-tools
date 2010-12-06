@@ -19,20 +19,15 @@
 
 package com.verisignlabs.dnssec.cl;
 
-import java.io.File;
-import java.io.IOException;
+//import java.io.File;
+//import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
-import org.xbill.DNS.*;
-
 import com.verisignlabs.dnssec.security.*;
 
 /**
@@ -53,8 +48,8 @@ public class VerifyZone
   private static class CLIState
   {
     private Options opts;
-    public boolean  strict   = false;
-    public File     keydir   = null;
+//    public boolean  strict   = false;
+//    public File     keydir   = null;
     public String   zonefile = null;
     public String[] keyfiles = null;
 
@@ -74,18 +69,18 @@ public class VerifyZone
 
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("s", "strict", false,
-          "Zone will only be considered valid if all "
-              + "signatures could be cryptographically verified");
+//      opts.addOption("s", "strict", false,
+//          "Zone will only be considered valid if all "
+//              + "signatures could be cryptographically verified");
       opts.addOption("m", "multiline", false,
           "log DNS records using 'multiline' format");
 
       // Argument options
-      OptionBuilder.hasArg();
-      OptionBuilder.withLongOpt("keydir");
-      OptionBuilder.withArgName("dir");
-      OptionBuilder.withDescription("directory to find " + "trusted key files");
-      opts.addOption(OptionBuilder.create('d'));
+//      OptionBuilder.hasArg();
+//      OptionBuilder.withLongOpt("keydir");
+//      OptionBuilder.withArgName("dir");
+//      OptionBuilder.withDescription("directory to find " + "trusted key files");
+//      opts.addOption(OptionBuilder.create('d'));
 
       OptionBuilder.hasOptionalArg();
       OptionBuilder.withLongOpt("verbose");
@@ -108,7 +103,7 @@ public class VerifyZone
       CommandLineParser cli_parser = new PosixParser();
       CommandLine cli = cli_parser.parse(opts, args);
 
-      String optstr = null;
+//      String optstr = null;
 
       if (cli.hasOption('h')) usage();
 
@@ -134,17 +129,17 @@ public class VerifyZone
         }
       }
 
-      if (cli.hasOption('s')) strict = true;
+//      if (cli.hasOption('s')) strict = true;
 
       if (cli.hasOption('m'))
       {
         org.xbill.DNS.Options.set("multiline");
       }
 
-      if ((optstr = cli.getOptionValue('d')) != null)
-      {
-        keydir = new File(optstr);
-      }
+//      if ((optstr = cli.getOptionValue('d')) != null)
+//      {
+//        keydir = new File(optstr);
+//      }
 
       String[] optstrs = null;
       if ((optstrs = cli.getOptionValues('A')) != null)
@@ -232,147 +227,25 @@ public class VerifyZone
 
   }
 
-  private static String reasonListToString(List reasons)
-  {
-    if (reasons == null) return "";
-    StringBuffer out = new StringBuffer();
-    for (Iterator i = reasons.iterator(); i.hasNext();)
-    {
-      out.append("Reason: ");
-      out.append((String) i.next());
-      if (i.hasNext()) out.append("\n");
-    }
-    return out.toString();
-  }
-
-  private static byte verifyZoneSignatures(List records, List keypairs)
-  {
-    // Zone is secure until proven otherwise.
-    byte result = DNSSEC.Secure;
-
-    DnsSecVerifier verifier = new DnsSecVerifier();
-
-    for (Iterator i = keypairs.iterator(); i.hasNext();)
-    {
-      DnsKeyPair pair = (DnsKeyPair) i.next();
-      if (pair.getPublic() == null) continue;
-      log.info("Adding trusted key: " + pair.getDNSKEYRecord() + " ; keytag = "
-          + pair.getDNSKEYFootprint());
-      verifier.addTrustedKey(pair);
-    }
-
-    List rrsets = SignUtils.assembleIntoRRsets(records);
-
-    List reasons = new ArrayList();
-    for (Iterator i = rrsets.iterator(); i.hasNext();)
-    {
-      RRset rrset = (RRset) i.next();
-
-      // We verify each signature separately so that we can report
-      // which exact signature failed.
-      Iterator j = rrset.sigs();
-      // Set the default result based on whether or not this was a signed RRset.
-      byte rrset_result = (byte) (j.hasNext() ? DNSSEC.Failed : DNSSEC.Secure);
-      while (j.hasNext())
-      {
-        Object o = j.next();
-        if (!(o instanceof RRSIGRecord))
-        {
-          log.fine("found " + o + " where expecting a RRSIG");
-          continue;
-        }
-        RRSIGRecord sigrec = (RRSIGRecord) o;
-
-        reasons.clear();
-        byte res = verifier.verifySignature(rrset, sigrec, null, reasons);
-        if (res != DNSSEC.Secure)
-        {
-          log.info("Signature failed to verify RRset:\n  rr:  "
-              + ZoneUtils.rrsetToString(rrset, false) + "\n  sig: " + sigrec
-              + "\n" + reasonListToString(reasons));
-        }
-        if (res > rrset_result) rrset_result = res;
-      }
-      if (rrset_result != DNSSEC.Secure) result = DNSSEC.Failed;
-      
-    }
-
-    return result;
-  }
-
-  private static List getTrustedKeysFromZone(List records)
-  {
-    List res = new ArrayList();
-    Name zonename = null;
-    for (Iterator i = records.iterator(); i.hasNext();)
-    {
-      Record r = (Record) i.next();
-      if (r.getType() == Type.SOA)
-      {
-        zonename = r.getName();
-      }
-
-      if (r.getName().equals(zonename) && r.getType() == Type.DNSKEY)
-      {
-        DnsKeyPair pair = new DnsKeyPair((DNSKEYRecord) r);
-        res.add(pair);
-      }
-    }
-
-    return res;
-  }
-
-  private static List getTrustedKeys(String[] keyfiles, File inDirectory)
-      throws IOException
-  {
-    if (keyfiles == null) return null;
-
-    List keys = new ArrayList(keyfiles.length);
-
-    for (int i = 0; i < keyfiles.length; i++)
-    {
-      DnsKeyPair pair = BINDKeyUtils.loadKeyPair(keyfiles[i], inDirectory);
-      if (pair != null) keys.add(pair);
-    }
-
-    return keys;
-  }
-
   public static void execute(CLIState state) throws Exception
   {
-
+    ZoneVerifier zoneverifier = new ZoneVerifier();
+    
     List records = ZoneUtils.readZoneFile(state.zonefile, null);
-    List keypairs = null;
-    if (state.keyfiles != null)
-    {
-      keypairs = getTrustedKeys(state.keyfiles, state.keydir);
-    }
-    else
-    {
-      keypairs = getTrustedKeysFromZone(records);
-    }
-    Collections.sort(records, new RecordComparator());
 
-    log.fine("verifying signatures...");
-    byte result = verifyZoneSignatures(records, keypairs);
+    log.fine("verifying zone...");
+    int errors = zoneverifier.verifyZone(records);
     log.fine("completed verification process.");
 
-    switch (result)
+    if (errors > 0)
     {
-    case DNSSEC.Failed:
       System.out.println("zone did not verify.");
-      System.exit(1);
-      break;
-    case DNSSEC.Insecure:
-      if (state.strict)
-      {
-        System.out.println("zone did not verify.");
-        System.exit(1);
-      }
-    case DNSSEC.Secure:
-      System.out.println("zone verified.");
-      break;
     }
+    else 
+    {
+      System.out.println("zone verified.");
+    }
+
     System.exit(0);
   }
 
