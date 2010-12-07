@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.logging.Logger;
 
 import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.Name;
@@ -56,6 +57,8 @@ public class JCEDnsSecSigner
 {
   private DnsKeyConverter mKeyConverter;
   private boolean         mVerboseSigning = false;
+  
+  private Logger log;
 
   public JCEDnsSecSigner()
   {
@@ -139,8 +142,8 @@ public class JCEDnsSecSigner
 
     if (mVerboseSigning)
     {
-      System.out.println("Signing RRset:");
-      System.out.println(ZoneUtils.rrsetToString(rrset, false));
+      log.info("Signing RRset:");
+      log.info(ZoneUtils.rrsetToString(rrset, false));
     }
 
     // first, pre-calculate the RRset bytes.
@@ -161,9 +164,9 @@ public class JCEDnsSecSigner
 
       if (mVerboseSigning)
       {
-        System.out.println("Canonical pre-signature data to sign with key " + keyrec.getName().toString() + "/"
+        log.info("Canonical pre-signature data to sign with key " + keyrec.getName().toString() + "/"
             + keyrec.getAlgorithm() + "/" + keyrec.getFootprint() + ":");
-        System.out.println(hexdump.dump(null, sign_data));
+        log.info(hexdump.dump(null, sign_data));
       }
 
       Signature signer = pair.getSigner();
@@ -171,7 +174,7 @@ public class JCEDnsSecSigner
       if (signer == null)
       {
         // debug
-        System.out.println("missing private key that goes with:\n"
+        log.fine("missing private key that goes with:\n"
             + pair.getDNSKEYRecord());
         throw new GeneralSecurityException("cannot sign without a valid Signer "
             + "(probably missing private key)");
@@ -183,8 +186,8 @@ public class JCEDnsSecSigner
 
       if (mVerboseSigning)
       {
-        System.out.println("Raw Signature:");
-        System.out.println(hexdump.dump(null, sig));
+        log.info("Raw Signature:");
+        log.info(hexdump.dump(null, sig));
       }
 
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
@@ -197,8 +200,7 @@ public class JCEDnsSecSigner
       RRSIGRecord sigrec = SignUtils.generateRRSIG(sig, presig);
       if (mVerboseSigning)
       {
-        System.out.println("RRSIG:\n" + sigrec);
-        System.out.println();
+        log.info("RRSIG:\n" + sigrec);
       }
       sigs.add(sigrec);
     }

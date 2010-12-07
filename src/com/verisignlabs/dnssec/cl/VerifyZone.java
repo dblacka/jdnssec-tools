@@ -19,16 +19,25 @@
 
 package com.verisignlabs.dnssec.cl;
 
-//import java.io.File;
-//import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.AlreadySelectedException;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
-import com.verisignlabs.dnssec.security.*;
+import org.apache.commons.cli.PosixParser;
+import org.apache.commons.cli.UnrecognizedOptionException;
+
+import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
+import com.verisignlabs.dnssec.security.ZoneUtils;
+import com.verisignlabs.dnssec.security.ZoneVerifier;
 
 /**
  * This class forms the command line implementation of a DNSSEC zone validator.
@@ -41,6 +50,24 @@ public class VerifyZone
 {
   private static Logger log;
 
+  // A log formatter that strips away all of the noise that the default SimpleFormatter has
+  private static class MyLogFormatter extends java.util.logging.Formatter
+  {
+    @Override
+    public String format(LogRecord arg0)
+    {
+      StringBuilder out = new StringBuilder();
+      String lvl = arg0.getLevel().getName();
+      
+      out.append(lvl);
+      out.append(": ");
+      out.append(arg0.getMessage());
+      out.append("\n");
+
+      return out.toString();
+    }
+  }
+
   /**
    * This is a small inner class used to hold all of the command line option
    * state.
@@ -48,8 +75,8 @@ public class VerifyZone
   private static class CLIState
   {
     private Options opts;
-//    public boolean  strict   = false;
-//    public File     keydir   = null;
+    //    public boolean  strict   = false;
+    //    public File     keydir   = null;
     public String   zonefile = null;
     public String[] keyfiles = null;
 
@@ -69,25 +96,13 @@ public class VerifyZone
 
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
-//      opts.addOption("s", "strict", false,
-//          "Zone will only be considered valid if all "
-//              + "signatures could be cryptographically verified");
-      opts.addOption("m", "multiline", false,
-          "log DNS records using 'multiline' format");
-
-      // Argument options
-//      OptionBuilder.hasArg();
-//      OptionBuilder.withLongOpt("keydir");
-//      OptionBuilder.withArgName("dir");
-//      OptionBuilder.withDescription("directory to find " + "trusted key files");
-//      opts.addOption(OptionBuilder.create('d'));
+      opts.addOption("m", "multiline", false, "log DNS records using 'multiline' format");
 
       OptionBuilder.hasOptionalArg();
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
       OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information.\n"
-          + "default is level 5.");
+          + "5 is debug information, 6 is trace information.\n" + "default is level 5.");
       opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
@@ -103,43 +118,40 @@ public class VerifyZone
       CommandLineParser cli_parser = new PosixParser();
       CommandLine cli = cli_parser.parse(opts, args);
 
-//      String optstr = null;
-
       if (cli.hasOption('h')) usage();
 
+      Logger rootLogger = Logger.getLogger("");
       if (cli.hasOption('v'))
       {
         int value = parseInt(cli.getOptionValue('v'), 1);
-        Logger rootLogger = Logger.getLogger("");
         switch (value)
         {
-        case 0:
-          rootLogger.setLevel(Level.OFF);
-          break;
-        case 1:
-          rootLogger.setLevel(Level.INFO);
-          break;
-        case 5:
-        default:
-          rootLogger.setLevel(Level.FINE);
-          break;
-        case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
+          case 0:
+            rootLogger.setLevel(Level.OFF);
+            break;
+          case 1:
+            rootLogger.setLevel(Level.INFO);
+            break;
+          case 5:
+          default:
+            rootLogger.setLevel(Level.FINE);
+            break;
+          case 6:
+            rootLogger.setLevel(Level.ALL);
+            break;
         }
       }
-
-//      if (cli.hasOption('s')) strict = true;
+      // I hate java.util.logging, btw.
+      for (Handler h : rootLogger.getHandlers())
+      {
+        h.setLevel(rootLogger.getLevel());
+        h.setFormatter(new MyLogFormatter());
+      }
 
       if (cli.hasOption('m'))
       {
         org.xbill.DNS.Options.set("multiline");
       }
-
-//      if ((optstr = cli.getOptionValue('d')) != null)
-//      {
-//        keydir = new File(optstr);
-//      }
 
       String[] optstrs = null;
       if ((optstrs = cli.getOptionValues('A')) != null)
@@ -195,8 +207,8 @@ public class VerifyZone
 
       // print our own usage statement:
       f.printHelp(out, 75, "jdnssec-verifyzone [..options..] zonefile "
-          + "[keyfile [keyfile...]]", null, opts,
-          HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
+          + "[keyfile [keyfile...]]", null, opts, HelpFormatter.DEFAULT_LEFT_PAD,
+                  HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -230,7 +242,7 @@ public class VerifyZone
   public static void execute(CLIState state) throws Exception
   {
     ZoneVerifier zoneverifier = new ZoneVerifier();
-    
+
     List records = ZoneUtils.readZoneFile(state.zonefile, null);
 
     log.fine("verifying zone...");
@@ -241,7 +253,7 @@ public class VerifyZone
     {
       System.out.println("zone did not verify.");
     }
-    else 
+    else
     {
       System.out.println("zone verified.");
     }
@@ -259,8 +271,7 @@ public class VerifyZone
     }
     catch (UnrecognizedOptionException e)
     {
-      System.err
-          .println("error: unknown option encountered: " + e.getMessage());
+      System.err.println("error: unknown option encountered: " + e.getMessage());
       state.usage();
     }
     catch (AlreadySelectedException e)

@@ -336,8 +336,6 @@ public class BINDKeyUtils
   {
     if (priv != null)
     {
-      // debug
-      // System.out.println("converting from privatekey to bind9 string");
       DnsKeyConverter keyconv = new DnsKeyConverter();
       String priv_string = keyconv.generatePrivateKeyString(priv, pub, alg);
 

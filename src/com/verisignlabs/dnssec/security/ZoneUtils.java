@@ -173,7 +173,7 @@ public class ZoneUtils
   /** This is an alternate way to format an RRset into a string */
   public static String rrsetToString(RRset rrset, boolean includeSigs)
   {
-    StringBuffer out = new StringBuffer();
+    StringBuilder out = new StringBuilder();
 
     for (Iterator i = rrset.rrs(false); i.hasNext();)
     {

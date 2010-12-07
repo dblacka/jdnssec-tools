@@ -19,6 +19,7 @@
 package com.verisignlabs.dnssec.security;
 
 import java.util.Comparator;
+import java.util.logging.Logger;
 
 /**
  * This class implements a basic comparator for byte arrays. It is primarily
@@ -33,6 +34,7 @@ public class ByteArrayComparator implements Comparator
 {
   private int     mOffset = 0;
   private boolean mDebug  = false;
+  private Logger log;
 
   public ByteArrayComparator()
   {
@@ -55,7 +57,7 @@ public class ByteArrayComparator implements Comparator
       {
         if (mDebug)
         {
-          System.out.println("offset " + i + " differs (this is "
+          log.info("offset " + i + " differs (this is "
               + (i - mOffset) + " bytes in from our offset.)");
         }
         return (b1[i] & 0xFF) - (b2[i] & 0xFF);
