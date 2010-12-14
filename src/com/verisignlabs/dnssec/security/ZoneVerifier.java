@@ -110,6 +110,11 @@ public class ZoneVerifier
     mBAcmp = new ByteArrayComparator();
   }
 
+  public DnsSecVerifier getVerifier()
+  {
+    return mVerifier;
+  }
+
   private static String key(Name n, int type)
   {
     return n.toString() + ':' + type;
@@ -231,7 +236,8 @@ public class ZoneVerifier
     // All RRs at the zone apex are normal
     if (n.equals(mZoneName)) return NodeType.NORMAL;
 
-    // If the node is below a zone cut (either a delegation or DNAME), it is glue.
+    // If the node is below a zone cut (either a delegation or DNAME), it is
+    // glue.
     if (last_cut != null && n.subdomain(last_cut) && !n.equals(last_cut))
     {
       return NodeType.GLUE;
@@ -284,7 +290,8 @@ public class ZoneVerifier
       for (int type : typeset)
       {
         if (type == Type.RRSIG) continue;
-        // at delegation points, only DS RRs are signed (and NSEC, but those are checked separately)
+        // at delegation points, only DS RRs are signed (and NSEC, but those are
+        // checked separately)
         if (ntype == NodeType.DELEGATION && type != Type.DS) continue;
         // otherwise, verify the RRset.
         String k = key(n, type);
@@ -370,22 +377,6 @@ public class ZoneVerifier
     return result == DNSSEC.Secure ? 0 : 1;
   }
 
-  private String typesetToString(Set<Integer> typeset)
-  {
-    if (typeset == null) return "";
-
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    for (int type : typeset)
-    {
-      if (!first) sb.append(' ');
-      sb.append(Type.string(type));
-      first = false;
-    }
-
-    return sb.toString();
-  }
-
   private String typesToString(int[] types)
   {
     StringBuilder sb = new StringBuilder();
@@ -400,9 +391,23 @@ public class ZoneVerifier
     return sb.toString();
   }
 
+  private String typesetToString(Set<Integer> typeset)
+  {
+    if (typeset == null) return "";
+
+    int[] types = new int[typeset.size()];
+    int i = 0;
+    for (int type : typeset)
+    {
+      types[i++] = type;
+    }
+    return typesToString(types);
+  }
+
   private boolean checkTypeMap(Set<Integer> typeset, int[] types)
   {
-    // a null typeset means that we are expecting the typemap of an ENT, which should be empty.
+    // a null typeset means that we are expecting the typemap of an ENT, which
+    // should be empty.
     if (typeset == null) return types.length == 0;
 
     Set compareTypeset = new HashSet();
@@ -446,7 +451,8 @@ public class ZoneVerifier
 
   private boolean shouldCheckENTs(Name n, Set<Integer> typeset, NodeType ntype)
   {
-    // if we are just one (or zero) labels longer than the zonename, the node can't create a ENT
+    // if we are just one (or zero) labels longer than the zonename, the node
+    // can't create a ENT
     if (n.labels() <= mZoneName.labels() + 1) return false;
 
     // we probably won't ever get called for a GLUE node
@@ -455,7 +461,8 @@ public class ZoneVerifier
     // if we aren't doing opt-out, then all possible ENTs must be checked.
     if (mDNSSECType == DNSSECType.NSEC3) return true;
 
-    // if we are opt-out, and the node is an insecure delegation, don't check ENTs.
+    // if we are opt-out, and the node is an insecure delegation, don't check
+    // ENTs.
     if (ntype == NodeType.DELEGATION && !typeset.contains(Type.DS))
     {
       return false;
@@ -492,7 +499,7 @@ public class ZoneVerifier
     {
       log.warning("Typemap for NSEC3 RR " + hashname + " for " + n
           + " did not match what was expected. Expected '" + typesetToString(typeset)
-          + "', got '" + typesToString(nsec3.getTypes()));
+          + "', got '" + typesToString(nsec3.getTypes()) + "'");
       errors++;
     }
 
@@ -520,7 +527,8 @@ public class ZoneVerifier
 
     for (Iterator<Map.Entry<Name, MarkRRset>> i = mNSECMap.entrySet().iterator(); i.hasNext();)
     {
-      // check the internal ordering of the previous NSEC record.  This avoids looking at the last one, 
+      // check the internal ordering of the previous NSEC record. This avoids
+      // looking at the last one,
       // which is different.
       if (lastNSEC != null)
       {
@@ -536,7 +544,8 @@ public class ZoneVerifier
       Name n = entry.getKey();
       MarkRRset rrset = entry.getValue();
 
-      // check to see if the NSEC is marked.  If not, it was not correlated to a signed node.
+      // check to see if the NSEC is marked. If not, it was not correlated to a
+      // signed node.
       if (!rrset.getMark())
       {
         log.warning("NSEC RR for " + n + " appears to be extra.");
@@ -545,7 +554,8 @@ public class ZoneVerifier
 
       NSECRecord nsec = (NSECRecord) rrset.first();
 
-      // This is just a sanity check.  If this isn't true, we are constructing the
+      // This is just a sanity check. If this isn't true, we are constructing
+      // the
       // nsec map incorrectly.
       if (!n.equals(nsec.getName()))
       {
@@ -553,7 +563,8 @@ public class ZoneVerifier
         errors++;
       }
 
-      // If this is the first row, ensure that the owner name equals the zone name
+      // If this is the first row, ensure that the owner name equals the zone
+      // name
       if (lastNSEC == null && !n.equals(mZoneName))
       {
         log.warning("The first NSEC in the chain does not match the zone name: name = "
@@ -611,7 +622,8 @@ public class ZoneVerifier
 
     for (Iterator<Map.Entry<Name, MarkRRset>> i = mNSEC3Map.entrySet().iterator(); i.hasNext();)
     {
-      // check the internal ordering of the previous NSEC3 record.  This avoids looking at the last one, 
+      // check the internal ordering of the previous NSEC3 record. This avoids
+      // looking at the last one,
       // which is different.
       if (lastNSEC3 != null)
       {
@@ -627,7 +639,8 @@ public class ZoneVerifier
       Name n = entry.getKey();
       MarkRRset rrset = entry.getValue();
 
-      // check to see if the NSEC is marked.  If not, it was not correlated to a signed node.
+      // check to see if the NSEC is marked. If not, it was not correlated to a
+      // signed node.
       if (!rrset.getMark())
       {
         log.warning("NSEC3 RR for " + n + " appears to be extra.");
@@ -636,7 +649,8 @@ public class ZoneVerifier
 
       NSEC3Record nsec3 = (NSEC3Record) rrset.first();
 
-      // This is just a sanity check.  If this isn't true, we are constructing the
+      // This is just a sanity check. If this isn't true, we are constructing
+      // the
       // nsec3 map incorrectly.
       if (!n.equals(nsec3.getName()))
       {
@@ -650,7 +664,8 @@ public class ZoneVerifier
         firstNSEC3 = nsec3;
       }
       else
-      // Check that the prior NSEC3's next hashed name equals this row's hashed owner name.
+      // Check that the prior NSEC3's next hashed name equals this row's hashed
+      // owner name.
       {
         if (compareNSEC3Hashes(nsec3.getName(), lastNSEC3.getNext()) != 0)
         {

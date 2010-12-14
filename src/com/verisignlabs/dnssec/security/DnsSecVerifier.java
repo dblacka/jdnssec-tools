@@ -94,8 +94,7 @@ public class DnsSecVerifier implements Verifier
       for (Iterator i = l.iterator(); i.hasNext();)
       {
         DnsKeyPair p = (DnsKeyPair) i.next();
-        if (p.getDNSKEYAlgorithm() == algorithm
-            && p.getDNSKEYFootprint() == keyid)
+        if (p.getDNSKEYAlgorithm() == algorithm && p.getDNSKEYFootprint() == keyid)
         {
           return p;
         }
@@ -108,6 +107,7 @@ public class DnsSecVerifier implements Verifier
   private int             mStartFudge    = 0;
   private int             mExpireFudge   = 0;
   private boolean         mVerifyAllSigs = false;
+  private boolean         mIgnoreTime    = false;
 
   private Logger          log;
 
@@ -153,8 +153,12 @@ public class DnsSecVerifier implements Verifier
     mVerifyAllSigs = v;
   }
 
-  private DnsKeyPair findCachedKey(Cache cache, Name name, int algorithm,
-                                   int footprint)
+  public void setIgnoreTime(boolean v)
+  {
+    mIgnoreTime = v;
+  }
+
+  private DnsKeyPair findCachedKey(Cache cache, Name name, int algorithm, int footprint)
   {
     RRset[] keysets = cache.findAnyRecords(name, Type.KEY);
     if (keysets == null) return null;
@@ -166,8 +170,7 @@ public class DnsSecVerifier implements Verifier
       Object o = i.next();
       if (!(o instanceof DNSKEYRecord)) continue;
       DNSKEYRecord keyrec = (DNSKEYRecord) o;
-      if (keyrec.getAlgorithm() == algorithm
-          && keyrec.getFootprint() == footprint)
+      if (keyrec.getAlgorithm() == algorithm && keyrec.getFootprint() == footprint)
       {
         return new DnsKeyPair(keyrec, (PrivateKey) null);
       }
@@ -176,8 +179,7 @@ public class DnsSecVerifier implements Verifier
     return null;
   }
 
-  private DnsKeyPair findKey(Cache cache, Name name, int algorithm,
-                             int footprint)
+  private DnsKeyPair findKey(Cache cache, Name name, int algorithm, int footprint)
   {
     DnsKeyPair pair = mKeyStore.find(name, algorithm, footprint);
     if (pair == null && cache != null)
@@ -194,16 +196,16 @@ public class DnsSecVerifier implements Verifier
     if (!rrset.getName().equals(sigrec.getName()))
     {
       log.fine("Signature name does not match RRset name");
-      if (reasons != null)
-        reasons.add("Signature name does not match RRset name");
+      if (reasons != null) reasons.add("Signature name does not match RRset name");
       return DNSSEC.Failed;
     }
     if (rrset.getType() != sigrec.getTypeCovered())
     {
       log.fine("Signature type does not match RRset type");
-      if (reasons != null)
-        reasons.add("Signature type does not match RRset type");
+      if (reasons != null) reasons.add("Signature type does not match RRset type");
     }
+
+    if (mIgnoreTime) return DNSSEC.Secure;
 
     Date now = new Date();
     Date start = sigrec.getTimeSigned();
@@ -231,8 +233,7 @@ public class DnsSecVerifier implements Verifier
       }
       if (now.after(expire))
       {
-        log.fine("Signature has expired (now = " + now + ", sig expires = "
-            + expire);
+        log.fine("Signature has expired (now = " + now + ", sig expires = " + expire);
         if (reasons != null) reasons.add("Signature has expired.");
         return DNSSEC.Failed;
       }
@@ -254,14 +255,13 @@ public class DnsSecVerifier implements Verifier
    *         could not be completed (usually because the public key was not
    *         available).
    */
-  public byte verifySignature(RRset rrset, RRSIGRecord sigrec, Cache cache,
-                              List reasons)
+  public byte verifySignature(RRset rrset, RRSIGRecord sigrec, Cache cache, List reasons)
   {
     byte result = validateSignature(rrset, sigrec, reasons);
     if (result != DNSSEC.Secure) return result;
 
-    DnsKeyPair keypair = findKey(cache, sigrec.getSigner(), sigrec
-        .getAlgorithm(), sigrec.getFootprint());
+    DnsKeyPair keypair = findKey(cache, sigrec.getSigner(), sigrec.getAlgorithm(),
+                                 sigrec.getFootprint());
 
     if (keypair == null)
     {
@@ -288,8 +288,7 @@ public class DnsSecVerifier implements Verifier
 
       if (!signer.verify(sig))
       {
-        if (reasons != null)
-          reasons.add("Signature failed to verify cryptographically");
+        if (reasons != null) reasons.add("Signature failed to verify cryptographically");
         log.fine("Signature failed to verify cryptographically");
         return DNSSEC.Failed;
       }
@@ -304,8 +303,7 @@ public class DnsSecVerifier implements Verifier
     {
       log.severe("Security error: " + e);
     }
-    if (reasons != null)
-      reasons.add("Signature failed to verify due to exception");
+    if (reasons != null) reasons.add("Signature failed to verify due to exception");
     log.fine("Signature failed to verify due to exception");
     return DNSSEC.Insecure;
   }

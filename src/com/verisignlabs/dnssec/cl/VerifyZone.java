@@ -50,7 +50,8 @@ public class VerifyZone
 {
   private static Logger log;
 
-  // A log formatter that strips away all of the noise that the default SimpleFormatter has
+  // A log formatter that strips away all of the noise that the default
+  // SimpleFormatter has
   private static class MyLogFormatter extends java.util.logging.Formatter
   {
     @Override
@@ -58,7 +59,7 @@ public class VerifyZone
     {
       StringBuilder out = new StringBuilder();
       String lvl = arg0.getLevel().getName();
-      
+
       out.append(lvl);
       out.append(": ");
       out.append(arg0.getMessage());
@@ -75,10 +76,11 @@ public class VerifyZone
   private static class CLIState
   {
     private Options opts;
-    //    public boolean  strict   = false;
-    //    public File     keydir   = null;
-    public String   zonefile = null;
-    public String[] keyfiles = null;
+    public String   zonefile    = null;
+    public String[] keyfiles    = null;
+    public int      startfudge  = 0;
+    public int      expirefudge = 0;
+    public boolean  ignoreTime  = false;
 
     public CLIState()
     {
@@ -102,7 +104,7 @@ public class VerifyZone
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
       OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information.\n" + "default is level 5.");
+          + "5 is debug information, 6 is trace information. default is level 5.");
       opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
@@ -110,6 +112,22 @@ public class VerifyZone
       OptionBuilder.withLongOpt("alg-alias");
       OptionBuilder.withDescription("Define an alias for an algorithm");
       opts.addOption(OptionBuilder.create('A'));
+
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("sig-start-fudge");
+      OptionBuilder.withArgName("seconds");
+      OptionBuilder.withDescription("'fudge' RRSIG inception times by 'seconds' seconds.");
+      opts.addOption(OptionBuilder.create('S'));
+
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("sig-expire-fudge");
+      OptionBuilder.withArgName("seconds");
+      OptionBuilder.withDescription("'fudge' RRSIG expiration times by 'seconds' seconds.");
+      opts.addOption(OptionBuilder.create('E'));
+
+      OptionBuilder.withLongOpt("ignore-time");
+      OptionBuilder.withDescription("Ignore RRSIG inception and expiration time errors.");
+      opts.addOption(OptionBuilder.create());
     }
 
     public void parseCommandLine(String[] args)
@@ -151,6 +169,22 @@ public class VerifyZone
       if (cli.hasOption('m'))
       {
         org.xbill.DNS.Options.set("multiline");
+      }
+
+      if (cli.hasOption("ignore-time"))
+      {
+        ignoreTime = true;
+      }
+
+      String optstr = null;
+      if ((optstr = cli.getOptionValue('S')) != null)
+      {
+        startfudge = parseInt(optstr, 0);
+      }
+
+      if ((optstr = cli.getOptionValue('E')) != null)
+      {
+        expirefudge = parseInt(optstr, 0);
       }
 
       String[] optstrs = null;
@@ -207,7 +241,8 @@ public class VerifyZone
 
       // print our own usage statement:
       f.printHelp(out, 75, "jdnssec-verifyzone [..options..] zonefile "
-          + "[keyfile [keyfile...]]", null, opts, HelpFormatter.DEFAULT_LEFT_PAD,
+                      + "[keyfile [keyfile...]]", null, opts,
+                  HelpFormatter.DEFAULT_LEFT_PAD,
                   HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
@@ -242,6 +277,9 @@ public class VerifyZone
   public static void execute(CLIState state) throws Exception
   {
     ZoneVerifier zoneverifier = new ZoneVerifier();
+    zoneverifier.getVerifier().setStartFudge(state.startfudge);
+    zoneverifier.getVerifier().setExpireFudge(state.expirefudge);
+    zoneverifier.getVerifier().setIgnoreTime(state.ignoreTime);
 
     List records = ZoneUtils.readZoneFile(state.zonefile, null);
 

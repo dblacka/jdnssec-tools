@@ -1,3 +1,8 @@
+2010-12-14  Blacka  <davidb@verisignlabs.com>
+
+	* jdnssec-verifyzone: Add options to either fudge or ignore RRSIG
+	inception and expiration times.
+
 2010-12-06  David Blacka  <davidb@verisignlabs.com>
 
 	* jdnssec-verifyzone: Complete refactored the verification code to
