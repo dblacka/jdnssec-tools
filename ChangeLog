@@ -1,6 +1,8 @@
 2011-01-11  Blacka  <davidb@verisignlabs.com>
 
-	* jdnssec-zoneformat: add a -m option for formatting as multiline.
+	* jdnssec-zoneformat: add a -m option for formatting as
+	multiline.  Add a -N option for determining the original
+	ownernames for NSEC3 signed zones.
 
 2010-12-14  Blacka  <davidb@verisignlabs.com>
 

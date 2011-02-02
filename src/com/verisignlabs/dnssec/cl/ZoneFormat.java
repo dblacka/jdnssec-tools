@@ -31,18 +31,15 @@ package com.verisignlabs.dnssec.cl;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
-import org.xbill.DNS.Master;
+import org.xbill.DNS.*;
 import org.xbill.DNS.Options;
-import org.xbill.DNS.Record;
-import org.xbill.DNS.Section;
+import org.xbill.DNS.utils.base32;
 
 import com.verisignlabs.dnssec.security.RecordComparator;
 
@@ -66,6 +63,7 @@ public class ZoneFormat
   {
     private org.apache.commons.cli.Options opts;
     public String                          file;
+    public boolean                         assignNSEC3;
 
     public CLIState()
     {
@@ -82,6 +80,7 @@ public class ZoneFormat
 
       if (cli.hasOption('h')) usage();
       if (cli.hasOption('m')) Options.set("multiline");
+      if (cli.hasOption('N')) assignNSEC3 = true;
 
       if (cli.hasOption('v'))
       {
@@ -125,14 +124,15 @@ public class ZoneFormat
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
       opts.addOption("m", "multiline", false, "Use a multiline format");
+      opts.addOption("N", "nsec3", false,
+                     "attempt to determine the original ownernames for NSEC3 RRs.");
 
       // Argument options
       OptionBuilder.hasOptionalArg();
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
       OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information.\n"
-          + "default is level 5.");
+          + "5 is debug information, 6 is trace information.\n" + "default is level 5.");
       opts.addOption(OptionBuilder.create('v'));
     }
 
@@ -144,9 +144,8 @@ public class ZoneFormat
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      f.printHelp(out, 75, "jdnssec-zoneformat [..options..] zonefile", null,
-                  opts, HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD, null);
+      f.printHelp(out, 75, "jdnssec-zoneformat [..options..] zonefile", null, opts,
+                  HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -210,9 +209,67 @@ public class ZoneFormat
     }
   }
 
-  private static void execute(CLIState state) throws IOException
+  private static void determineNSEC3Owners(List zone) throws NoSuchAlgorithmException
+  {
+    // Put the zone into a consistent (name and RR type) order.
+    Collections.sort(zone, new RecordComparator());
+
+    // first, find the NSEC3PARAM record -- this is an inefficient linear
+    // search.
+    NSEC3PARAMRecord nsec3param = null;
+    HashMap map = new HashMap();
+    base32 b32 = new base32(base32.Alphabet.BASE32HEX, false, true);
+
+    for (Iterator i = zone.iterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+      if (r.getType() == Type.NSEC3PARAM)
+      {
+        nsec3param = (NSEC3PARAMRecord) r;
+        break;
+      }
+    }
+
+    // If there wasn't one, we have nothing to do.
+    if (nsec3param == null) return;
+
+    // Next pass, calculate a mapping between ownernames and hashnames
+    Name last_name = null;
+    for (Iterator i = zone.iterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+      if (r.getName().equals(last_name)) continue;
+      if (r.getType() == Type.NSEC3) continue;
+
+      byte[] hash = nsec3param.hashName(r.getName());
+      String hashname = b32.toString(hash);
+      map.put(hashname, r.getName().toString().toLowerCase());
+      last_name = r.getName();
+    }
+
+    // Final pass, assign the names if we can
+    for (ListIterator i = zone.listIterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+      if (r.getType() != Type.NSEC3) continue;
+      NSEC3Record nsec3 = (NSEC3Record) r;
+      String hashname = nsec3.getName().getLabelString(0).toLowerCase();
+      String ownername = (String) map.get(hashname);
+
+      NSEC3Record new_nsec3 = new NSEC3Record(nsec3.getName(), nsec3.getDClass(),
+                                              nsec3.getTTL(), nsec3.getHashAlgorithm(),
+                                              nsec3.getFlags(), nsec3.getIterations(),
+                                              nsec3.getSalt(), nsec3.getNext(),
+                                              nsec3.getTypes(), ownername);
+      i.set(new_nsec3);
+    }
+  }
+
+  private static void execute(CLIState state) throws IOException,
+      NoSuchAlgorithmException
   {
     List z = readZoneFile(state.file);
+    if (state.assignNSEC3) determineNSEC3Owners(z);
     formatZone(z);
   }
 
