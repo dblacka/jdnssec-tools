@@ -172,7 +172,7 @@ public class DnsKeyConverter
 
       if (line.startsWith("Private-key-format: "))
       {
-        if (!val.equals("v1.2"))
+        if (!val.equals("v1.2") && !val.equals("v1.3"))
         {
           throw new IOException("unsupported private key format: " + val);
         }

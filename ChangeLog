@@ -1,3 +1,9 @@
+2011-02-02  Blacka  <davidb@verisignlabs.com>
+
+	* DnsKeyConverter: support the new BIND 9.7 private key format,
+	which only entails recognizing the new version string, since the
+	new format is a superset of the old format.
+
 2011-01-11  Blacka  <davidb@verisignlabs.com>
 
 	* jdnssec-zoneformat: add a -m option for formatting as
