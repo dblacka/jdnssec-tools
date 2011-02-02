@@ -1,8 +1,8 @@
-java-dnssec-tools
+jdnssec-tools
 
-http://www.dnssec.verisignlabs.com/
+http://www.verisignlabs.com/dnssec-tools/
 
-Author: David Blacka (davidb@verisignlabs.com)
+Author: David Blacka (davidb@verisign.com)
 
 This is a collection of DNSSEC tools written in Java.  They are
 intended to be an addition or replacement for the DNSSEC tools that
@@ -57,7 +57,7 @@ http://svn.verisignlabs.com/main/dnssec/dnsjava/trunk.
  ---
 
 Questions or comments may be directed to the author
-(mailto:davidb@verisignlabs.com) or sent to the
+(mailto:davidb@verisign.com) or sent to the
 dnssec@verisignlabs.com mailing list
 (http://lists.verisignlabs.com/mailman/listinfo/dnssec).
 
