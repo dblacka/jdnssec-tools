@@ -40,6 +40,7 @@ import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
 import org.xbill.DNS.Master;
+import org.xbill.DNS.Options;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Section;
 
@@ -80,6 +81,7 @@ public class ZoneFormat
       // String optstr = null;
 
       if (cli.hasOption('h')) usage();
+      if (cli.hasOption('m')) Options.set("multiline");
 
       if (cli.hasOption('v'))
       {
@@ -122,6 +124,7 @@ public class ZoneFormat
 
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
+      opts.addOption("m", "multiline", false, "Use a multiline format");
 
       // Argument options
       OptionBuilder.hasOptionalArg();

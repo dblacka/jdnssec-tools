@@ -1,3 +1,7 @@
+2011-01-11  Blacka  <davidb@verisignlabs.com>
+
+	* jdnssec-zoneformat: add a -m option for formatting as multiline.
+
 2010-12-14  Blacka  <davidb@verisignlabs.com>
 
 	* jdnssec-verifyzone: Add options to either fudge or ignore RRSIG
