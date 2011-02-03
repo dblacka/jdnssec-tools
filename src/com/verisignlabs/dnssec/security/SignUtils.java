@@ -855,13 +855,7 @@ public class SignUtils
                          proto_nsec3s);
 
     List nsec3s = finishNSEC3s(proto_nsec3s, nsec3_ttl);
-    // DEBUG
-    // for (Iterator i = nsec3s.iterator(); i.hasNext();)
-    // {
-    // NSEC3Record nsec3 = (NSEC3Record) i.next();
-    // log.fine("NSEC3: " + nsec3 + "\nRDATA: "
-    // + base16.toString(nsec3.rdataToWireCanonical()));
-    // }
+
     records.addAll(nsec3s);
 
     NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(
@@ -1121,7 +1115,6 @@ public class SignUtils
     {
       cur_nsec3 = (ProtoNSEC3) i.next();
 
-      // log.fine("finishNSEC3s: processing " + cur_nsec3);
       // check to see if cur is a duplicate (by name)
       if (prev_nsec3 != null
           && Arrays.equals(prev_nsec3.getOwner(), cur_nsec3.getOwner()))

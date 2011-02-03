@@ -55,13 +55,7 @@ import org.xbill.DNS.TextParseException;
 import org.xbill.DNS.Type;
 import org.xbill.DNS.utils.base16;
 
-import com.verisignlabs.dnssec.security.BINDKeyUtils;
-import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
-import com.verisignlabs.dnssec.security.DnsKeyPair;
-import com.verisignlabs.dnssec.security.DnsSecVerifier;
-import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
-import com.verisignlabs.dnssec.security.SignUtils;
-import com.verisignlabs.dnssec.security.ZoneUtils;
+import com.verisignlabs.dnssec.security.*;
 
 /**
  * This class forms the command line implementation of a DNSSEC zone signer.
@@ -120,11 +114,12 @@ public class SignZone
                      "sign the zone apex keyset with all available keys.");
       opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
 
+      // Argument options
       OptionBuilder.hasOptionalArg();
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level.");
-      // Argument options
+      OptionBuilder.withDescription("verbosity level -- 0 is silence, 3 is info, "
+          + "5 is debug information, 6 is trace information. default is level 2 (warning)");
       opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
@@ -221,20 +216,27 @@ public class SignZone
 
       if (cli.hasOption('h')) usage();
 
+      Logger rootLogger = Logger.getLogger("");
       if (cli.hasOption('v'))
       {
-        int value = parseInt(cli.getOptionValue('v'), 5);
-        Logger rootLogger = Logger.getLogger("");
-
+        int value = parseInt(cli.getOptionValue('v'), -1);
         switch (value)
         {
           case 0:
             rootLogger.setLevel(Level.OFF);
             break;
-          case 4:
+          case 1:
+            rootLogger.setLevel(Level.SEVERE);
+            break;
+          case 2:
           default:
+            rootLogger.setLevel(Level.WARNING);
+            break;
+          case 3:
             rootLogger.setLevel(Level.INFO);
             break;
+          case 4:
+            rootLogger.setLevel(Level.CONFIG);
           case 5:
             rootLogger.setLevel(Level.FINE);
             break;
@@ -242,16 +244,19 @@ public class SignZone
             rootLogger.setLevel(Level.ALL);
             break;
         }
-        Handler[] handlers = rootLogger.getHandlers();
-        for (int i = 0; i < handlers.length; i++)
-          handlers[i].setLevel(rootLogger.getLevel());
+      }
+      // I hate java.util.logging, btw.
+      for (Handler h : rootLogger.getHandlers())
+      {
+        h.setLevel(rootLogger.getLevel());
+        h.setFormatter(new BareLogFormatter());
       }
 
       if (cli.hasOption('a')) verifySigs = true;
       if (cli.hasOption('3')) useNsec3 = true;
       if (cli.hasOption('O')) useOptOut = true;
       if (cli.hasOption('V')) verboseSigning = true;
-      
+
       if (useOptOut && !useNsec3)
       {
         System.err.println("Opt-Out not supported without NSEC3 -- ignored.");

@@ -23,7 +23,6 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.logging.Handler;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.AlreadySelectedException;
@@ -35,9 +34,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.cli.UnrecognizedOptionException;
 
-import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
-import com.verisignlabs.dnssec.security.ZoneUtils;
-import com.verisignlabs.dnssec.security.ZoneVerifier;
+import com.verisignlabs.dnssec.security.*;
 
 /**
  * This class forms the command line implementation of a DNSSEC zone validator.
@@ -49,25 +46,6 @@ import com.verisignlabs.dnssec.security.ZoneVerifier;
 public class VerifyZone
 {
   private static Logger log;
-
-  // A log formatter that strips away all of the noise that the default
-  // SimpleFormatter has
-  private static class MyLogFormatter extends java.util.logging.Formatter
-  {
-    @Override
-    public String format(LogRecord arg0)
-    {
-      StringBuilder out = new StringBuilder();
-      String lvl = arg0.getLevel().getName();
-
-      out.append(lvl);
-      out.append(": ");
-      out.append(arg0.getMessage());
-      out.append("\n");
-
-      return out.toString();
-    }
-  }
 
   /**
    * This is a small inner class used to hold all of the command line option
@@ -103,8 +81,8 @@ public class VerifyZone
       OptionBuilder.hasOptionalArg();
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information. default is level 5.");
+      OptionBuilder.withDescription("verbosity level -- 0 is silence, 3 is info, "
+          + "5 is debug information, 6 is trace information. default is level 2 (warning)");
       opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
@@ -141,17 +119,25 @@ public class VerifyZone
       Logger rootLogger = Logger.getLogger("");
       if (cli.hasOption('v'))
       {
-        int value = parseInt(cli.getOptionValue('v'), 1);
+        int value = parseInt(cli.getOptionValue('v'), -1);
         switch (value)
         {
           case 0:
             rootLogger.setLevel(Level.OFF);
             break;
           case 1:
+            rootLogger.setLevel(Level.SEVERE);
+            break;
+          case 2:
+          default:
+            rootLogger.setLevel(Level.WARNING);
+            break;
+          case 3:
             rootLogger.setLevel(Level.INFO);
             break;
+          case 4:
+            rootLogger.setLevel(Level.CONFIG);
           case 5:
-          default:
             rootLogger.setLevel(Level.FINE);
             break;
           case 6:
@@ -163,7 +149,7 @@ public class VerifyZone
       for (Handler h : rootLogger.getHandlers())
       {
         h.setLevel(rootLogger.getLevel());
-        h.setFormatter(new MyLogFormatter());
+        h.setFormatter(new BareLogFormatter());
       }
 
       if (cli.hasOption('m'))

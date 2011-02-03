@@ -221,7 +221,12 @@ public class ZoneVerifier
       // Learn some things about the zone as we do this pass.
       if (r_type == Type.SOA) mZoneName = r_name;
       if (r_type == Type.NSEC3PARAM) mNSEC3params = (NSEC3PARAMRecord) r;
-      if (r_type == Type.DNSKEY) mVerifier.addTrustedKey((DNSKEYRecord) r);
+      if (r_type == Type.DNSKEY) {
+        DNSKEYRecord dnskey = (DNSKEYRecord) r;
+        mVerifier.addTrustedKey(dnskey);
+        log.info("Adding trusted key: " + dnskey + " ; keytag = "
+                 + dnskey.getFootprint());
+      }
 
       if (mDNSSECType == DNSSECType.UNSIGNED) mDNSSECType = determineDNSSECType(r);
     }

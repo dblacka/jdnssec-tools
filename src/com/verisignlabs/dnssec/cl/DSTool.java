@@ -21,6 +21,7 @@ package com.verisignlabs.dnssec.cl;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,9 +31,7 @@ import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.DSRecord;
 import org.xbill.DNS.Record;
 
-import com.verisignlabs.dnssec.security.BINDKeyUtils;
-import com.verisignlabs.dnssec.security.DnsKeyPair;
-import com.verisignlabs.dnssec.security.SignUtils;
+import com.verisignlabs.dnssec.security.*;
 
 /**
  * This class forms the command line implementation of a DNSSEC DS/DLV generator
@@ -101,23 +100,40 @@ public class DSTool
 
       if (cli.hasOption('h')) usage();
 
+      Logger rootLogger = Logger.getLogger("");
       if (cli.hasOption('v'))
       {
-        int value = parseInt(cli.getOptionValue('v'), 5);
-        Logger rootLogger = Logger.getLogger("");
+        int value = parseInt(cli.getOptionValue('v'), -1);
         switch (value)
         {
           case 0:
             rootLogger.setLevel(Level.OFF);
             break;
-          case 5:
+          case 1:
+            rootLogger.setLevel(Level.SEVERE);
+            break;
+          case 2:
           default:
+            rootLogger.setLevel(Level.WARNING);
+            break;
+          case 3:
+            rootLogger.setLevel(Level.INFO);
+            break;
+          case 4:
+            rootLogger.setLevel(Level.CONFIG);
+          case 5:
             rootLogger.setLevel(Level.FINE);
             break;
           case 6:
             rootLogger.setLevel(Level.ALL);
             break;
         }
+      }
+      // I hate java.util.logging, btw.
+      for (Handler h : rootLogger.getHandlers())
+      {
+        h.setLevel(rootLogger.getLevel());
+        h.setFormatter(new BareLogFormatter());
       }
 
       outputfile = cli.getOptionValue('f');
