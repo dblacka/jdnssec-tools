@@ -1,3 +1,11 @@
+2011-02-03  Blacka  <davidb@verisignlabs.com>
+
+	* Update logging across all command line tools to use a consistent
+	'-v' option, and consistent, simpler log formatting.
+	* jdnssec-verifyzone: resume logging the key information at INFO,
+	but make the default log level WARNING.  To see the old logging
+	behavior, use -v 4.
+
 2011-02-02  Blacka  <davidb@verisignlabs.com>
 
 	* DnsKeyConverter: support the new BIND 9.7 private key format,

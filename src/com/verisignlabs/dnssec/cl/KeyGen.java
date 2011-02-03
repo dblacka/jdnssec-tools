@@ -50,7 +50,7 @@ public class KeyGen
   private static class CLIState
   {
     private Options opts;
-    public int      algorithm  = 5;
+    public int      algorithm  = 8;
     public int      keylength  = 1024;
     public boolean  useLargeE  = true;
     public String   outputfile = null;
