@@ -91,6 +91,7 @@ public class SignRRset {
             // boolean options
             opts.addOption("h", "help", false, "Print this message.");
             opts.addOption("a", "verify", false, "verify generated signatures>");
+            opts.addOption("m", "multiline", false, "Use a multiline format");
 
             OptionBuilder.hasOptionalArg();
             OptionBuilder.withLongOpt("verbose");
@@ -169,6 +170,7 @@ public class SignRRset {
             }
 
             if (cli.hasOption('a')) verifySigs = true;
+            if (cli.hasOption('m')) org.xbill.DNS.Options.set("multiline");
 
             if ((optstr = cli.getOptionValue('D')) != null) {
                 keyDirectory = new File(optstr);
@@ -434,8 +436,6 @@ public class SignRRset {
         }
 
         // write out the signed zone
-        // force multiline mode for now
-        org.xbill.DNS.Options.set("multiline");
         ZoneUtils.writeZoneFile(signed_records, state.outputfile);
 
         if (state.verifySigs) {

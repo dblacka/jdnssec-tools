@@ -113,6 +113,7 @@ public class SignZone
       opts.addOption("F", "fully-sign-keyset", false,
                      "sign the zone apex keyset with all available keys.");
       opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
+      opts.addOption("m", "multiline", false, "Use a multiline format");
 
       // Argument options
       OptionBuilder.hasOptionalArg();
@@ -256,6 +257,7 @@ public class SignZone
       if (cli.hasOption('3')) useNsec3 = true;
       if (cli.hasOption('O')) useOptOut = true;
       if (cli.hasOption('V')) verboseSigning = true;
+      if (cli.hasOption('m')) org.xbill.DNS.Options.set("multiline");
 
       if (useOptOut && !useNsec3)
       {
@@ -874,8 +876,6 @@ public class SignZone
     }
 
     // write out the signed zone
-    // force multiline mode for now
-    org.xbill.DNS.Options.set("multiline");
     ZoneUtils.writeZoneFile(signed_records, state.outputfile);
 
     if (state.verifySigs)
