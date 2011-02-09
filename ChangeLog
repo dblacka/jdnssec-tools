@@ -1,5 +1,19 @@
+2011-02-09  Blacka  <davidb@verisignlabs.com>
+
+	* Enable reading and writing from stdin/stdout for most tools.  To
+	do this, use '-' as the zonefile name.
+	* jdnssec-signzone, jdnssec-signrrset: remove 'multiline' output
+	as the default and add a command line switch (-m) to enable it.
+	That is, these tools will output each RR on a single line by
+	default, adding -m will restore the prior behavior.
+
+2011-02-08  Blacka  <davidb@verisignlabs.com>
+
+	* Minor cleanups to usage statement printing across most of the tools.
+
 2011-02-03  Blacka  <davidb@verisignlabs.com>
 
+	* jdnssec-keygen: update the default algorithm to 8 (instead of 5).
 	* Update logging across all command line tools to use a consistent
 	'-v' option, and consistent, simpler log formatting.
 	* jdnssec-verifyzone: resume logging the key information at INFO,
