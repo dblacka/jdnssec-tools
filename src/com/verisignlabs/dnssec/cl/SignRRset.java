@@ -60,423 +60,474 @@ import com.verisignlabs.dnssec.security.*;
  * @author $Author: davidb $
  * @version $Revision: 2235 $
  */
-public class SignRRset {
-    private static Logger log;
+public class SignRRset
+{
+  private static Logger log;
 
-    /**
-     * This is an inner class used to hold all of the command line option state.
-     */
-    private static class CLIState {
-        private Options opts;
-        private File    keyDirectory = null;
-        public String[] keyFiles     = null;
-        public Date     start        = null;
-        public Date     expire       = null;
-        public String   inputfile    = null;
-        public String   outputfile   = null;
-        public boolean  verifySigs   = false;
+  /**
+   * This is an inner class used to hold all of the command line option state.
+   */
+  private static class CLIState
+  {
+    private Options opts;
+    private File    keyDirectory = null;
+    public String[] keyFiles     = null;
+    public Date     start        = null;
+    public Date     expire       = null;
+    public String   inputfile    = null;
+    public String   outputfile   = null;
+    public boolean  verifySigs   = false;
 
-        public CLIState() {
-            setupCLI();
-        }
-
-        /**
-         * Set up the command line options.
-         * 
-         * @return a set of command line options.
-         */
-        private void setupCLI() {
-            opts = new Options();
-
-            // boolean options
-            opts.addOption("h", "help", false, "Print this message.");
-            opts.addOption("a", "verify", false, "verify generated signatures>");
-            opts.addOption("m", "multiline", false, "Use a multiline format");
-
-            OptionBuilder.hasOptionalArg();
-            OptionBuilder.withLongOpt("verbose");
-            OptionBuilder.withArgName("level");
-            OptionBuilder.withDescription("verbosity level.");
-            // Argument options
-            opts.addOption(OptionBuilder.create('v'));
-
-            OptionBuilder.hasArg();
-            OptionBuilder.withArgName("dir");
-            OptionBuilder.withLongOpt("key-directory");
-            OptionBuilder.withDescription("directory to find key files (default '.').");
-            opts.addOption(OptionBuilder.create('D'));
-
-            OptionBuilder.hasArg();
-            OptionBuilder.withArgName("time/offset");
-            OptionBuilder.withLongOpt("start-time");
-            OptionBuilder.withDescription("signature starting time (default is now - 1 hour)");
-            opts.addOption(OptionBuilder.create('s'));
-
-            OptionBuilder.hasArg();
-            OptionBuilder.withArgName("time/offset");
-            OptionBuilder.withLongOpt("expire-time");
-            OptionBuilder.withDescription("signature expiration time (default is start-time + 30 days).");
-            opts.addOption(OptionBuilder.create('e'));
-
-            OptionBuilder.hasArg();
-            OptionBuilder.withArgName("outfile");
-            OptionBuilder.withDescription("file the signed rrset is written to.");
-            opts.addOption(OptionBuilder.create('f'));
-        }
-
-        public void parseCommandLine(String[] args)
-                throws org.apache.commons.cli.ParseException, ParseException,
-                IOException {
-            CommandLineParser cli_parser = new PosixParser();
-            CommandLine cli = cli_parser.parse(opts, args);
-
-            String optstr = null;
-            if (cli.hasOption('h')) usage();
-
-            Logger rootLogger = Logger.getLogger("");
-            if (cli.hasOption('v'))
-            {
-              int value = parseInt(cli.getOptionValue('v'), -1);
-              switch (value)
-              {
-                case 0:
-                  rootLogger.setLevel(Level.OFF);
-                  break;
-                case 1:
-                  rootLogger.setLevel(Level.SEVERE);
-                  break;
-                case 2:
-                default:
-                  rootLogger.setLevel(Level.WARNING);
-                  break;
-                case 3:
-                  rootLogger.setLevel(Level.INFO);
-                  break;
-                case 4:
-                  rootLogger.setLevel(Level.CONFIG);
-                case 5:
-                  rootLogger.setLevel(Level.FINE);
-                  break;
-                case 6:
-                  rootLogger.setLevel(Level.ALL);
-                  break;
-              }
-            }
-            // I hate java.util.logging, btw.
-            for (Handler h : rootLogger.getHandlers())
-            {
-              h.setLevel(rootLogger.getLevel());
-              h.setFormatter(new BareLogFormatter());
-            }
-
-            if (cli.hasOption('a')) verifySigs = true;
-            if (cli.hasOption('m')) org.xbill.DNS.Options.set("multiline");
-
-            if ((optstr = cli.getOptionValue('D')) != null) {
-                keyDirectory = new File(optstr);
-                if (!keyDirectory.isDirectory()) {
-                    System.err.println("error: " + optstr
-                            + " is not a directory");
-                    usage();
-                }
-            }
-
-            if ((optstr = cli.getOptionValue('s')) != null) {
-                start = convertDuration(null, optstr);
-            } else {
-                // default is now - 1 hour.
-                start = new Date(System.currentTimeMillis() - (3600 * 1000));
-            }
-
-            if ((optstr = cli.getOptionValue('e')) != null) {
-                expire = convertDuration(start, optstr);
-            } else {
-                expire = convertDuration(start, "+2592000"); // 30 days
-            }
-
-            outputfile = cli.getOptionValue('f');
-
-            String[] files = cli.getArgs();
-
-            if (files.length < 1) {
-                System.err.println("error: missing zone file and/or key files");
-                usage();
-            }
-
-            inputfile = files[0];
-            if (files.length > 1) {
-                keyFiles = new String[files.length - 1];
-                System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
-            }
-        }
-
-        /** Print out the usage and help statements, then quit. */
-        private void usage() {
-            HelpFormatter f = new HelpFormatter();
-
-            PrintWriter out = new PrintWriter(System.err);
-
-            // print our own usage statement:
-            f.printHelp(out, 75, "jdnssec-signrrset [..options..] "
-                    + "rrset_file key_file [key_file ...]", null, opts,
-                        HelpFormatter.DEFAULT_LEFT_PAD,
-                        HelpFormatter.DEFAULT_DESC_PAD,
-                        "\ntime/offset = YYYYMMDDHHmmss|+offset|\"now\"+offset\n");
-
-            out.flush();
-            System.exit(64);
-        }
+    public CLIState()
+    {
+      setupCLI();
     }
 
     /**
-     * This is just a convenience method for parsing integers from strings.
-     * 
-     * @param s
-     *            the string to parse.
-     * @param def
-     *            the default value, if the string doesn't parse.
-     * @return the parsed integer, or the default.
+     * Set up the command line options.
+     *
+     * @return a set of command line options.
      */
-    private static int parseInt(String s, int def) {
-        try {
-            int v = Integer.parseInt(s);
-            return v;
-        } catch (NumberFormatException e) {
-            return def;
-        }
+    private void setupCLI()
+    {
+      opts = new Options();
+
+      // boolean options
+      opts.addOption("h", "help", false, "Print this message.");
+      opts.addOption("a", "verify", false, "verify generated signatures>");
+      opts.addOption("m", "multiline", false, "Use a multiline format");
+
+      OptionBuilder.hasOptionalArg();
+      OptionBuilder.withLongOpt("verbose");
+      OptionBuilder.withArgName("level");
+      OptionBuilder.withDescription("verbosity level.");
+      // Argument options
+      opts.addOption(OptionBuilder.create('v'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("dir");
+      OptionBuilder.withLongOpt("key-directory");
+      OptionBuilder.withDescription("directory to find key files (default '.').");
+      opts.addOption(OptionBuilder.create('D'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("time/offset");
+      OptionBuilder.withLongOpt("start-time");
+      OptionBuilder.withDescription("signature starting time (default is now - 1 hour)");
+      opts.addOption(OptionBuilder.create('s'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("time/offset");
+      OptionBuilder.withLongOpt("expire-time");
+      OptionBuilder.withDescription("signature expiration time (default is start-time + 30 days).");
+      opts.addOption(OptionBuilder.create('e'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withArgName("outfile");
+      OptionBuilder.withDescription("file the signed rrset is written to.");
+      opts.addOption(OptionBuilder.create('f'));
     }
 
-    /**
-     * Verify the generated signatures.
-     * 
-     * @param zonename
-     *            the origin name of the zone.
-     * @param records
-     *            a list of {@link org.xbill.DNS.Record}s.
-     * @param keypairs
-     *            a list of keypairs used the sign the zone.
-     * @return true if all of the signatures validated.
-     */
-    private static boolean verifySigs(Name zonename, List records, List keypairs) {
-        boolean secure = true;
+    public void parseCommandLine(String[] args)
+        throws org.apache.commons.cli.ParseException, ParseException, IOException
+    {
+      CommandLineParser cli_parser = new PosixParser();
+      CommandLine cli = cli_parser.parse(opts, args);
 
-        DnsSecVerifier verifier = new DnsSecVerifier();
+      String optstr = null;
+      if (cli.hasOption('h')) usage();
 
-        for (Iterator i = keypairs.iterator(); i.hasNext();) {
-            verifier.addTrustedKey((DnsKeyPair) i.next());
+      Logger rootLogger = Logger.getLogger("");
+      if (cli.hasOption('v'))
+      {
+        int value = parseInt(cli.getOptionValue('v'), -1);
+        switch (value)
+        {
+          case 0:
+            rootLogger.setLevel(Level.OFF);
+            break;
+          case 1:
+            rootLogger.setLevel(Level.SEVERE);
+            break;
+          case 2:
+          default:
+            rootLogger.setLevel(Level.WARNING);
+            break;
+          case 3:
+            rootLogger.setLevel(Level.INFO);
+            break;
+          case 4:
+            rootLogger.setLevel(Level.CONFIG);
+          case 5:
+            rootLogger.setLevel(Level.FINE);
+            break;
+          case 6:
+            rootLogger.setLevel(Level.ALL);
+            break;
         }
+      }
+      // I hate java.util.logging, btw.
+      for (Handler h : rootLogger.getHandlers())
+      {
+        h.setLevel(rootLogger.getLevel());
+        h.setFormatter(new BareLogFormatter());
+      }
 
-        verifier.setVerifyAllSigs(true);
+      if (cli.hasOption('a')) verifySigs = true;
+      if (cli.hasOption('m')) org.xbill.DNS.Options.set("multiline");
 
-        List rrsets = SignUtils.assembleIntoRRsets(records);
-
-        for (Iterator i = rrsets.iterator(); i.hasNext();) {
-            RRset rrset = (RRset) i.next();
-
-            // skip unsigned rrsets.
-            if (!rrset.sigs().hasNext()) continue;
-
-            int result = verifier.verify(rrset, null);
-
-            if (result != DNSSEC.Secure) {
-                log.fine("Signatures did not verify for RRset: (" + result
-                        + "): " + rrset);
-                secure = false;
-            }
+      if ((optstr = cli.getOptionValue('D')) != null)
+      {
+        keyDirectory = new File(optstr);
+        if (!keyDirectory.isDirectory())
+        {
+          System.err.println("error: " + optstr + " is not a directory");
+          usage();
         }
+      }
 
-        return secure;
+      if ((optstr = cli.getOptionValue('s')) != null)
+      {
+        start = convertDuration(null, optstr);
+      }
+      else
+      {
+        // default is now - 1 hour.
+        start = new Date(System.currentTimeMillis() - (3600 * 1000));
+      }
+
+      if ((optstr = cli.getOptionValue('e')) != null)
+      {
+        expire = convertDuration(start, optstr);
+      }
+      else
+      {
+        expire = convertDuration(start, "+2592000"); // 30 days
+      }
+
+      outputfile = cli.getOptionValue('f');
+
+      String[] files = cli.getArgs();
+
+      if (files.length < 1)
+      {
+        System.err.println("error: missing zone file and/or key files");
+        usage();
+      }
+
+      inputfile = files[0];
+      if (files.length > 1)
+      {
+        keyFiles = new String[files.length - 1];
+        System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
+      }
     }
 
-    /**
-     * Load the key pairs from the key files.
-     * 
-     * @param keyfiles
-     *            a string array containing the base names or paths of the keys
-     *            to be loaded.
-     * @param start_index
-     *            the starting index of keyfiles string array to use. This
-     *            allows us to use the straight command line argument array.
-     * @param inDirectory
-     *            the directory to look in (may be null).
-     * @return a list of keypair objects.
-     */
-    private static List<DnsKeyPair> getKeys(String[] keyfiles, int start_index,
-                                            File inDirectory)
-            throws IOException {
-        if (keyfiles == null) return null;
+    /** Print out the usage and help statements, then quit. */
+    private void usage()
+    {
+      HelpFormatter f = new HelpFormatter();
 
-        int len = keyfiles.length - start_index;
-        if (len <= 0) return null;
+      PrintWriter out = new PrintWriter(System.err);
 
-        ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>(len);
+      // print our own usage statement:
+      f.printHelp(out, 75, "jdnssec-signrrset [..options..] "
+                      + "rrset_file key_file [key_file ...]", null, opts,
+                  HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD,
+                  "\ntime/offset = YYYYMMDDHHmmss|+offset|\"now\"+offset\n");
 
-        for (int i = start_index; i < keyfiles.length; i++) {
-            DnsKeyPair k = BINDKeyUtils.loadKeyPair(keyfiles[i], inDirectory);
-            if (k != null) keys.add(k);
-        }
+      out.flush();
+      System.exit(64);
+    }
+  }
 
-        return keys;
+  /**
+   * This is just a convenience method for parsing integers from strings.
+   *
+   * @param s
+   *          the string to parse.
+   * @param def
+   *          the default value, if the string doesn't parse.
+   * @return the parsed integer, or the default.
+   */
+  private static int parseInt(String s, int def)
+  {
+    try
+    {
+      int v = Integer.parseInt(s);
+      return v;
+    }
+    catch (NumberFormatException e)
+    {
+      return def;
+    }
+  }
+
+  /**
+   * Verify the generated signatures.
+   * 
+   * @param zonename
+   *          the origin name of the zone.
+   * @param records
+   *          a list of {@link org.xbill.DNS.Record}s.
+   * @param keypairs
+   *          a list of keypairs used the sign the zone.
+   * @return true if all of the signatures validated.
+   */
+  private static boolean verifySigs(Name zonename, List records, List keypairs)
+  {
+    boolean secure = true;
+
+    DnsSecVerifier verifier = new DnsSecVerifier();
+
+    for (Iterator i = keypairs.iterator(); i.hasNext();)
+    {
+      verifier.addTrustedKey((DnsKeyPair) i.next());
     }
 
-    /**
-     * Calculate a date/time from a command line time/offset duration string.
-     * 
-     * @param start
-     *            the start time to calculate offsets from.
-     * @param duration
-     *            the time/offset string to parse.
-     * @return the calculated time.
-     */
-    private static Date convertDuration(Date start, String duration)
-            throws ParseException {
-        if (start == null) start = new Date();
-        if (duration.startsWith("now")) {
-            start = new Date();
-            if (duration.indexOf("+") < 0) return start;
+    verifier.setVerifyAllSigs(true);
 
-            duration = duration.substring(3);
-        }
+    List rrsets = SignUtils.assembleIntoRRsets(records);
 
-        if (duration.startsWith("+")) {
-            long offset = (long) parseInt(duration.substring(1), 0) * 1000;
-            return new Date(start.getTime() + offset);
-        }
+    for (Iterator i = rrsets.iterator(); i.hasNext();)
+    {
+      RRset rrset = (RRset) i.next();
 
-        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-        return dateFormatter.parse(duration);
+      // skip unsigned rrsets.
+      if (!rrset.sigs().hasNext()) continue;
+
+      int result = verifier.verify(rrset, null);
+
+      if (result != DNSSEC.Secure)
+      {
+        log.fine("Signatures did not verify for RRset: (" + result + "): " + rrset);
+        secure = false;
+      }
     }
 
-    public static void execute(CLIState state) throws Exception {
-        // Read in the zone
-        List records = ZoneUtils.readZoneFile(state.inputfile, null);
-        if (records == null || records.size() == 0) {
-            System.err.println("error: empty RRset file");
-            state.usage();
-        }
-        // Construct the RRset. Complain if the records in the input file
-        // consist of more than one RRset.
-        RRset rrset = null;
-        for (Iterator i = records.iterator(); i.hasNext();) {
-            Record r = (Record) i.next();
+    return secure;
+  }
 
-            // skip RRSIGs
-            if (r.getType() == Type.RRSIG || r.getType() == Type.SIG) {
-                continue;
-            }
-            
-            // Handle the first record.
-            if (rrset == null) {
-                rrset = new RRset();
-                rrset.addRR(r);
-                continue;
-            }
-            // Ensure that the remaining records all belong to the same rrset.
-            if (rrset.getName().equals(r.getName())
-                    && rrset.getType() == r.getType()
-                    && rrset.getDClass() == r.getDClass()) {
-                rrset.addRR(r);
-            } else {
-                System.err.println("Records do not all belong to the same RRset.");
-                state.usage();
-            }
-        }
+  /**
+   * Load the key pairs from the key files.
+   *
+   * @param keyfiles
+   *          a string array containing the base names or paths of the keys
+   *          to be loaded.
+   * @param start_index
+   *          the starting index of keyfiles string array to use. This
+   *          allows us to use the straight command line argument array.
+   * @param inDirectory
+   *          the directory to look in (may be null).
+   * @return a list of keypair objects.
+   */
+  private static List<DnsKeyPair> getKeys(String[] keyfiles, int start_index,
+                                          File inDirectory) throws IOException
+  {
+    if (keyfiles == null) return null;
 
-        if (rrset.size() == 0) {
-            System.err.println("No records found in inputfile.");
-            state.usage();
-        }
+    int len = keyfiles.length - start_index;
+    if (len <= 0) return null;
 
-        // Load the key pairs.
+    ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>(len);
 
-        if (state.keyFiles.length == 0) {
-            System.err.println("error: at least one keyfile must be specified");
-            state.usage();
-        }
-
-        List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0,
-                                            state.keyDirectory);
-
-        // Make sure that all the keypairs have the same name.
-        // This will be used as the zone name, too.
-
-        Name keysetName = null;
-        for (DnsKeyPair pair : keypairs) {
-            if (keysetName == null) {
-                keysetName = pair.getDNSKEYName();
-                continue;
-            }
-            if (!pair.getDNSKEYName().equals(keysetName)) {
-                System.err.println("Keys do not all have the same name.");
-                state.usage();
-            }
-        }
-
-        // default the output file, if not set.
-        if (state.outputfile == null && !state.inputfile.equals("-")) {
-            state.outputfile = state.inputfile + ".signed";
-        }
-
-        JCEDnsSecSigner signer = new JCEDnsSecSigner();
-
-        List sigs = signer.signRRset(rrset, keypairs, state.start,
-                                     state.expire);
-        for (Iterator i = sigs.iterator(); i.hasNext();) {
-            rrset.addRR((Record) i.next());
-        }
-
-        // write out the signed RRset
-        List signed_records = new ArrayList();
-        for (Iterator i = rrset.rrs(); i.hasNext();) {
-            signed_records.add(i.next());
-        }
-        for (Iterator i = rrset.sigs(); i.hasNext();) {
-            signed_records.add(i.next());
-        }
-
-        // write out the signed zone
-        ZoneUtils.writeZoneFile(signed_records, state.outputfile);
-
-        if (state.verifySigs) {
-            log.fine("verifying generated signatures");
-            boolean res = verifySigs(keysetName, signed_records, keypairs);
-
-            if (res) {
-                System.out.println("Generated signatures verified");
-                // log.info("Generated signatures verified");
-            } else {
-                System.out.println("Generated signatures did not verify.");
-                // log.warn("Generated signatures did not verify.");
-            }
-        }
-
+    for (int i = start_index; i < keyfiles.length; i++)
+    {
+      DnsKeyPair k = BINDKeyUtils.loadKeyPair(keyfiles[i], inDirectory);
+      if (k != null) keys.add(k);
     }
 
-    public static void main(String[] args) {
-        CLIState state = new CLIState();
-        try {
-            state.parseCommandLine(args);
-        } catch (UnrecognizedOptionException e) {
-            System.err.println("error: unknown option encountered: "
-                    + e.getMessage());
-            state.usage();
-        } catch (AlreadySelectedException e) {
-            System.err.println("error: mutually exclusive options have "
-                    + "been selected:\n     " + e.getMessage());
-            state.usage();
-        } catch (Exception e) {
-            System.err.println("error: unknown command line parsing exception:");
-            e.printStackTrace();
-            state.usage();
-        }
+    return keys;
+  }
 
-        log = Logger.getLogger(SignRRset.class.toString());
+  /**
+   * Calculate a date/time from a command line time/offset duration string.
+   *
+   * @param start
+   *          the start time to calculate offsets from.
+   * @param duration
+   *          the time/offset string to parse.
+   * @return the calculated time.
+   */
+  private static Date convertDuration(Date start, String duration) throws ParseException
+  {
+    if (start == null) start = new Date();
+    if (duration.startsWith("now"))
+    {
+      start = new Date();
+      if (duration.indexOf("+") < 0) return start;
 
-        try {
-            execute(state);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+      duration = duration.substring(3);
     }
+
+    if (duration.startsWith("+"))
+    {
+      long offset = (long) parseInt(duration.substring(1), 0) * 1000;
+      return new Date(start.getTime() + offset);
+    }
+
+    SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMddHHmmss");
+    dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+    return dateFormatter.parse(duration);
+  }
+
+  public static void execute(CLIState state) throws Exception
+  {
+    // Read in the zone
+    List records = ZoneUtils.readZoneFile(state.inputfile, null);
+    if (records == null || records.size() == 0)
+    {
+      System.err.println("error: empty RRset file");
+      state.usage();
+    }
+    // Construct the RRset. Complain if the records in the input file
+    // consist of more than one RRset.
+    RRset rrset = null;
+    for (Iterator i = records.iterator(); i.hasNext();)
+    {
+      Record r = (Record) i.next();
+
+      // skip RRSIGs
+      if (r.getType() == Type.RRSIG || r.getType() == Type.SIG)
+      {
+        continue;
+      }
+
+      // Handle the first record.
+      if (rrset == null)
+      {
+        rrset = new RRset();
+        rrset.addRR(r);
+        continue;
+      }
+      // Ensure that the remaining records all belong to the same rrset.
+      if (rrset.getName().equals(r.getName()) && rrset.getType() == r.getType()
+          && rrset.getDClass() == r.getDClass())
+      {
+        rrset.addRR(r);
+      }
+      else
+      {
+        System.err.println("Records do not all belong to the same RRset.");
+        state.usage();
+      }
+    }
+
+    if (rrset.size() == 0)
+    {
+      System.err.println("No records found in inputfile.");
+      state.usage();
+    }
+
+    // Load the key pairs.
+
+    if (state.keyFiles.length == 0)
+    {
+      System.err.println("error: at least one keyfile must be specified");
+      state.usage();
+    }
+
+    List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
+
+    // Make sure that all the keypairs have the same name.
+    // This will be used as the zone name, too.
+
+    Name keysetName = null;
+    for (DnsKeyPair pair : keypairs)
+    {
+      if (keysetName == null)
+      {
+        keysetName = pair.getDNSKEYName();
+        continue;
+      }
+      if (!pair.getDNSKEYName().equals(keysetName))
+      {
+        System.err.println("Keys do not all have the same name.");
+        state.usage();
+      }
+    }
+
+    // default the output file, if not set.
+    if (state.outputfile == null && !state.inputfile.equals("-"))
+    {
+      state.outputfile = state.inputfile + ".signed";
+    }
+
+    JCEDnsSecSigner signer = new JCEDnsSecSigner();
+
+    List sigs = signer.signRRset(rrset, keypairs, state.start, state.expire);
+    for (Iterator i = sigs.iterator(); i.hasNext();)
+    {
+      rrset.addRR((Record) i.next());
+    }
+
+    // write out the signed RRset
+    List signed_records = new ArrayList();
+    for (Iterator i = rrset.rrs(); i.hasNext();)
+    {
+      signed_records.add(i.next());
+    }
+    for (Iterator i = rrset.sigs(); i.hasNext();)
+    {
+      signed_records.add(i.next());
+    }
+
+    // write out the signed zone
+    ZoneUtils.writeZoneFile(signed_records, state.outputfile);
+
+    if (state.verifySigs)
+    {
+      log.fine("verifying generated signatures");
+      boolean res = verifySigs(keysetName, signed_records, keypairs);
+
+      if (res)
+      {
+        System.out.println("Generated signatures verified");
+        // log.info("Generated signatures verified");
+      }
+      else
+      {
+        System.out.println("Generated signatures did not verify.");
+        // log.warn("Generated signatures did not verify.");
+      }
+    }
+
+  }
+
+  public static void main(String[] args)
+  {
+    CLIState state = new CLIState();
+    try
+    {
+      state.parseCommandLine(args);
+    }
+    catch (UnrecognizedOptionException e)
+    {
+      System.err.println("error: unknown option encountered: " + e.getMessage());
+      state.usage();
+    }
+    catch (AlreadySelectedException e)
+    {
+      System.err.println("error: mutually exclusive options have "
+          + "been selected:\n     " + e.getMessage());
+      state.usage();
+    }
+    catch (Exception e)
+    {
+      System.err.println("error: unknown command line parsing exception:");
+      e.printStackTrace();
+      state.usage();
+    }
+
+    log = Logger.getLogger(SignRRset.class.toString());
+
+    try
+    {
+      execute(state);
+    }
+    catch (Exception e)
+    {
+      e.printStackTrace();
+    }
+  }
 }
