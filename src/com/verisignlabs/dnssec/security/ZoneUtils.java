@@ -56,11 +56,18 @@ public class ZoneUtils
    * @throws IOException
    *           if something goes wrong reading the zone file.
    */
-  public static List readZoneFile(String zonefile, Name origin)
-      throws IOException
+  public static List readZoneFile(String zonefile, Name origin) throws IOException
   {
     ArrayList records = new ArrayList();
-    Master m = new Master(zonefile, origin);
+    Master m;
+    if (zonefile.equals("-"))
+    {
+      m = new Master(System.in);
+    }
+    else
+    {
+      m = new Master(zonefile, origin);
+    }
 
     Record r = null;
 
@@ -81,8 +88,7 @@ public class ZoneUtils
    * @param zonefile
    *          the file to write to. If null or equal to "-", System.out is used.
    */
-  public static void writeZoneFile(List records, String zonefile)
-      throws IOException
+  public static void writeZoneFile(List records, String zonefile) throws IOException
   {
     PrintWriter out = null;
 

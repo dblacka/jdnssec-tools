@@ -809,7 +809,7 @@ public class SignZone
     }
 
     // default the output file, if not set.
-    if (state.outputfile == null)
+    if (state.outputfile == null && !state.zonefile.equals("-"))
     {
       if (zonename.isAbsolute())
       {

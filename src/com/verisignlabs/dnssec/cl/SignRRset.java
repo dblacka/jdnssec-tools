@@ -414,7 +414,7 @@ public class SignRRset {
         }
 
         // default the output file, if not set.
-        if (state.outputfile == null) {
+        if (state.outputfile == null && !state.inputfile.equals("-")) {
             state.outputfile = state.inputfile + ".signed";
         }
 
