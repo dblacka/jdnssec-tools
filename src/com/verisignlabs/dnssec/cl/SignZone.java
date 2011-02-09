@@ -412,9 +412,9 @@ public class SignZone
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
-      out.println("usage: jdnssec-signzone [..options..] " + "zone_file [key_file ...] ");
-      f.printHelp(out, 75, "signZone.sh", null, opts, HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD,
+      f.printHelp(out, 75,
+                  "jdnssec-signzone [..options..] " + "zone_file [key_file ...]", null,
+                  opts, HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD,
                   "\ntime/offset = YYYYMMDDHHmmss|+offset|\"now\"+offset\n");
 
       out.flush();
