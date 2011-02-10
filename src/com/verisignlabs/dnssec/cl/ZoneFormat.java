@@ -85,34 +85,33 @@ public class ZoneFormat
       if (cli.hasOption('N')) assignNSEC3 = true;
 
       Logger rootLogger = Logger.getLogger("");
-      if (cli.hasOption('v'))
+
+      int value = parseInt(cli.getOptionValue('v'), -1);
+      switch (value)
       {
-        int value = parseInt(cli.getOptionValue('v'), -1);
-        switch (value)
-        {
-          case 0:
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 1:
-            rootLogger.setLevel(Level.SEVERE);
-            break;
-          case 2:
-          default:
-            rootLogger.setLevel(Level.WARNING);
-            break;
-          case 3:
-            rootLogger.setLevel(Level.INFO);
-            break;
-          case 4:
-            rootLogger.setLevel(Level.CONFIG);
-          case 5:
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6:
-            rootLogger.setLevel(Level.ALL);
-            break;
-        }
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 1:
+          rootLogger.setLevel(Level.SEVERE);
+          break;
+        case 2:
+        default:
+          rootLogger.setLevel(Level.WARNING);
+          break;
+        case 3:
+          rootLogger.setLevel(Level.INFO);
+          break;
+        case 4:
+          rootLogger.setLevel(Level.CONFIG);
+        case 5:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
       }
+
       // I hate java.util.logging, btw.
       for (Handler h : rootLogger.getHandlers())
       {

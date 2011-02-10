@@ -84,7 +84,7 @@ public class SignKeyset
 
     /**
      * Set up the command line options.
-     *
+     * 
      * @return a set of command line options.
      */
     private void setupCLI()
@@ -136,34 +136,33 @@ public class SignKeyset
       if (cli.hasOption('h')) usage();
 
       Logger rootLogger = Logger.getLogger("");
-      if (cli.hasOption('v'))
+
+      int value = parseInt(cli.getOptionValue('v'), -1);
+      switch (value)
       {
-        int value = parseInt(cli.getOptionValue('v'), -1);
-        switch (value)
-        {
-          case 0:
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 1:
-            rootLogger.setLevel(Level.SEVERE);
-            break;
-          case 2:
-          default:
-            rootLogger.setLevel(Level.WARNING);
-            break;
-          case 3:
-            rootLogger.setLevel(Level.INFO);
-            break;
-          case 4:
-            rootLogger.setLevel(Level.CONFIG);
-          case 5:
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6:
-            rootLogger.setLevel(Level.ALL);
-            break;
-        }
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 1:
+          rootLogger.setLevel(Level.SEVERE);
+          break;
+        case 2:
+        default:
+          rootLogger.setLevel(Level.WARNING);
+          break;
+        case 3:
+          rootLogger.setLevel(Level.INFO);
+          break;
+        case 4:
+          rootLogger.setLevel(Level.CONFIG);
+        case 5:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
       }
+
       // I hate java.util.logging, btw.
       for (Handler h : rootLogger.getHandlers())
       {
@@ -241,7 +240,7 @@ public class SignKeyset
 
   /**
    * This is just a convenience method for parsing integers from strings.
-   *
+   * 
    * @param s
    *          the string to parse.
    * @param def
@@ -263,7 +262,7 @@ public class SignKeyset
 
   /**
    * Verify the generated signatures.
-   *
+   * 
    * @param zonename
    *          the origin name of the zone.
    * @param records
@@ -308,7 +307,7 @@ public class SignKeyset
 
   /**
    * Load the key pairs from the key files.
-   *
+   * 
    * @param keyfiles
    *          a string array containing the base names or paths of the keys
    *          to be loaded.
@@ -381,7 +380,7 @@ public class SignKeyset
 
   /**
    * Calculate a date/time from a command line time/offset duration string.
-   *
+   * 
    * @param start
    *          the start time to calculate offsets from.
    * @param duration

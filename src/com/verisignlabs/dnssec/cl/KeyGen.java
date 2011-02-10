@@ -92,8 +92,7 @@ public class KeyGen
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
       OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information.\n"
-          + "default is level 5.");
+          + "5 is debug information, 6 is trace information.\n" + "default is level 5.");
       opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
@@ -118,8 +117,7 @@ public class KeyGen
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("keydir");
       OptionBuilder.withArgName("dir");
-      OptionBuilder.withDescription("place generated key files in this "
-          + "directory");
+      OptionBuilder.withDescription("place generated key files in this " + "directory");
       opts.addOption(OptionBuilder.create('d'));
 
       OptionBuilder.hasArg();
@@ -140,34 +138,33 @@ public class KeyGen
       if (cli.hasOption('h')) usage();
 
       Logger rootLogger = Logger.getLogger("");
-      if (cli.hasOption('v'))
+
+      int value = parseInt(cli.getOptionValue('v'), -1);
+      switch (value)
       {
-        int value = parseInt(cli.getOptionValue('v'), -1);
-        switch (value)
-        {
-          case 0:
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 1:
-            rootLogger.setLevel(Level.SEVERE);
-            break;
-          case 2:
-          default:
-            rootLogger.setLevel(Level.WARNING);
-            break;
-          case 3:
-            rootLogger.setLevel(Level.INFO);
-            break;
-          case 4:
-            rootLogger.setLevel(Level.CONFIG);
-          case 5:
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6:
-            rootLogger.setLevel(Level.ALL);
-            break;
-        }
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 1:
+          rootLogger.setLevel(Level.SEVERE);
+          break;
+        case 2:
+        default:
+          rootLogger.setLevel(Level.WARNING);
+          break;
+        case 3:
+          rootLogger.setLevel(Level.INFO);
+          break;
+        case 4:
+          rootLogger.setLevel(Level.CONFIG);
+        case 5:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
       }
+
       // I hate java.util.logging, btw.
       for (Handler h : rootLogger.getHandlers())
       {
@@ -257,8 +254,7 @@ public class KeyGen
 
       // print our own usage statement:
       f.printHelp(out, 75, "jdnssec-keygen [..options..] name", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD, null);
+                  HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -314,13 +310,13 @@ public class KeyGen
     if (state.zoneKey) flags |= DNSKEYRecord.Flags.ZONE_KEY;
     if (state.kskFlag) flags |= DNSKEYRecord.Flags.SEP_KEY;
 
-    log.fine("create key pair with (name = " + owner_name + ", ttl = "
-        + state.ttl + ", alg = " + state.algorithm + ", flags = " + flags
-        + ", length = " + state.keylength + ")");
+    log.fine("create key pair with (name = " + owner_name + ", ttl = " + state.ttl
+        + ", alg = " + state.algorithm + ", flags = " + flags + ", length = "
+        + state.keylength + ")");
 
     DnsKeyPair pair = signer.generateKey(owner_name, state.ttl, DClass.IN,
-                                         state.algorithm, flags,
-                                         state.keylength, state.useLargeE);
+                                         state.algorithm, flags, state.keylength,
+                                         state.useLargeE);
 
     if (state.outputfile != null)
     {

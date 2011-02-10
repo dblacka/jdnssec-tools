@@ -71,8 +71,7 @@ public class KeyInfoTool
       OptionBuilder.withLongOpt("verbose");
       OptionBuilder.withArgName("level");
       OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information.\n"
-          + "default is level 5.");
+          + "5 is debug information, 6 is trace information.\n" + "default is level 5.");
       // Argument options
       opts.addOption(OptionBuilder.create('v'));
 
@@ -92,34 +91,33 @@ public class KeyInfoTool
       if (cli.hasOption('h')) usage();
 
       Logger rootLogger = Logger.getLogger("");
-      if (cli.hasOption('v'))
+
+      int value = parseInt(cli.getOptionValue('v'), -1);
+      switch (value)
       {
-        int value = parseInt(cli.getOptionValue('v'), -1);
-        switch (value)
-        {
-          case 0:
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 1:
-            rootLogger.setLevel(Level.SEVERE);
-            break;
-          case 2:
-          default:
-            rootLogger.setLevel(Level.WARNING);
-            break;
-          case 3:
-            rootLogger.setLevel(Level.INFO);
-            break;
-          case 4:
-            rootLogger.setLevel(Level.CONFIG);
-          case 5:
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6:
-            rootLogger.setLevel(Level.ALL);
-            break;
-        }
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 1:
+          rootLogger.setLevel(Level.SEVERE);
+          break;
+        case 2:
+        default:
+          rootLogger.setLevel(Level.WARNING);
+          break;
+        case 3:
+          rootLogger.setLevel(Level.INFO);
+          break;
+        case 4:
+          rootLogger.setLevel(Level.CONFIG);
+        case 5:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
       }
+
       // I hate java.util.logging, btw.
       for (Handler h : rootLogger.getHandlers())
       {
@@ -153,8 +151,7 @@ public class KeyInfoTool
 
       // print our own usage statement:
       f.printHelp(out, 75, "jdnssec-keyinfo [..options..] keyfile", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD, null);
+                  HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -218,23 +215,20 @@ public class KeyInfoTool
       System.out.println("Name: " + dnskey.getName());
       System.out.println("SEP: " + isSEP);
 
-      System.out.println("Algorithm: "
-          + dnskeyalg.algToString(dnskey.getAlgorithm()) + " ("
-          + dnskey.getAlgorithm() + ")");
+      System.out.println("Algorithm: " + dnskeyalg.algToString(dnskey.getAlgorithm())
+          + " (" + dnskey.getAlgorithm() + ")");
       System.out.println("ID: " + dnskey.getFootprint());
       System.out.println("KeyFileBase: " + BINDKeyUtils.keyFileBase(key));
       int basetype = dnskeyalg.baseType(dnskey.getAlgorithm());
       switch (basetype)
       {
-        case DnsKeyAlgorithm.RSA:
-        {
+        case DnsKeyAlgorithm.RSA: {
           RSAPublicKey pub = (RSAPublicKey) key.getPublic();
           System.out.println("RSA Public Exponent: " + pub.getPublicExponent());
           System.out.println("RSA Modulus: " + pub.getModulus());
           break;
         }
-        case DnsKeyAlgorithm.DSA:
-        {
+        case DnsKeyAlgorithm.DSA: {
           DSAPublicKey pub = (DSAPublicKey) key.getPublic();
           System.out.println("DSA base (G): " + pub.getParams().getG());
           System.out.println("DSA prime (P): " + pub.getParams().getP());
@@ -243,7 +237,7 @@ public class KeyInfoTool
           break;
         }
       }
-      if (state.keynames.length - i > 1) 
+      if (state.keynames.length - i > 1)
       {
         System.out.println();
       }

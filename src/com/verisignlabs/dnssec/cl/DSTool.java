@@ -101,34 +101,33 @@ public class DSTool
       if (cli.hasOption('h')) usage();
 
       Logger rootLogger = Logger.getLogger("");
-      if (cli.hasOption('v'))
+
+      int value = parseInt(cli.getOptionValue('v'), -1);
+      switch (value)
       {
-        int value = parseInt(cli.getOptionValue('v'), -1);
-        switch (value)
-        {
-          case 0:
-            rootLogger.setLevel(Level.OFF);
-            break;
-          case 1:
-            rootLogger.setLevel(Level.SEVERE);
-            break;
-          case 2:
-          default:
-            rootLogger.setLevel(Level.WARNING);
-            break;
-          case 3:
-            rootLogger.setLevel(Level.INFO);
-            break;
-          case 4:
-            rootLogger.setLevel(Level.CONFIG);
-          case 5:
-            rootLogger.setLevel(Level.FINE);
-            break;
-          case 6:
-            rootLogger.setLevel(Level.ALL);
-            break;
-        }
+        case 0:
+          rootLogger.setLevel(Level.OFF);
+          break;
+        case 1:
+          rootLogger.setLevel(Level.SEVERE);
+          break;
+        case 2:
+        default:
+          rootLogger.setLevel(Level.WARNING);
+          break;
+        case 3:
+          rootLogger.setLevel(Level.INFO);
+          break;
+        case 4:
+          rootLogger.setLevel(Level.CONFIG);
+        case 5:
+          rootLogger.setLevel(Level.FINE);
+          break;
+        case 6:
+          rootLogger.setLevel(Level.ALL);
+          break;
       }
+
       // I hate java.util.logging, btw.
       for (Handler h : rootLogger.getHandlers())
       {
@@ -161,8 +160,7 @@ public class DSTool
 
       // print our own usage statement:
       f.printHelp(out, 75, "jdnssec-dstool [..options..] keyfile", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD, null);
+                  HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
@@ -202,8 +200,7 @@ public class DSTool
       log.warning("DNSKEY is not an SEP-flagged key.");
     }
 
-    DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digest_id,
-                                              dnskey.getTTL());
+    DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digest_id, dnskey.getTTL());
     Record res = ds;
 
     if (state.createDLV)
