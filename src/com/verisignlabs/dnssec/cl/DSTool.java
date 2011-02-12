@@ -1,6 +1,4 @@
-// $Id: KeyGen.java 1954 2005-08-14 17:05:50Z davidb $
-//
-// Copyright (C) 2001-2003 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2011 VeriSign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -21,9 +19,6 @@ package com.verisignlabs.dnssec.cl;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
 import org.xbill.DNS.DLVRecord;
@@ -36,29 +31,26 @@ import com.verisignlabs.dnssec.security.*;
 /**
  * This class forms the command line implementation of a DNSSEC DS/DLV generator
  * 
- * @author David Blacka (original)
- * @author $Author: davidb $
- * @version $Revision: 1954 $
+ * @author David Blacka
  */
-public class DSTool
+public class DSTool extends CLBase
 {
-  private static Logger log;
+  private CLIState state;
 
   /**
    * This is a small inner class used to hold all of the command line option
    * state.
    */
-  private static class CLIState
+  protected static class CLIState extends CLIStateBase
   {
-    private Options opts;
-    public boolean  createDLV  = false;
-    public String   outputfile = null;
-    public String   keyname    = null;
-    public int      digest_id  = DSRecord.SHA1_DIGEST_ID;
+    public boolean createDLV  = false;
+    public String  outputfile = null;
+    public String  keyname    = null;
+    public int     digest_id  = DSRecord.SHA1_DIGEST_ID;
 
     public CLIState()
     {
-      setupCLI();
+      super("jdnssec-dstool [..options..] keyfile");
     }
 
     /**
@@ -66,24 +58,11 @@ public class DSTool
      * 
      * @return a set of command line options.
      */
-    private void setupCLI()
+    protected void setupOptions(Options opts)
     {
-      opts = new Options();
-
-      // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
-
       OptionBuilder.withLongOpt("dlv");
       OptionBuilder.withDescription("Generate a DLV record instead.");
       opts.addOption(OptionBuilder.create());
-
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, 5 is debug information, 6 is trace information.\n"
-          + "default is level 5.");
-      // Argument options
-      opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
       OptionBuilder.withLongOpt("digest");
@@ -92,49 +71,9 @@ public class DSTool
       opts.addOption(OptionBuilder.create('d'));
     }
 
-    public void parseCommandLine(String[] args)
+    protected void processOptions(CommandLine cli)
         throws org.apache.commons.cli.ParseException
     {
-      CommandLineParser cli_parser = new PosixParser();
-      CommandLine cli = cli_parser.parse(opts, args);
-
-      if (cli.hasOption('h')) usage();
-
-      Logger rootLogger = Logger.getLogger("");
-
-      int value = parseInt(cli.getOptionValue('v'), -1);
-      switch (value)
-      {
-        case 0:
-          rootLogger.setLevel(Level.OFF);
-          break;
-        case 1:
-          rootLogger.setLevel(Level.SEVERE);
-          break;
-        case 2:
-        default:
-          rootLogger.setLevel(Level.WARNING);
-          break;
-        case 3:
-          rootLogger.setLevel(Level.INFO);
-          break;
-        case 4:
-          rootLogger.setLevel(Level.CONFIG);
-        case 5:
-          rootLogger.setLevel(Level.FINE);
-          break;
-        case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
-      }
-
-      // I hate java.util.logging, btw.
-      for (Handler h : rootLogger.getHandlers())
-      {
-        h.setLevel(rootLogger.getLevel());
-        h.setFormatter(new BareLogFormatter());
-      }
-
       outputfile = cli.getOptionValue('f');
       createDLV = cli.hasOption("dlv");
       String optstr = cli.getOptionValue('d');
@@ -151,47 +90,10 @@ public class DSTool
       keyname = cl_args[0];
     }
 
-    /** Print out the usage and help statements, then quit. */
-    private void usage()
-    {
-      HelpFormatter f = new HelpFormatter();
-
-      PrintWriter out = new PrintWriter(System.err);
-
-      // print our own usage statement:
-      f.printHelp(out, 75, "jdnssec-dstool [..options..] keyfile", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
-
-      out.flush();
-      System.exit(64);
-    }
   }
 
-  /**
-   * This is just a convenience method for parsing integers from strings.
-   * 
-   * @param s
-   *          the string to parse.
-   * @param def
-   *          the default value, if the string doesn't parse.
-   * @return the parsed integer, or the default.
-   */
-  private static int parseInt(String s, int def)
+  public void execute() throws Exception
   {
-    try
-    {
-      int v = Integer.parseInt(s);
-      return v;
-    }
-    catch (NumberFormatException e)
-    {
-      return def;
-    }
-  }
-
-  public static void execute(CLIState state) throws Exception
-  {
-
     DnsKeyPair key = BINDKeyUtils.loadKey(state.keyname, null);
     DNSKEYRecord dnskey = key.getDNSKEYRecord();
 
@@ -226,39 +128,9 @@ public class DSTool
 
   public static void main(String[] args)
   {
-    CLIState state = new CLIState();
+    DSTool tool = new DSTool();
+    tool.state = new CLIState();
 
-    try
-    {
-      state.parseCommandLine(args);
-    }
-    catch (UnrecognizedOptionException e)
-    {
-      System.err.println("error: unknown option encountered: " + e.getMessage());
-      state.usage();
-    }
-    catch (AlreadySelectedException e)
-    {
-      System.err.println("error: mutually exclusive options have been selected:\n     "
-          + e.getMessage());
-      state.usage();
-    }
-    catch (Exception e)
-    {
-      System.err.println("error: unknown command line parsing exception:");
-      e.printStackTrace();
-      state.usage();
-    }
-
-    log = Logger.getLogger(DSTool.class.toString());
-
-    try
-    {
-      execute(state);
-    }
-    catch (Exception e)
-    {
-      e.printStackTrace();
-    }
+    tool.run(tool.state, args);
   }
 }

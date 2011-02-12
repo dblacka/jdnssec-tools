@@ -1,6 +1,4 @@
-// $Id: SignZone.java 2235 2009-02-07 20:37:29Z davidb $
-//
-// Copyright (C) 2001-2003, 2009 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2011 VeriSign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -22,26 +20,15 @@ package com.verisignlabs.dnssec.cl;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.TimeZone;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import org.apache.commons.cli.AlreadySelectedException;
+
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.PosixParser;
-import org.apache.commons.cli.UnrecognizedOptionException;
 import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRset;
@@ -55,21 +42,18 @@ import com.verisignlabs.dnssec.security.*;
  * Instead of being able to sign an entire zone, it will just sign a given
  * DNSKEY RRset.
  * 
- * @author David Blacka (original)
- * @author $Author: davidb $
- * @version $Revision: 2235 $
+ * @author David Blacka
  */
-public class SignKeyset
+public class SignKeyset extends CLBase
 {
-  private static Logger log;
+  private CLIState state;
 
   /**
    * This is an inner class used to hold all of the command line option state.
    */
-  private static class CLIState
+  protected static class CLIState extends CLIStateBase
   {
-    private Options opts;
-    private File    keyDirectory = null;
+    public File    keyDirectory = null;
     public String[] keyFiles     = null;
     public Date     start        = null;
     public Date     expire       = null;
@@ -79,29 +63,18 @@ public class SignKeyset
 
     public CLIState()
     {
-      setupCLI();
+      super("jdnssec-signkeyset [..options..] dnskeyset_file [key_file ...]");
     }
 
     /**
      * Set up the command line options.
-     * 
-     * @return a set of command line options.
      */
-    private void setupCLI()
+    protected void setupOptions(Options opts)
     {
-      opts = new Options();
-
       // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
       opts.addOption("a", "verify", false, "verify generated signatures>");
 
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level.");
       // Argument options
-      opts.addOption(OptionBuilder.create('v'));
-
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("dir");
       OptionBuilder.withLongOpt("key-directory");
@@ -126,49 +99,9 @@ public class SignKeyset
       opts.addOption(OptionBuilder.create('f'));
     }
 
-    public void parseCommandLine(String[] args)
-        throws org.apache.commons.cli.ParseException, ParseException, IOException
+    protected void processOptions(CommandLine cli) throws org.apache.commons.cli.ParseException
     {
-      CommandLineParser cli_parser = new PosixParser();
-      CommandLine cli = cli_parser.parse(opts, args);
-
       String optstr = null;
-      if (cli.hasOption('h')) usage();
-
-      Logger rootLogger = Logger.getLogger("");
-
-      int value = parseInt(cli.getOptionValue('v'), -1);
-      switch (value)
-      {
-        case 0:
-          rootLogger.setLevel(Level.OFF);
-          break;
-        case 1:
-          rootLogger.setLevel(Level.SEVERE);
-          break;
-        case 2:
-        default:
-          rootLogger.setLevel(Level.WARNING);
-          break;
-        case 3:
-          rootLogger.setLevel(Level.INFO);
-          break;
-        case 4:
-          rootLogger.setLevel(Level.CONFIG);
-        case 5:
-          rootLogger.setLevel(Level.FINE);
-          break;
-        case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
-      }
-
-      // I hate java.util.logging, btw.
-      for (Handler h : rootLogger.getHandlers())
-      {
-        h.setLevel(rootLogger.getLevel());
-        h.setFormatter(new BareLogFormatter());
-      }
 
       if (cli.hasOption('a')) verifySigs = true;
 
@@ -217,46 +150,6 @@ public class SignKeyset
         keyFiles = new String[files.length - 1];
         System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
       }
-    }
-
-    /** Print out the usage and help statements, then quit. */
-    private void usage()
-    {
-      HelpFormatter f = new HelpFormatter();
-
-      PrintWriter out = new PrintWriter(System.err);
-
-      // print our own usage statement:
-      f.printHelp(out, 75, "jdnssec-signkeyset [..options..] "
-                      + "dnskeyset_file [key_file ...]", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD,
-                  "\ntime/offset = YYYYMMDDHHmmss|+offset|\"now\"+offset\n");
-
-      out.flush();
-      System.exit(64);
-    }
-  }
-
-  /**
-   * This is just a convenience method for parsing integers from strings.
-   * 
-   * @param s
-   *          the string to parse.
-   * @param def
-   *          the default value, if the string doesn't parse.
-   * @return the parsed integer, or the default.
-   */
-  private static int parseInt(String s, int def)
-  {
-    try
-    {
-      int v = Integer.parseInt(s);
-      return v;
-    }
-    catch (NumberFormatException e)
-    {
-      return def;
     }
   }
 
@@ -378,38 +271,7 @@ public class SignKeyset
     return null;
   }
 
-  /**
-   * Calculate a date/time from a command line time/offset duration string.
-   * 
-   * @param start
-   *          the start time to calculate offsets from.
-   * @param duration
-   *          the time/offset string to parse.
-   * @return the calculated time.
-   */
-  private static Date convertDuration(Date start, String duration) throws ParseException
-  {
-    if (start == null) start = new Date();
-    if (duration.startsWith("now"))
-    {
-      start = new Date();
-      if (duration.indexOf("+") < 0) return start;
-
-      duration = duration.substring(3);
-    }
-
-    if (duration.startsWith("+"))
-    {
-      long offset = (long) parseInt(duration.substring(1), 0) * 1000;
-      return new Date(start.getTime() + offset);
-    }
-
-    SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMddHHmmss");
-    dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-    return dateFormatter.parse(duration);
-  }
-
-  public static void execute(CLIState state) throws Exception
+  public void execute() throws Exception
   {
     // Read in the zone
     List records = ZoneUtils.readZoneFile(state.inputfile, null);
@@ -524,38 +386,9 @@ public class SignKeyset
 
   public static void main(String[] args)
   {
-    CLIState state = new CLIState();
-    try
-    {
-      state.parseCommandLine(args);
-    }
-    catch (UnrecognizedOptionException e)
-    {
-      System.err.println("error: unknown option encountered: " + e.getMessage());
-      state.usage();
-    }
-    catch (AlreadySelectedException e)
-    {
-      System.err.println("error: mutually exclusive options have "
-          + "been selected:\n     " + e.getMessage());
-      state.usage();
-    }
-    catch (Exception e)
-    {
-      System.err.println("error: unknown command line parsing exception:");
-      e.printStackTrace();
-      state.usage();
-    }
-
-    log = Logger.getLogger(SignKeyset.class.toString());
-
-    try
-    {
-      execute(state);
-    }
-    catch (Exception e)
-    {
-      e.printStackTrace();
-    }
+    SignKeyset tool = new SignKeyset();
+    tool.state = new CLIState();
+    
+    tool.run(tool.state, args);
   }
 }

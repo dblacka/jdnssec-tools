@@ -1,3 +1,10 @@
+2011-02-12  David Blacka  <davidb@verisignlabs.com>
+
+	* Update commons-cli to version 1.2.
+	* Refactor all of the command line classes.  A new command line
+	base class has been created to eliminate much of the duplicated
+	code.
+
 2011-02-09  Blacka  <davidb@verisignlabs.com>
 
 	* Enable reading and writing from stdin/stdout for most tools.  To

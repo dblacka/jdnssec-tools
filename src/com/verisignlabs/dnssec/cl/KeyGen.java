@@ -1,6 +1,4 @@
-// $Id$
-//
-// Copyright (C) 2001-2003 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2011 VeriSign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -20,10 +18,6 @@
 package com.verisignlabs.dnssec.cl;
 
 import java.io.File;
-import java.io.PrintWriter;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
 import org.xbill.DNS.DClass;
@@ -35,21 +29,18 @@ import com.verisignlabs.dnssec.security.*;
 /**
  * This class forms the command line implementation of a DNSSEC key generator
  * 
- * @author David Blacka (original)
- * @author $Author$
- * @version $Revision$
+ * @author David Blacka
  */
-public class KeyGen
+public class KeyGen extends CLBase
 {
-  private static Logger log;
+  private CLIState state;
 
   /**
    * This is a small inner class used to hold all of the command line option
    * state.
    */
-  private static class CLIState
+  protected static class CLIState extends CLIStateBase 
   {
-    private Options opts;
     public int      algorithm  = 8;
     public int      keylength  = 1024;
     public boolean  useLargeE  = true;
@@ -62,20 +53,15 @@ public class KeyGen
 
     public CLIState()
     {
-      setupCLI();
+      super("jdnssec-keygen [..options..] name");
     }
 
     /**
      * Set up the command line options.
-     * 
-     * @return a set of command line options.
      */
-    private void setupCLI()
+    protected void setupOptions(Options opts)
     {
-      opts = new Options();
-
       // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
       opts.addOption("k", "kskflag", false,
                      "Key is a key-signing-key (sets the SEP flag).");
       opts.addOption("e", "large-exponent", false, "Use large RSA exponent (default)");
@@ -87,13 +73,6 @@ public class KeyGen
       OptionBuilder.withArgName("type");
       OptionBuilder.withDescription("ZONE | OTHER (default ZONE)");
       opts.addOption(OptionBuilder.create('n'));
-
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, "
-          + "5 is debug information, 6 is trace information.\n" + "default is level 5.");
-      opts.addOption(OptionBuilder.create('v'));
 
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("algorithm");
@@ -119,61 +98,16 @@ public class KeyGen
       OptionBuilder.withArgName("dir");
       OptionBuilder.withDescription("place generated key files in this " + "directory");
       opts.addOption(OptionBuilder.create('d'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withLongOpt("alg-alias");
-      OptionBuilder.withArgName("alias:original:mnemonic");
-      OptionBuilder.withDescription("define an alias for an algorithm");
       opts.addOption(OptionBuilder.create('A'));
     }
 
-    public void parseCommandLine(String[] args)
+    protected void processOptions(CommandLine cli)
         throws org.apache.commons.cli.ParseException
     {
-      CommandLineParser cli_parser = new PosixParser();
-      CommandLine cli = cli_parser.parse(opts, args);
-
       String optstr = null;
-
-      if (cli.hasOption('h')) usage();
-
-      Logger rootLogger = Logger.getLogger("");
-
-      int value = parseInt(cli.getOptionValue('v'), -1);
-      switch (value)
-      {
-        case 0:
-          rootLogger.setLevel(Level.OFF);
-          break;
-        case 1:
-          rootLogger.setLevel(Level.SEVERE);
-          break;
-        case 2:
-        default:
-          rootLogger.setLevel(Level.WARNING);
-          break;
-        case 3:
-          rootLogger.setLevel(Level.INFO);
-          break;
-        case 4:
-          rootLogger.setLevel(Level.CONFIG);
-        case 5:
-          rootLogger.setLevel(Level.FINE);
-          break;
-        case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
-      }
-
-      // I hate java.util.logging, btw.
-      for (Handler h : rootLogger.getHandlers())
-      {
-        h.setLevel(rootLogger.getLevel());
-        h.setFormatter(new BareLogFormatter());
-      }
-
+      String[] optstrs = null;
+      
       if (cli.hasOption('k')) kskFlag = true;
-
       if (cli.hasOption('e')) useLargeE = true;
 
       outputfile = cli.getOptionValue('f');
@@ -191,7 +125,6 @@ public class KeyGen
         }
       }
 
-      String[] optstrs;
       if ((optstrs = cli.getOptionValues('A')) != null)
       {
         for (int i = 0; i < optstrs.length; i++)
@@ -225,63 +158,8 @@ public class KeyGen
 
       owner = cl_args[0];
     }
-
-    private void addArgAlias(String s)
-    {
-      if (s == null) return;
-
-      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
-
-      String[] v = s.split(":");
-      if (v.length < 2) return;
-
-      int alias = parseInt(v[0], -1);
-      if (alias <= 0) return;
-      int orig = parseInt(v[1], -1);
-      if (orig <= 0) return;
-      String mn = null;
-      if (v.length > 2) mn = v[2];
-
-      algs.addAlias(alias, mn, orig);
-    }
-
-    /** Print out the usage and help statements, then quit. */
-    private void usage()
-    {
-      HelpFormatter f = new HelpFormatter();
-
-      PrintWriter out = new PrintWriter(System.err);
-
-      // print our own usage statement:
-      f.printHelp(out, 75, "jdnssec-keygen [..options..] name", null, opts,
-                  HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
-
-      out.flush();
-      System.exit(64);
-    }
   }
 
-  /**
-   * This is just a convenience method for parsing integers from strings.
-   * 
-   * @param s
-   *          the string to parse.
-   * @param def
-   *          the default value, if the string doesn't parse.
-   * @return the parsed integer, or the default.
-   */
-  private static int parseInt(String s, int def)
-  {
-    try
-    {
-      int v = Integer.parseInt(s);
-      return v;
-    }
-    catch (NumberFormatException e)
-    {
-      return def;
-    }
-  }
 
   private static int parseAlg(String s)
   {
@@ -293,7 +171,7 @@ public class KeyGen
     return algs.stringToAlgorithm(s);
   }
 
-  public static void execute(CLIState state) throws Exception
+  public void execute() throws Exception
   {
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
@@ -331,39 +209,9 @@ public class KeyGen
 
   public static void main(String[] args)
   {
-    CLIState state = new CLIState();
-
-    try
-    {
-      state.parseCommandLine(args);
-    }
-    catch (UnrecognizedOptionException e)
-    {
-      System.err.println("error: unknown option encountered: " + e.getMessage());
-      state.usage();
-    }
-    catch (AlreadySelectedException e)
-    {
-      System.err.println("error: mutually exclusive options have "
-          + "been selected:\n     " + e.getMessage());
-      state.usage();
-    }
-    catch (Exception e)
-    {
-      System.err.println("error: unknown command line parsing exception:");
-      e.printStackTrace();
-      state.usage();
-    }
-
-    log = Logger.getLogger(KeyGen.class.toString());
-
-    try
-    {
-      execute(state);
-    }
-    catch (Exception e)
-    {
-      e.printStackTrace();
-    }
+    KeyGen tool = new KeyGen();
+    tool.state = new CLIState();
+    
+    tool.run(tool.state, args);
   }
 }
