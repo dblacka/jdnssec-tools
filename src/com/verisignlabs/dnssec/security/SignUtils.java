@@ -81,13 +81,11 @@ public class SignUtils
    * 
    * @return a prototype signature based on the RRset and key information.
    */
-  public static RRSIGRecord generatePreRRSIG(RRset rrset, DNSKEYRecord key,
-                                             Date start, Date expire,
-                                             long sig_ttl)
+  public static RRSIGRecord generatePreRRSIG(RRset rrset, DNSKEYRecord key, Date start,
+                                             Date expire, long sig_ttl)
   {
-    return new RRSIGRecord(rrset.getName(), rrset.getDClass(), sig_ttl,
-                           rrset.getType(), key.getAlgorithm(),
-                           (int) rrset.getTTL(), expire, start,
+    return new RRSIGRecord(rrset.getName(), rrset.getDClass(), sig_ttl, rrset.getType(),
+                           key.getAlgorithm(), (int) rrset.getTTL(), expire, start,
                            key.getFootprint(), key.getName(), null);
   }
 
@@ -108,14 +106,12 @@ public class SignUtils
    * 
    * @return a prototype signature based on the Record and key information.
    */
-  public static RRSIGRecord generatePreRRSIG(Record rec, DNSKEYRecord key,
-                                             Date start, Date expire,
-                                             long sig_ttl)
+  public static RRSIGRecord generatePreRRSIG(Record rec, DNSKEYRecord key, Date start,
+                                             Date expire, long sig_ttl)
   {
-    return new RRSIGRecord(rec.getName(), rec.getDClass(), sig_ttl,
-                           rec.getType(), key.getAlgorithm(), rec.getTTL(),
-                           expire, start, key.getFootprint(), key.getName(),
-                           null);
+    return new RRSIGRecord(rec.getName(), rec.getDClass(), sig_ttl, rec.getType(),
+                           key.getAlgorithm(), rec.getTTL(), expire, start,
+                           key.getFootprint(), key.getName(), null);
   }
 
   /**
@@ -150,23 +146,22 @@ public class SignUtils
     return image.toByteArray();
   }
 
-
   /**
    * Calculate the canonical wire line format of the RRset.
    * 
    * @param rrset
-   *            the RRset to convert.
+   *          the RRset to convert.
    * @param ttl
-   *            the TTL to use when canonicalizing -- this is generally the
-   *            TTL of the signature if there is a pre-existing signature. If
-   *            not it is just the ttl of the rrset itself.
+   *          the TTL to use when canonicalizing -- this is generally the
+   *          TTL of the signature if there is a pre-existing signature. If
+   *          not it is just the ttl of the rrset itself.
    * @param labels
-   *            the labels field of the signature, or 0.
+   *          the labels field of the signature, or 0.
    * @return the canonical wire line format of the rrset. This is the second
    *         part of data to be signed.
    */
-  public static byte[] generateCanonicalRRsetData(RRset rrset, long ttl,
-                                                  int labels)
+  @SuppressWarnings("unchecked")
+  public static byte[] generateCanonicalRRsetData(RRset rrset, long ttl, int labels)
   {
     DNSOutput image = new DNSOutput();
 
@@ -186,24 +181,22 @@ public class SignUtils
     {
       n = n.wild(n.labels() - labels);
       wildcardName = true;
-      log.fine("Detected wildcard expansion: " + rrset.getName()
-          + " changed to " + n);
+      log.fine("Detected wildcard expansion: " + rrset.getName() + " changed to " + n);
     }
 
     // now convert the wire format records in the RRset into a
     // list of byte arrays.
-    ArrayList canonical_rrs = new ArrayList();
-    for (Iterator i = rrset.rrs(); i.hasNext();)
+    ArrayList<byte[]> canonical_rrs = new ArrayList<byte[]>();
+    for (Iterator<Record> i = rrset.rrs(); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       if (r.getTTL() != ttl || wildcardName)
       {
         // If necessary, we need to create a new record with a new ttl
         // or ownername.
         // In the TTL case, this avoids changing the ttl in the
         // response.
-        r = Record.newRecord(n, r.getType(), r.getDClass(), ttl, r
-            .rdataToWireCanonical());
+        r = Record.newRecord(n, r.getType(), r.getDClass(), ttl, r.rdataToWireCanonical());
       }
       byte[] wire_fmt = r.toWireCanonical();
       canonical_rrs.add(wire_fmt);
@@ -218,9 +211,8 @@ public class SignUtils
 
     Collections.sort(canonical_rrs, bac);
 
-    for (Iterator i = canonical_rrs.iterator(); i.hasNext();)
+    for (byte[] wire_fmt_rec : canonical_rrs)
     {
-      byte[] wire_fmt_rec = (byte[]) i.next();
       image.writeByteArray(wire_fmt_rec);
     }
 
@@ -240,8 +232,7 @@ public class SignUtils
   public static byte[] generateSigData(RRset rrset, RRSIGRecord presig)
       throws IOException
   {
-    byte[] rrset_data = generateCanonicalRRsetData(rrset,
-                                                   presig.getOrigTTL(),
+    byte[] rrset_data = generateCanonicalRRsetData(rrset, presig.getOrigTTL(),
                                                    presig.getLabels());
 
     return generateSigData(rrset_data, presig);
@@ -285,11 +276,11 @@ public class SignUtils
    */
   public static RRSIGRecord generateRRSIG(byte[] signature, RRSIGRecord presig)
   {
-    return new RRSIGRecord(presig.getName(), presig.getDClass(),
-                           presig.getTTL(), presig.getTypeCovered(),
-                           presig.getAlgorithm(), presig.getOrigTTL(),
-                           presig.getExpire(), presig.getTimeSigned(),
-                           presig.getFootprint(), presig.getSigner(), signature);
+    return new RRSIGRecord(presig.getName(), presig.getDClass(), presig.getTTL(),
+                           presig.getTypeCovered(), presig.getAlgorithm(),
+                           presig.getOrigTTL(), presig.getExpire(),
+                           presig.getTimeSigned(), presig.getFootprint(),
+                           presig.getSigner(), signature);
   }
 
   /**
@@ -311,8 +302,7 @@ public class SignUtils
    *           if there was something wrong with the RFC 2536 formatted
    *           signature.
    */
-  public static byte[] convertDSASignature(byte[] signature)
-      throws SignatureException
+  public static byte[] convertDSASignature(byte[] signature) throws SignatureException
   {
     if (signature.length != 41)
       throw new SignatureException("RFC 2536 signature not expected length.");
@@ -380,8 +370,7 @@ public class SignUtils
   {
     if (signature[0] != ASN1_SEQ || signature[2] != ASN1_INT)
     {
-      throw new SignatureException(
-                                   "Invalid ASN.1 signature format: expected SEQ, INT");
+      throw new SignatureException("Invalid ASN.1 signature format: expected SEQ, INT");
     }
 
     byte r_pad = (byte) (signature[3] - 20);
@@ -478,8 +467,8 @@ public class SignUtils
    *          the name of the last DELEGATION record/set that was encountered
    *          while iterating over the zone in canonical order.
    */
-  public static int recordSecType(Name zonename, Name name, int type,
-                                  Name last_cut, Name last_dname)
+  public static int recordSecType(Name zonename, Name name, int type, Name last_cut,
+                                  Name last_dname)
   {
     // records not even in the zone itself are invalid.
     if (!name.subdomain(zonename)) return RR_INVALID;
@@ -493,7 +482,7 @@ public class SignUtils
       // a delegation point (NS, DS, NSEC), this is glue.
       if (name.equals(last_cut))
       {
-        if (type != Type.NS && type != Type.DS && type != Type.NXT && type != Type.NSEC) 
+        if (type != Type.NS && type != Type.DS && type != Type.NXT && type != Type.NSEC)
         {
           return RR_GLUE;
         }
@@ -503,18 +492,19 @@ public class SignUtils
       {
         return RR_GLUE;
       }
-        
+
     }
-    
+
     // if we are below a DNAME, then the RR is invalid.    
-    if (last_dname != null && name.subdomain(last_dname) && name.labels() > last_dname.labels())
+    if (last_dname != null && name.subdomain(last_dname)
+        && name.labels() > last_dname.labels())
     {
       return RR_INVALID;
     }
 
     // since we are not at zone level, any NS records are delegations
     if (type == Type.NS) return RR_DELEGATION;
-    
+
     // and everything else is normal
     return RR_NORMAL;
   }
@@ -528,24 +518,13 @@ public class SignUtils
    *          canonical order.
    * @return a List of {@link org.xbill.DNS.RRset} objects.
    */
-  public static List assembleIntoRRsets(List records)
+  public static List<RRset> assembleIntoRRsets(List<Record> records)
   {
     RRset rrset = new RRset();
-    ArrayList rrsets = new ArrayList();
+    ArrayList<RRset> rrsets = new ArrayList<RRset>();
 
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Record r : records)
     {
-      Object o = i.next();
-
-      if (!(o instanceof Record))
-      {
-        log.warning("assembleIntoRRsets: a non-record object was "
-            + "encountered and skipped: " + o + " (" + o.getClass() + ")");
-        continue;
-      }
-
-      Record r = (Record) o;
-
       // First record
       if (rrset.size() == 0)
       {
@@ -581,14 +560,14 @@ public class SignUtils
    */
   private static class NodeInfo
   {
-    public Name    name;
-    public int     type;
-    public long    ttl;
-    public int     dclass;
-    public Set     typemap;
-    public boolean isSecureNode; // opt-in support.
-    public boolean hasOptInSpan; // opt-in support.
-    public int     nsecIndex;
+    public Name         name;
+    public int          type;
+    public long         ttl;
+    public int          dclass;
+    public Set<Integer> typemap;
+    public boolean      isSecureNode; // opt-in support.
+    public boolean      hasOptInSpan; // opt-in support.
+    public int          nsecIndex;
 
     public NodeInfo(Record r, int nodeType)
     {
@@ -596,7 +575,7 @@ public class SignUtils
       this.type = nodeType;
       this.ttl = r.getTTL();
       this.dclass = r.getDClass();
-      this.typemap = new HashSet();
+      this.typemap = new HashSet<Integer>();
       this.isSecureNode = false;
       this.hasOptInSpan = false;
       addType(r.getType());
@@ -613,9 +592,10 @@ public class SignUtils
         isSecureNode = true;
       }
     }
-    
-    public boolean hasType(int type) {
-      return this.typemap.contains(new Integer(type));
+
+    public boolean hasType(int type)
+    {
+      return this.typemap.contains(type);
     }
 
     public String toString()
@@ -653,7 +633,7 @@ public class SignUtils
    *          a list of {@link org.xbill.DNS.Record} objects in DNSSEC canonical
    *          order.
    */
-  public static void generateNSECRecords(Name zonename, List records)
+  public static void generateNSECRecords(Name zonename, List<Record> records)
   {
     // This works by iterating over a known sorted list of records.
 
@@ -667,24 +647,24 @@ public class SignUtils
 
     // First find the SOA record -- it should be near the beginning -- and get
     // the soa minimum
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Record r : records)
     {
-      Object o = i.next();
-      if (o instanceof SOARecord)
+      if (r.getType() == Type.SOA)
       {
-        SOARecord soa = (SOARecord) o;
+        SOARecord soa = (SOARecord) r;
         nsec_ttl = soa.getMinimum();
         break;
       }
     }
+
     if (nsec_ttl == 0)
     {
       throw new IllegalArgumentException("Zone did not contain a SOA record");
     }
 
-    for (ListIterator i = records.listIterator(); i.hasNext();)
+    for (ListIterator<Record> i = records.listIterator(); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       Name r_name = r.getName();
       int r_type = r.getType();
       int r_sectype = recordSecType(zonename, r_name, r_type, last_cut, last_dname);
@@ -697,7 +677,7 @@ public class SignUtils
 
       // if this is a DNAME, note it so we can recognize junk
       if (r_type == Type.DNAME) last_dname = r_name;
-      
+
       // first node -- initialize
       if (current_node == null)
       {
@@ -716,9 +696,8 @@ public class SignUtils
 
       if (last_node != null)
       {
-        NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass,
-                                         nsec_ttl, current_node.name,
-                                         last_node.getTypes());
+        NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass, nsec_ttl,
+                                         current_node.name, last_node.getTypes());
         // Note: we have to add this through the iterator, otherwise
         // the next access via the iterator will generate a
         // ConcurrencyModificationException.
@@ -743,17 +722,15 @@ public class SignUtils
     // Generate next to last NSEC
     if (last_node != null)
     {
-      NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass,
-                                       nsec_ttl, current_node.name,
-                                       last_node.getTypes());
+      NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass, nsec_ttl,
+                                       current_node.name, last_node.getTypes());
       records.add(last_node.nsecIndex - 1, nsec);
       log.finer("Generated: " + nsec);
     }
 
     // Generate last NSEC
-    NSECRecord nsec = new NSECRecord(current_node.name, current_node.dclass,
-                                     nsec_ttl, zonename,
-                                     current_node.getTypes());
+    NSECRecord nsec = new NSECRecord(current_node.name, current_node.dclass, nsec_ttl,
+                                     zonename, current_node.getTypes());
     records.add(nsec);
 
     log.finer("Generated: " + nsec);
@@ -781,12 +758,11 @@ public class SignUtils
    *          will use the SOA minimum)
    * @throws NoSuchAlgorithmException
    */
-  public static void generateNSEC3Records(Name zonename, List records,
-                                          byte[] salt, int iterations,
-                                          long nsec3param_ttl)
+  public static void generateNSEC3Records(Name zonename, List<Record> records,
+                                          byte[] salt, int iterations, long nsec3param_ttl)
       throws NoSuchAlgorithmException
   {
-    List proto_nsec3s = new ArrayList();
+    List<ProtoNSEC3> proto_nsec3s = new ArrayList<ProtoNSEC3>();
     NodeInfo current_node = null;
     NodeInfo last_node = null;
     // For detecting glue.
@@ -796,9 +772,8 @@ public class SignUtils
 
     long nsec3_ttl = 0;
 
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Record r : records)
     {
-      Record r = (Record) i.next();
       Name r_name = r.getName();
       int r_type = r.getType();
 
@@ -813,7 +788,7 @@ public class SignUtils
 
       // note our last DNAME point, so we can recognize junk.
       if (r_type == Type.DNAME) last_dname = r_name;
-      
+
       if (r_type == Type.SOA)
       {
         SOARecord soa = (SOARecord) r;
@@ -841,30 +816,24 @@ public class SignUtils
       // At this point, r represents the start of a new node.
       // So we move current_node to last_node and generate a new current node.
       // But first, we need to do something with the last node.
-      generateNSEC3ForNode(last_node, zonename, salt, iterations, false,
-                           proto_nsec3s);
+      generateNSEC3ForNode(last_node, zonename, salt, iterations, false, proto_nsec3s);
 
       last_node = current_node;
       current_node = new NodeInfo(r, r_sectype);
     }
 
     // process last two nodes.
-    generateNSEC3ForNode(last_node, zonename, salt, iterations, false,
-                         proto_nsec3s);
-    generateNSEC3ForNode(current_node, zonename, salt, iterations, false,
-                         proto_nsec3s);
+    generateNSEC3ForNode(last_node, zonename, salt, iterations, false, proto_nsec3s);
+    generateNSEC3ForNode(current_node, zonename, salt, iterations, false, proto_nsec3s);
 
-    List nsec3s = finishNSEC3s(proto_nsec3s, nsec3_ttl);
+    List<NSEC3Record> nsec3s = finishNSEC3s(proto_nsec3s, nsec3_ttl);
 
     records.addAll(nsec3s);
 
-    NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(
-                                                       zonename,
-                                                       DClass.IN,
+    NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(zonename, DClass.IN,
                                                        nsec3param_ttl,
                                                        NSEC3Record.SHA1_DIGEST_ID,
-                                                       (byte) 0, iterations,
-                                                       salt);
+                                                       (byte) 0, iterations, salt);
     records.add(nsec3param);
 
   }
@@ -897,13 +866,12 @@ public class SignUtils
    *          will use the SOA minimum)
    * @throws NoSuchAlgorithmException
    */
-  public static void generateOptOutNSEC3Records(Name zonename, List records,
-                                                List includedNames,
-                                                byte[] salt, int iterations,
-                                                long nsec3param_ttl)
+  public static void generateOptOutNSEC3Records(Name zonename, List<Record> records,
+                                                List<Name> includedNames, byte[] salt,
+                                                int iterations, long nsec3param_ttl)
       throws NoSuchAlgorithmException
   {
-    List proto_nsec3s = new ArrayList();
+    List<ProtoNSEC3> proto_nsec3s = new ArrayList<ProtoNSEC3>();
     NodeInfo current_node = null;
     NodeInfo last_node = null;
     // For detecting glue.
@@ -913,15 +881,14 @@ public class SignUtils
 
     long nsec3_ttl = 0;
 
-    HashSet includeSet = null;
+    HashSet<Name> includeSet = null;
     if (includedNames != null)
     {
-      includeSet = new HashSet(includedNames);
+      includeSet = new HashSet<Name>(includedNames);
     }
 
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Record r : records)
     {
-      Record r = (Record) i.next();
       Name r_name = r.getName();
       int r_type = r.getType();
 
@@ -935,7 +902,7 @@ public class SignUtils
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
 
       if (r_type == Type.DNAME) last_dname = r_name;
-      
+
       if (r_type == Type.SOA)
       {
         SOARecord soa = (SOARecord) r;
@@ -968,8 +935,7 @@ public class SignUtils
       // At this point, r represents the start of a new node.
       // So we move current_node to last_node and generate a new current node.
       // But first, we need to do something with the last node.
-      generateNSEC3ForNode(last_node, zonename, salt, iterations, true,
-                           proto_nsec3s);
+      generateNSEC3ForNode(last_node, zonename, salt, iterations, true, proto_nsec3s);
 
       if (current_node.isSecureNode)
       {
@@ -984,21 +950,16 @@ public class SignUtils
     }
 
     // process last two nodes.
-    generateNSEC3ForNode(last_node, zonename, salt, iterations, true,
-                         proto_nsec3s);
-    generateNSEC3ForNode(current_node, zonename, salt, iterations, true,
-                         proto_nsec3s);
+    generateNSEC3ForNode(last_node, zonename, salt, iterations, true, proto_nsec3s);
+    generateNSEC3ForNode(current_node, zonename, salt, iterations, true, proto_nsec3s);
 
-    List nsec3s = finishNSEC3s(proto_nsec3s, nsec3_ttl);
+    List<NSEC3Record> nsec3s = finishNSEC3s(proto_nsec3s, nsec3_ttl);
     records.addAll(nsec3s);
 
-    NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(
-                                                       zonename,
-                                                       DClass.IN,
+    NSEC3PARAMRecord nsec3param = new NSEC3PARAMRecord(zonename, DClass.IN,
                                                        nsec3param_ttl,
                                                        NSEC3Record.SHA1_DIGEST_ID,
-                                                       (byte) 0, iterations,
-                                                       salt);
+                                                       (byte) 0, iterations, salt);
     records.add(nsec3param);
   }
 
@@ -1021,16 +982,16 @@ public class SignUtils
    *          The current list of NSEC3s -- this will be updated.
    * @throws NoSuchAlgorithmException
    */
-  private static void generateNSEC3ForNode(NodeInfo node, Name zonename,
-                                           byte[] salt, int iterations,
-                                           boolean optIn, List nsec3s)
+  private static void generateNSEC3ForNode(NodeInfo node, Name zonename, byte[] salt,
+                                           int iterations, boolean optIn, List<ProtoNSEC3> nsec3s)
       throws NoSuchAlgorithmException
   {
     if (node == null) return;
     if (optIn && !node.isSecureNode) return;
 
     // Add our default types.
-    if (node.type == RR_NORMAL || (node.type == RR_DELEGATION && node.hasType(Type.DS))) {
+    if (node.type == RR_NORMAL || (node.type == RR_DELEGATION && node.hasType(Type.DS)))
+    {
       node.addType(Type.RRSIG);
     }
     if (node.name.equals(zonename)) node.addType(Type.NSEC3PARAM);
@@ -1042,13 +1003,13 @@ public class SignUtils
     {
       Name n = new Name(node.name, i);
       log.fine("Generating ENT NSEC3 for " + n);
-      ProtoNSEC3 nsec3 = generateNSEC3(n, zonename, node.ttl, salt, iterations,
-                                       optIn, null);
+      ProtoNSEC3 nsec3 = generateNSEC3(n, zonename, node.ttl, salt, iterations, optIn,
+                                       null);
       nsec3s.add(nsec3);
     }
 
-    ProtoNSEC3 nsec3 = generateNSEC3(node.name, zonename, node.ttl, salt,
-                                     iterations, optIn, node.getTypes());
+    ProtoNSEC3 nsec3 = generateNSEC3(node.name, zonename, node.ttl, salt, iterations,
+                                     optIn, node.getTypes());
     nsec3s.add(nsec3);
   }
 
@@ -1074,17 +1035,15 @@ public class SignUtils
    * @throws NoSuchAlgorithmException
    */
   private static ProtoNSEC3 generateNSEC3(Name name, Name zonename, long ttl,
-                                          byte[] salt, int iterations,
-                                          boolean optIn, int[] types)
-      throws NoSuchAlgorithmException
+                                          byte[] salt, int iterations, boolean optIn,
+                                          int[] types) throws NoSuchAlgorithmException
   {
-    byte[] hash = nsec3hash(name, NSEC3Record.SHA1_DIGEST_ID,
-                                   iterations, salt);
+    byte[] hash = nsec3hash(name, NSEC3Record.SHA1_DIGEST_ID, iterations, salt);
     byte flags = (byte) (optIn ? 0x01 : 0x00);
 
     ProtoNSEC3 r = new ProtoNSEC3(hash, name, zonename, DClass.IN, ttl,
-                                  NSEC3Record.SHA1_DIGEST_ID, flags,
-                                  iterations, salt, null, types);
+                                  NSEC3Record.SHA1_DIGEST_ID, flags, iterations, salt,
+                                  null, types);
 
     log.finer("Generated: " + r);
     return r;
@@ -1102,7 +1061,7 @@ public class SignUtils
    *          should match the SOA minimum value for the zone.
    * @return The list of {@link org.xbill.DNS.NSEC3Record} objects.
    */
-  private static List finishNSEC3s(List nsec3s, long ttl)
+  private static List<NSEC3Record> finishNSEC3s(List<ProtoNSEC3> nsec3s, long ttl)
   {
     if (nsec3s == null) return null;
     Collections.sort(nsec3s, new ProtoNSEC3.Comparator());
@@ -1111,9 +1070,9 @@ public class SignUtils
     ProtoNSEC3 cur_nsec3 = null;
     byte[] first_nsec3_hash = null;
 
-    for (ListIterator i = nsec3s.listIterator(); i.hasNext();)
+    for (ListIterator<ProtoNSEC3> i = nsec3s.listIterator(); i.hasNext();)
     {
-      cur_nsec3 = (ProtoNSEC3) i.next();
+      cur_nsec3 = i.next();
 
       // check to see if cur is a duplicate (by name)
       if (prev_nsec3 != null
@@ -1154,10 +1113,9 @@ public class SignUtils
     }
 
     // Convert our ProtoNSEC3s to actual (immutable) NSEC3Record objects.
-    List res = new ArrayList(nsec3s.size());
-    for (Iterator i = nsec3s.iterator(); i.hasNext();)
+    List<NSEC3Record> res = new ArrayList<NSEC3Record>(nsec3s.size());
+    for (ProtoNSEC3 p : nsec3s)
     {
-      ProtoNSEC3 p = (ProtoNSEC3) i.next();
       p.setTTL(ttl);
       res.add(p.getNSEC3Record());
     }
@@ -1184,8 +1142,8 @@ public class SignUtils
    *          if true, then Opt-In NXTs will only be generated where there is
    *          actually a span of insecure delegations.
    */
-  public static void generateOptInNSECRecords(Name zonename, List records,
-                                              List includeNames,
+  public static void generateOptInNSECRecords(Name zonename, List<Record> records,
+                                              List<Name> includeNames,
                                               boolean beConservative)
   {
     // This works by iterating over a known sorted list of records.
@@ -1195,18 +1153,18 @@ public class SignUtils
 
     Name last_cut = null;
     Name last_dname = null;
-    
+
     int backup;
-    HashSet includeSet = null;
+    HashSet<Name> includeSet = null;
 
     if (includeNames != null)
     {
-      includeSet = new HashSet(includeNames);
+      includeSet = new HashSet<Name>(includeNames);
     }
 
-    for (ListIterator i = records.listIterator(); i.hasNext();)
+    for (ListIterator<Record> i = records.listIterator(); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       Name r_name = r.getName();
       int r_type = r.getType();
       int r_sectype = recordSecType(zonename, r_name, r_type, last_cut, last_dname);
@@ -1218,7 +1176,7 @@ public class SignUtils
       if (r_sectype == RR_DELEGATION) last_cut = r_name;
 
       if (r_type == Type.DNAME) last_dname = r_name;
-      
+
       // first node -- initialize
       if (current_node == null)
       {
@@ -1248,9 +1206,8 @@ public class SignUtils
         {
           last_node.addType(Type.NSEC);
         }
-        NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass,
-                                         last_node.ttl, current_node.name,
-                                         last_node.getTypes());
+        NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass, last_node.ttl,
+                                         current_node.name, last_node.getTypes());
         // Note: we have to add this through the iterator, otherwise
         // the next access via the iterator will generate a
         // ConcurrencyModificationException.
@@ -1289,9 +1246,8 @@ public class SignUtils
       {
         last_node.addType(Type.NSEC);
       }
-      NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass,
-                                       last_node.ttl, current_node.name,
-                                       last_node.getTypes());
+      NSECRecord nsec = new NSECRecord(last_node.name, last_node.dclass, last_node.ttl,
+                                       current_node.name, last_node.getTypes());
       records.add(last_node.nsecIndex - 1, nsec);
       log.finer("Generated: " + nsec);
     }
@@ -1304,16 +1260,16 @@ public class SignUtils
       {
         current_node.addType(Type.NSEC);
       }
-      nsec = new NSECRecord(current_node.name, current_node.dclass,
-                            current_node.ttl, zonename, current_node.getTypes());
+      nsec = new NSECRecord(current_node.name, current_node.dclass, current_node.ttl,
+                            zonename, current_node.getTypes());
       // we can just tack this on the end as we are working on the
       // last node.
       records.add(nsec);
     }
     else
     {
-      nsec = new NSECRecord(last_node.name, last_node.dclass, last_node.ttl,
-                            zonename, last_node.getTypes());
+      nsec = new NSECRecord(last_node.name, last_node.dclass, last_node.ttl, zonename,
+                            last_node.getTypes());
       // We need to tack this on after the last secure node, not the
       // end of the whole list.
       records.add(last_node.nsecIndex, nsec);
@@ -1334,13 +1290,12 @@ public class SignUtils
    * @param digest_alg
    *          The digest algorithm to use.
    */
-  public static void generateDSRecords(Name zonename, List records,
-                                       int digest_alg)
+  public static void generateDSRecords(Name zonename, List<Record> records, int digest_alg)
   {
 
-    for (ListIterator i = records.listIterator(); i.hasNext();)
+    for (ListIterator<Record> i = records.listIterator(); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       if (r == null) continue; // this should never be true.
 
       Name r_name = r.getName();
@@ -1349,8 +1304,7 @@ public class SignUtils
       // Convert non-zone level KEY records into DS records.
       if (r.getType() == Type.DNSKEY && !r_name.equals(zonename))
       {
-        DSRecord ds = calculateDSRecord((DNSKEYRecord) r, digest_alg,
-                                        r.getTTL());
+        DSRecord ds = calculateDSRecord((DNSKEYRecord) r, digest_alg, r.getTTL());
 
         i.set(ds);
       }
@@ -1365,9 +1319,9 @@ public class SignUtils
    * @param records
    *          a list of {@link org.xbill.DNS.Record} objects.
    */
-  public static void removeGeneratedRecords(Name zonename, List records)
+  public static void removeGeneratedRecords(Name zonename, List<Record> records)
   {
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Iterator<Record> i = records.iterator(); i.hasNext();)
     {
       Record r = (Record) i.next();
 
@@ -1387,12 +1341,12 @@ public class SignUtils
    * @param records
    *          a list of {@link org.xbill.DNS.Record} object, in sorted order.
    */
-  public static void removeDuplicateRecords(List records)
+  public static void removeDuplicateRecords(List<Record> records)
   {
     Record lastrec = null;
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Iterator<Record> i = records.iterator(); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       if (lastrec == null)
       {
         lastrec = r;
@@ -1419,8 +1373,7 @@ public class SignUtils
    *          the original KEY RR's TTL will be used.
    * @return the corresponding {@link org.xbill.DNS.DSRecord}
    */
-  public static DSRecord calculateDSRecord(DNSKEYRecord keyrec, int digest_alg,
-                                           long ttl)
+  public static DSRecord calculateDSRecord(DNSKEYRecord keyrec, int digest_alg, long ttl)
   {
     if (keyrec == null) return null;
 
@@ -1451,8 +1404,8 @@ public class SignUtils
       }
 
       return new DSRecord(keyrec.getName(), keyrec.getDClass(), ttl,
-                          keyrec.getFootprint(), keyrec.getAlgorithm(),
-                          digest_alg, digest);
+                          keyrec.getFootprint(), keyrec.getAlgorithm(), digest_alg,
+                          digest);
 
     }
     catch (NoSuchAlgorithmException e)
@@ -1464,16 +1417,21 @@ public class SignUtils
 
   /**
    * Calculate an NSEC3 hash based on a DNS name and NSEC3 hash parameters.
-   *
-   * @param n The name to hash.
-   * @param hash_algorithm The hash algorithm to use.
-   * @param iterations The number of iterations to do.
-   * @param salt The salt to use.
+   * 
+   * @param n
+   *          The name to hash.
+   * @param hash_algorithm
+   *          The hash algorithm to use.
+   * @param iterations
+   *          The number of iterations to do.
+   * @param salt
+   *          The salt to use.
    * @return The calculated hash as a byte array.
-   * @throws NoSuchAlgorithmException If the hash algorithm is unrecognized.
+   * @throws NoSuchAlgorithmException
+   *           If the hash algorithm is unrecognized.
    */
-  public static byte[] nsec3hash(Name n, byte hash_algorithm, int iterations,
-      byte[] salt) throws NoSuchAlgorithmException
+  public static byte[] nsec3hash(Name n, byte hash_algorithm, int iterations, byte[] salt)
+      throws NoSuchAlgorithmException
   {
     MessageDigest md;
 
@@ -1482,9 +1440,9 @@ public class SignUtils
       case NSEC3Record.SHA1_DIGEST_ID:
         md = MessageDigest.getInstance("SHA1");
         break;
-      default :
-        throw new NoSuchAlgorithmException(
-            "Unknown NSEC3 algorithm identifier: " + hash_algorithm);
+      default:
+        throw new NoSuchAlgorithmException("Unknown NSEC3 algorithm identifier: "
+            + hash_algorithm);
     }
 
     // Construct our wire form.

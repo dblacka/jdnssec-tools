@@ -18,16 +18,23 @@
 package com.verisignlabs.dnssec.cl;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
-import org.xbill.DNS.*;
+import org.apache.commons.cli.ParseException;
+import org.xbill.DNS.Master;
+import org.xbill.DNS.NSEC3PARAMRecord;
+import org.xbill.DNS.NSEC3Record;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.Record;
+import org.xbill.DNS.Section;
+import org.xbill.DNS.Type;
 import org.xbill.DNS.utils.base32;
 
 import com.verisignlabs.dnssec.security.RecordComparator;
@@ -80,11 +87,11 @@ public class ZoneFormat extends CLBase
     }
   }
 
-  private static List readZoneFile(String filename) throws IOException
+  private static List<Record> readZoneFile(String filename) throws IOException
   {
     Master master = new Master(filename);
 
-    List res = new ArrayList();
+    List<Record> res = new ArrayList<Record>();
     Record r = null;
 
     while ((r = master.nextRecord()) != null)
@@ -99,21 +106,21 @@ public class ZoneFormat extends CLBase
     return res;
   }
 
-  private static void formatZone(List zone)
+  private static void formatZone(List<Record> zone)
   {
     // Put the zone into a consistent (name and RR type) order.
     RecordComparator cmp = new RecordComparator();
 
     Collections.sort(zone, cmp);
 
-    for (Iterator i = zone.iterator(); i.hasNext();)
+    for (Record r : zone)
     {
-      Record r = (Record) i.next();
       System.out.println(r.toString());
     }
   }
 
-  private static void determineNSEC3Owners(List zone) throws NoSuchAlgorithmException
+  private static void determineNSEC3Owners(List<Record> zone)
+      throws NoSuchAlgorithmException
   {
     // Put the zone into a consistent (name and RR type) order.
     Collections.sort(zone, new RecordComparator());
@@ -121,12 +128,11 @@ public class ZoneFormat extends CLBase
     // first, find the NSEC3PARAM record -- this is an inefficient linear
     // search.
     NSEC3PARAMRecord nsec3param = null;
-    HashMap map = new HashMap();
+    HashMap<String, String> map = new HashMap<String, String>();
     base32 b32 = new base32(base32.Alphabet.BASE32HEX, false, true);
 
-    for (Iterator i = zone.iterator(); i.hasNext();)
+    for (Record r : zone)
     {
-      Record r = (Record) i.next();
       if (r.getType() == Type.NSEC3PARAM)
       {
         nsec3param = (NSEC3PARAMRecord) r;
@@ -139,9 +145,8 @@ public class ZoneFormat extends CLBase
 
     // Next pass, calculate a mapping between ownernames and hashnames
     Name last_name = null;
-    for (Iterator i = zone.iterator(); i.hasNext();)
+    for (Record r : zone)
     {
-      Record r = (Record) i.next();
       if (r.getName().equals(last_name)) continue;
       if (r.getType() == Type.NSEC3) continue;
 
@@ -152,9 +157,9 @@ public class ZoneFormat extends CLBase
     }
 
     // Final pass, assign the names if we can
-    for (ListIterator i = zone.listIterator(); i.hasNext();)
+    for (ListIterator<Record> i = zone.listIterator(); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       if (r.getType() != Type.NSEC3) continue;
       NSEC3Record nsec3 = (NSEC3Record) r;
       String hashname = nsec3.getName().getLabelString(0).toLowerCase();
@@ -171,7 +176,7 @@ public class ZoneFormat extends CLBase
 
   public void execute() throws IOException, NoSuchAlgorithmException
   {
-    List z = readZoneFile(state.file);
+    List<Record> z = readZoneFile(state.file);
     if (state.assignNSEC3) determineNSEC3Owners(z);
     formatZone(z);
   }
@@ -180,7 +185,7 @@ public class ZoneFormat extends CLBase
   {
     ZoneFormat tool = new ZoneFormat();
     tool.state = new CLIState();
-    
+
     tool.run(tool.state, args);
   }
 

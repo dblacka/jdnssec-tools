@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
+import org.xbill.DNS.Record;
 
 import com.verisignlabs.dnssec.security.ZoneUtils;
 import com.verisignlabs.dnssec.security.ZoneVerifier;
@@ -126,7 +127,7 @@ public class VerifyZone extends CLBase
     zoneverifier.getVerifier().setExpireFudge(state.expirefudge);
     zoneverifier.getVerifier().setIgnoreTime(state.ignoreTime);
 
-    List records = ZoneUtils.readZoneFile(state.zonefile, null);
+    List<Record> records = ZoneUtils.readZoneFile(state.zonefile, null);
 
     log.fine("verifying zone...");
     int errors = zoneverifier.verifyZone(records);

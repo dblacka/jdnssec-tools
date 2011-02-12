@@ -254,12 +254,11 @@ public class ProtoNSEC3
     return sb.toString();
   }
 
-  public static class Comparator implements java.util.Comparator
+  public static class Comparator implements java.util.Comparator<ProtoNSEC3>
   {
-
-    public int compare(Object o1, Object o2)
+    public int compare(ProtoNSEC3 a, ProtoNSEC3 b)
     {
-      return ((ProtoNSEC3) o1).compareTo((ProtoNSEC3) o2);
+      return a.compareTo(b);
     }
 
   }

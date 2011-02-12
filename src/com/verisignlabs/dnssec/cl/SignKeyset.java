@@ -25,12 +25,12 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
+import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
@@ -53,7 +53,7 @@ public class SignKeyset extends CLBase
    */
   protected static class CLIState extends CLIStateBase
   {
-    public File    keyDirectory = null;
+    public File     keyDirectory = null;
     public String[] keyFiles     = null;
     public Date     start        = null;
     public Date     expire       = null;
@@ -99,7 +99,8 @@ public class SignKeyset extends CLBase
       opts.addOption(OptionBuilder.create('f'));
     }
 
-    protected void processOptions(CommandLine cli) throws org.apache.commons.cli.ParseException
+    protected void processOptions(CommandLine cli)
+        throws org.apache.commons.cli.ParseException
     {
       String optstr = null;
 
@@ -164,25 +165,24 @@ public class SignKeyset extends CLBase
    *          a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
-  private static boolean verifySigs(Name zonename, List records, List keypairs)
+  private static boolean verifySigs(Name zonename, List<Record> records,
+                                    List<DnsKeyPair> keypairs)
   {
     boolean secure = true;
 
     DnsSecVerifier verifier = new DnsSecVerifier();
 
-    for (Iterator i = keypairs.iterator(); i.hasNext();)
+    for (DnsKeyPair pair : keypairs)
     {
-      verifier.addTrustedKey((DnsKeyPair) i.next());
+      verifier.addTrustedKey(pair);
     }
 
     verifier.setVerifyAllSigs(true);
 
-    List rrsets = SignUtils.assembleIntoRRsets(records);
+    List<RRset> rrsets = SignUtils.assembleIntoRRsets(records);
 
-    for (Iterator i = rrsets.iterator(); i.hasNext();)
+    for (RRset rrset : rrsets)
     {
-      RRset rrset = (RRset) i.next();
-
       // skip unsigned rrsets.
       if (!rrset.sigs().hasNext()) continue;
 
@@ -211,15 +211,15 @@ public class SignKeyset extends CLBase
    *          the directory to look in (may be null).
    * @return a list of keypair objects.
    */
-  private static List getKeys(String[] keyfiles, int start_index, File inDirectory)
-      throws IOException
+  private static List<DnsKeyPair> getKeys(String[] keyfiles, int start_index,
+                                          File inDirectory) throws IOException
   {
     if (keyfiles == null) return null;
 
     int len = keyfiles.length - start_index;
     if (len <= 0) return null;
 
-    ArrayList keys = new ArrayList(len);
+    ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>(len);
 
     for (int i = start_index; i < keyfiles.length; i++)
     {
@@ -248,7 +248,8 @@ public class SignKeyset extends CLBase
     }
   }
 
-  private static List findZoneKeys(File inDirectory, Name zonename) throws IOException
+  private static List<DnsKeyPair> findZoneKeys(File inDirectory, Name zonename)
+      throws IOException
   {
     if (inDirectory == null)
     {
@@ -260,7 +261,7 @@ public class SignKeyset extends CLBase
     File[] files = inDirectory.listFiles(filter);
 
     // read in all of the records
-    ArrayList keys = new ArrayList();
+    ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>();
     for (int i = 0; i < files.length; i++)
     {
       DnsKeyPair p = BINDKeyUtils.loadKeyPair(files[i].getName(), inDirectory);
@@ -271,10 +272,11 @@ public class SignKeyset extends CLBase
     return null;
   }
 
+  @SuppressWarnings("unchecked")
   public void execute() throws Exception
   {
     // Read in the zone
-    List records = ZoneUtils.readZoneFile(state.inputfile, null);
+    List<Record> records = ZoneUtils.readZoneFile(state.inputfile, null);
     if (records == null || records.size() == 0)
     {
       System.err.println("error: empty keyset file");
@@ -284,9 +286,9 @@ public class SignKeyset extends CLBase
     // Make sure that all records are DNSKEYs with the same name.
     Name keysetName = null;
     RRset keyset = new RRset();
-    for (Iterator i = records.iterator(); i.hasNext();)
+
+    for (Record r : records)
     {
-      Record r = (Record) i.next();
       if (r.getType() != Type.DNSKEY)
       {
         System.err.println("error: Non DNSKEY RR found in keyset: " + r);
@@ -311,7 +313,7 @@ public class SignKeyset extends CLBase
     }
 
     // Load the key pairs.
-    List keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
+    List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
 
     // If we *still* don't have any key pairs, look for keys the key
     // directory
@@ -343,26 +345,24 @@ public class SignKeyset extends CLBase
 
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
-    List sigs = signer.signRRset(keyset, keypairs, state.start, state.expire);
-    for (Iterator i = sigs.iterator(); i.hasNext();)
+    List<RRSIGRecord> sigs = signer.signRRset(keyset, keypairs, state.start, state.expire);
+    for (RRSIGRecord s : sigs)
     {
-      keyset.addRR((Record) i.next());
+      keyset.addRR(s);
     }
 
     // write out the signed RRset
-    List signed_records = new ArrayList();
-    for (Iterator i = keyset.rrs(); i.hasNext();)
+    List<Record> signed_records = new ArrayList<Record>();
+    for (Iterator<Record> i = keyset.rrs(); i.hasNext();)
     {
       signed_records.add(i.next());
     }
-    for (Iterator i = keyset.sigs(); i.hasNext();)
+    for (Iterator<Record> i = keyset.sigs(); i.hasNext();)
     {
       signed_records.add(i.next());
     }
 
     // write out the signed zone
-    // force multiline mode for now
-    org.xbill.DNS.Options.set("multiline");
     ZoneUtils.writeZoneFile(signed_records, state.outputfile);
 
     if (state.verifySigs)
@@ -388,7 +388,7 @@ public class SignKeyset extends CLBase
   {
     SignKeyset tool = new SignKeyset();
     tool.state = new CLIState();
-    
+
     tool.run(tool.state, args);
   }
 }

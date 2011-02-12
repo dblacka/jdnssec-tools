@@ -35,7 +35,7 @@ import org.xbill.DNS.Type;
  * @version $Revision$
  */
 
-public class RecordComparator implements Comparator
+public class RecordComparator implements Comparator<Record>
 {
   public RecordComparator()
   {
@@ -75,11 +75,8 @@ public class RecordComparator implements Comparator
     return (a_rdata.length - b_rdata.length);
   }
 
-  public int compare(Object o1, Object o2) throws ClassCastException
+  public int compare(Record a, Record b)
   {
-    Record a = (Record) o1;
-    Record b = (Record) o2;
-
     if (a == null && b == null) return 0;
     if (a == null) return 1;
     if (b == null) return -1;

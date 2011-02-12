@@ -1,5 +1,8 @@
 2011-02-12  David Blacka  <davidb@verisignlabs.com>
 
+	* Use Java 1.5 generic types when possible.  DNSJava itself still
+	doesn't use them, so we have to suppress warnings when we use
+	RRset.rrs(), etc.
 	* Update commons-cli to version 1.2.
 	* Refactor all of the command line classes.  A new command line
 	base class has been created to eliminate much of the duplicated

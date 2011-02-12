@@ -30,6 +30,7 @@ import org.apache.commons.cli.Options;
 
 import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
+import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
@@ -164,25 +165,23 @@ public class SignRRset extends CLBase
    *          a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
-  private static boolean verifySigs(Name zonename, List records, List keypairs)
+  private static boolean verifySigs(Name zonename, List<Record> records, List<DnsKeyPair> keypairs)
   {
     boolean secure = true;
 
     DnsSecVerifier verifier = new DnsSecVerifier();
 
-    for (Iterator i = keypairs.iterator(); i.hasNext();)
+    for (DnsKeyPair pair : keypairs)
     {
-      verifier.addTrustedKey((DnsKeyPair) i.next());
+      verifier.addTrustedKey(pair);
     }
 
     verifier.setVerifyAllSigs(true);
 
-    List rrsets = SignUtils.assembleIntoRRsets(records);
+    List<RRset> rrsets = SignUtils.assembleIntoRRsets(records);
 
-    for (Iterator i = rrsets.iterator(); i.hasNext();)
+    for (RRset rrset : rrsets)
     {
-      RRset rrset = (RRset) i.next();
-
       // skip unsigned rrsets.
       if (!rrset.sigs().hasNext()) continue;
 
@@ -230,10 +229,11 @@ public class SignRRset extends CLBase
     return keys;
   }
 
+  @SuppressWarnings("unchecked")
   public void execute() throws Exception
   {
     // Read in the zone
-    List records = ZoneUtils.readZoneFile(state.inputfile, null);
+    List<Record> records = ZoneUtils.readZoneFile(state.inputfile, null);
     if (records == null || records.size() == 0)
     {
       System.err.println("error: empty RRset file");
@@ -242,10 +242,9 @@ public class SignRRset extends CLBase
     // Construct the RRset. Complain if the records in the input file
     // consist of more than one RRset.
     RRset rrset = null;
-    for (Iterator i = records.iterator(); i.hasNext();)
-    {
-      Record r = (Record) i.next();
 
+    for (Record r : records)
+    {
       // skip RRSIGs
       if (r.getType() == Type.RRSIG || r.getType() == Type.SIG)
       {
@@ -314,19 +313,19 @@ public class SignRRset extends CLBase
 
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
-    List sigs = signer.signRRset(rrset, keypairs, state.start, state.expire);
-    for (Iterator i = sigs.iterator(); i.hasNext();)
+    List<RRSIGRecord> sigs = signer.signRRset(rrset, keypairs, state.start, state.expire);
+    for (RRSIGRecord s : sigs)
     {
-      rrset.addRR((Record) i.next());
+      rrset.addRR(s);
     }
 
     // write out the signed RRset
-    List signed_records = new ArrayList();
-    for (Iterator i = rrset.rrs(); i.hasNext();)
+    List<Record> signed_records = new ArrayList<Record>();
+    for (Iterator<Record> i = rrset.rrs(); i.hasNext();)
     {
       signed_records.add(i.next());
     }
-    for (Iterator i = rrset.sigs(); i.hasNext();)
+    for (Iterator<Record> i = rrset.sigs(); i.hasNext();)
     {
       signed_records.add(i.next());
     }

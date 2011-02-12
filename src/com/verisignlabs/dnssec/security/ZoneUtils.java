@@ -56,9 +56,9 @@ public class ZoneUtils
    * @throws IOException
    *           if something goes wrong reading the zone file.
    */
-  public static List readZoneFile(String zonefile, Name origin) throws IOException
+  public static List<Record> readZoneFile(String zonefile, Name origin) throws IOException
   {
-    ArrayList records = new ArrayList();
+    ArrayList<Record> records = new ArrayList<Record>();
     Master m;
     if (zonefile.equals("-"))
     {
@@ -88,7 +88,7 @@ public class ZoneUtils
    * @param zonefile
    *          the file to write to. If null or equal to "-", System.out is used.
    */
-  public static void writeZoneFile(List records, String zonefile) throws IOException
+  public static void writeZoneFile(List<Record> records, String zonefile) throws IOException
   {
     PrintWriter out = null;
 
@@ -101,9 +101,9 @@ public class ZoneUtils
       out = new PrintWriter(new BufferedWriter(new FileWriter(zonefile)));
     }
 
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Record r : records)
     {
-      out.println(i.next());
+      out.println(r);
     }
 
     out.close();
@@ -113,63 +113,29 @@ public class ZoneUtils
    * Given just the list of records, determine the zone name (origin).
    * 
    * @param records
-   *          a list of {@link org.xbill.DNS.Record} or
-   *          {@link org.xbill.DNS.RRset} objects.
+   *          a list of {@link org.xbill.DNS.Record} objects.
    * @return the zone name, if found. null if one couldn't be found.
    */
-  public static Name findZoneName(List records)
+  public static Name findZoneName(List<Record> records)
   {
-    for (Iterator i = records.iterator(); i.hasNext();)
+    for (Record r : records)
     {
-      int type = 0;
-      Name n = null;
+      int type = r.getType();
 
-      Object o = i.next();
-
-      if (o instanceof Record)
-      {
-        Record r = (Record) o;
-        type = r.getType();
-        n = r.getName();
-      }
-      else if (o instanceof RRset)
-      {
-        RRset r = (RRset) o;
-        type = r.getType();
-        n = r.getName();
-      }
-
-      if (type == Type.SOA) return n;
+      if (type == Type.SOA) return r.getName(); 
     }
 
     return null;
   }
 
-  public static List findRRs(List records, Name name, int type)
+  public static List<Record> findRRs(List<Record> records, Name name, int type)
   {
-    List res = new ArrayList();
-    for (Iterator i = records.iterator(); i.hasNext();)
+    List<Record> res = new ArrayList<Record>();
+    for (Record r : records)
     {
-      Object o = i.next();
-
-      if (o instanceof Record)
+      if (r.getName().equals(name) && r.getType() == type)
       {
-        Record r = (Record) o;
-        if (r.getName().equals(name) && r.getType() == type)
-        {
-          res.add(r);
-        }
-      }
-      else if (o instanceof RRset)
-      {
-        RRset r = (RRset) o;
-        if (r.getName().equals(name) && r.getType() == type)
-        {
-          for (Iterator j = r.rrs(); j.hasNext();)
-          {
-            res.add(j.next());
-          }
-        }
+        res.add(r);
       }
     }
 
@@ -177,21 +143,23 @@ public class ZoneUtils
   }
 
   /** This is an alternate way to format an RRset into a string */
+  @SuppressWarnings("unchecked")
   public static String rrsetToString(RRset rrset, boolean includeSigs)
   {
     StringBuilder out = new StringBuilder();
 
-    for (Iterator i = rrset.rrs(false); i.hasNext();)
+    for (Iterator<Record> i = rrset.rrs(false); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       out.append(r.toString());
       out.append("\n");
     }
+
     if (includeSigs)
     {
-      for (Iterator i = rrset.sigs(); i.hasNext();)
+      for (Iterator<Record> i = rrset.sigs(); i.hasNext();)
       {
-        Record r = (Record) i.next();
+        Record r = i.next();
         out.append(r.toString());
         out.append("\n");
       }

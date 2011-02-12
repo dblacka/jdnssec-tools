@@ -30,7 +30,7 @@ import java.util.logging.Logger;
  * @author $Author$
  * @version $Revision$
  */
-public class ByteArrayComparator implements Comparator
+public class ByteArrayComparator implements Comparator<byte[]>
 {
   private int     mOffset = 0;
   private boolean mDebug  = false;
@@ -46,11 +46,8 @@ public class ByteArrayComparator implements Comparator
     mDebug = debug;
   }
 
-  public int compare(Object o1, Object o2) throws ClassCastException
+  public int compare(byte[] b1, byte[] b2)
   {
-    byte[] b1 = (byte[]) o1;
-    byte[] b2 = (byte[]) o2;
-
     for (int i = mOffset; i < b1.length && i < b2.length; i++)
     {
       if (b1[i] != b2[i])

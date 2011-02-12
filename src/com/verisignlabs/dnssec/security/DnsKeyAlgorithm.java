@@ -77,32 +77,32 @@ public class DnsKeyAlgorithm
    * This is a mapping of algorithm identifier to Entry. The Entry contains the
    * data needed to map the algorithm to the various crypto implementations.
    */
-  private HashMap                mAlgorithmMap;
+  private HashMap<Integer, Entry>  mAlgorithmMap;
   /**
    * This is a mapping of algorithm mnemonics to algorithm identifiers.
    */
-  private HashMap                mMnemonicToIdMap;
+  private HashMap<String, Integer> mMnemonicToIdMap;
   /**
    * This is a mapping of identifiers to preferred mnemonic -- the preferred one
    * is the first defined one
    */
-  private HashMap                mIdToMnemonicMap;
+  private HashMap<Integer, String> mIdToMnemonicMap;
 
   /** This is a cached key pair generator for RSA keys. */
-  private KeyPairGenerator       mRSAKeyGenerator;
+  private KeyPairGenerator         mRSAKeyGenerator;
   /** This is a cache key pair generator for DSA keys. */
-  private KeyPairGenerator       mDSAKeyGenerator;
+  private KeyPairGenerator         mDSAKeyGenerator;
 
-  private Logger                 log       = Logger.getLogger(this.getClass().toString());
+  private Logger                   log       = Logger.getLogger(this.getClass().toString());
 
   /** This is the global instance for this class. */
-  private static DnsKeyAlgorithm mInstance = null;
+  private static DnsKeyAlgorithm   mInstance = null;
 
   public DnsKeyAlgorithm()
   {
-    mAlgorithmMap = new HashMap();
-    mMnemonicToIdMap = new HashMap();
-    mIdToMnemonicMap = new HashMap();
+    mAlgorithmMap = new HashMap<Integer, Entry>();
+    mMnemonicToIdMap = new HashMap<String, Integer>();
+    mIdToMnemonicMap = new HashMap<Integer, String>();
 
     // Load the standard DNSSEC algorithms.
     addAlgorithm(DNSSEC.RSAMD5, new Entry("MD5withRSA", RSA));
@@ -137,40 +137,34 @@ public class DnsKeyAlgorithm
 
   private void addAlgorithm(int algorithm, Entry entry)
   {
-    Integer a = new Integer(algorithm);
-    mAlgorithmMap.put(a, entry);
+    mAlgorithmMap.put(algorithm, entry);
   }
 
   private void addMnemonic(String m, int alg)
   {
-    Integer a = new Integer(alg);
-    mMnemonicToIdMap.put(m.toUpperCase(), a);
-    if (!mIdToMnemonicMap.containsKey(a))
+    mMnemonicToIdMap.put(m.toUpperCase(), alg);
+    if (!mIdToMnemonicMap.containsKey(alg))
     {
-      mIdToMnemonicMap.put(a, m);
+      mIdToMnemonicMap.put(alg, m);
     }
   }
 
   public void addAlias(int alias, String mnemonic, int original_algorithm)
   {
-    Integer a = new Integer(alias);
-    Integer o = new Integer(original_algorithm);
-
-    if (mAlgorithmMap.containsKey(a))
+    if (mAlgorithmMap.containsKey(alias))
     {
-      log.warning("Unable to alias algorithm " + alias
-          + " because it already exists.");
+      log.warning("Unable to alias algorithm " + alias + " because it already exists.");
       return;
     }
 
-    if (!mAlgorithmMap.containsKey(o))
+    if (!mAlgorithmMap.containsKey(original_algorithm))
     {
       log.warning("Unable to alias algorith " + alias
           + " to unknown algorithm identifier " + original_algorithm);
       return;
     }
 
-    mAlgorithmMap.put(a, mAlgorithmMap.get(o));
+    mAlgorithmMap.put(alias, mAlgorithmMap.get(original_algorithm));
 
     if (mnemonic != null)
     {
@@ -180,7 +174,7 @@ public class DnsKeyAlgorithm
 
   private Entry getEntry(int alg)
   {
-    return (Entry) mAlgorithmMap.get(new Integer(alg));
+    return mAlgorithmMap.get(alg);
   }
 
   public Signature getSignature(int algorithm)
@@ -196,8 +190,8 @@ public class DnsKeyAlgorithm
     }
     catch (NoSuchAlgorithmException e)
     {
-      log.severe("Unable to get signature implementation for algorithm "
-          + algorithm + ": " + e);
+      log.severe("Unable to get signature implementation for algorithm " + algorithm
+          + ": " + e);
     }
 
     return s;
@@ -205,14 +199,14 @@ public class DnsKeyAlgorithm
 
   public int stringToAlgorithm(String s)
   {
-    Integer alg = (Integer) mMnemonicToIdMap.get(s.toUpperCase());
+    Integer alg = mMnemonicToIdMap.get(s.toUpperCase());
     if (alg != null) return alg.intValue();
     return -1;
   }
 
   public String algToString(int algorithm)
   {
-    return (String) mIdToMnemonicMap.get(new Integer(algorithm));
+    return mIdToMnemonicMap.get(algorithm);
   }
 
   public int baseType(int algorithm)
@@ -257,13 +251,11 @@ public class DnsKeyAlgorithm
         RSAKeyGenParameterSpec rsa_spec;
         if (useLargeExp)
         {
-          rsa_spec = new RSAKeyGenParameterSpec(keysize,
-                                                RSAKeyGenParameterSpec.F4);
+          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F4);
         }
         else
         {
-          rsa_spec = new RSAKeyGenParameterSpec(keysize,
-                                                RSAKeyGenParameterSpec.F0);
+          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F0);
         }
         try
         {

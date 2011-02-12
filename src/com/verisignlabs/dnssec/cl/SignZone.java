@@ -64,24 +64,24 @@ public class SignZone extends CLBase
    */
   private static class CLIState extends CLIStateBase
   {
-    public File     keyDirectory    = null;
-    public File     keysetDirectory = null;
-    public String[] kskFiles        = null;
-    public String[] keyFiles        = null;
-    public String   zonefile        = null;
-    public Date     start           = null;
-    public Date     expire          = null;
-    public String   outputfile      = null;
-    public boolean  verifySigs      = false;
-    public boolean  useOptOut       = false;
-    public boolean  fullySignKeyset = false;
-    public List     includeNames    = null;
-    public boolean  useNsec3        = false;
-    public byte[]   salt            = null;
-    public int      iterations      = 0;
-    public int      digest_id       = DSRecord.SHA1_DIGEST_ID;
-    public long     nsec3paramttl   = -1;
-    public boolean  verboseSigning  = false;
+    public File       keyDirectory    = null;
+    public File       keysetDirectory = null;
+    public String[]   kskFiles        = null;
+    public String[]   keyFiles        = null;
+    public String     zonefile        = null;
+    public Date       start           = null;
+    public Date       expire          = null;
+    public String     outputfile      = null;
+    public boolean    verifySigs      = false;
+    public boolean    useOptOut       = false;
+    public boolean    fullySignKeyset = false;
+    public List<Name> includeNames    = null;
+    public boolean    useNsec3        = false;
+    public byte[]     salt            = null;
+    public int        iterations      = 0;
+    public int        digest_id       = DSRecord.SHA1_DIGEST_ID;
+    public long       nsec3paramttl   = -1;
+    public boolean    verboseSigning  = false;
 
     public CLIState()
     {
@@ -176,8 +176,7 @@ public class SignZone extends CLBase
 
     protected void processOptions(CommandLine cli) throws ParseException
     {
-      String optstr;
-      String[] optstrs;
+      String optstr = null;
 
       if (cli.hasOption('a')) verifySigs = true;
       if (cli.hasOption('3')) useNsec3 = true;
@@ -323,25 +322,24 @@ public class SignZone extends CLBase
    *          a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
-  private static boolean verifyZoneSigs(Name zonename, List records, List keypairs)
+  private static boolean verifyZoneSigs(Name zonename, List<Record> records,
+                                        List<DnsKeyPair> keypairs)
   {
     boolean secure = true;
 
     DnsSecVerifier verifier = new DnsSecVerifier();
 
-    for (Iterator i = keypairs.iterator(); i.hasNext();)
+    for (DnsKeyPair pair : keypairs)
     {
-      verifier.addTrustedKey((DnsKeyPair) i.next());
+      verifier.addTrustedKey(pair);
     }
 
     verifier.setVerifyAllSigs(true);
 
-    List rrsets = SignUtils.assembleIntoRRsets(records);
+    List<RRset> rrsets = SignUtils.assembleIntoRRsets(records);
 
-    for (Iterator i = rrsets.iterator(); i.hasNext();)
+    for (RRset rrset : rrsets)
     {
-      RRset rrset = (RRset) i.next();
-
       // skip unsigned rrsets.
       if (!rrset.sigs().hasNext()) continue;
 
@@ -371,15 +369,15 @@ public class SignZone extends CLBase
    *          the directory to look in (may be null).
    * @return a list of keypair objects.
    */
-  private static List getKeys(String[] keyfiles, int start_index, File inDirectory)
-      throws IOException
+  private static List<DnsKeyPair> getKeys(String[] keyfiles, int start_index,
+                                          File inDirectory) throws IOException
   {
     if (keyfiles == null) return null;
 
     int len = keyfiles.length - start_index;
     if (len <= 0) return null;
 
-    ArrayList keys = new ArrayList(len);
+    ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>(len);
 
     for (int i = start_index; i < keyfiles.length; i++)
     {
@@ -390,14 +388,17 @@ public class SignZone extends CLBase
     return keys;
   }
 
-  private static List getKeys(List dnskeyrrs, File inDirectory) throws IOException
+  private static List<DnsKeyPair> getKeys(List<Record> dnskeyrrs, File inDirectory)
+      throws IOException
   {
-    List res = new ArrayList();
-    for (Iterator i = dnskeyrrs.iterator(); i.hasNext();)
+    List<DnsKeyPair> res = new ArrayList<DnsKeyPair>();
+    for (Record r : dnskeyrrs)
     {
+      if (r.getType() != Type.DNSKEY) continue;
+
       // Construct a public-key-only DnsKeyPair just so we can calculate the
       // base name.
-      DnsKeyPair pub = new DnsKeyPair((DNSKEYRecord) i.next());
+      DnsKeyPair pub = new DnsKeyPair((DNSKEYRecord) r);
       DnsKeyPair pair = BINDKeyUtils.loadKeyPair(BINDKeyUtils.keyFileBase(pub),
                                                  inDirectory);
       if (pair != null)
@@ -428,7 +429,8 @@ public class SignZone extends CLBase
     }
   }
 
-  private static List findZoneKeys(File inDirectory, Name zonename) throws IOException
+  private static List<DnsKeyPair> findZoneKeys(File inDirectory, Name zonename)
+      throws IOException
   {
     if (inDirectory == null)
     {
@@ -440,7 +442,7 @@ public class SignZone extends CLBase
     File[] files = inDirectory.listFiles(filter);
 
     // read in all of the records
-    ArrayList keys = new ArrayList();
+    ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>();
     for (int i = 0; i < files.length; i++)
     {
       DnsKeyPair p = BINDKeyUtils.loadKeyPair(files[i].getName(), inDirectory);
@@ -480,7 +482,8 @@ public class SignZone extends CLBase
    * @return a list of {@link org.xbill.DNS.Record}s found in the keyset
    *         files.
    */
-  private static List getKeysets(File inDirectory, Name zonename) throws IOException
+  private static List<Record> getKeysets(File inDirectory, Name zonename)
+      throws IOException
   {
     if (inDirectory == null)
     {
@@ -492,17 +495,17 @@ public class SignZone extends CLBase
     File[] files = inDirectory.listFiles(filter);
 
     // read in all of the records
-    ArrayList keysetRecords = new ArrayList();
+    ArrayList<Record> keysetRecords = new ArrayList<Record>();
     for (int i = 0; i < files.length; i++)
     {
-      List l = ZoneUtils.readZoneFile(files[i].getAbsolutePath(), zonename);
+      List<Record> l = ZoneUtils.readZoneFile(files[i].getAbsolutePath(), zonename);
       keysetRecords.addAll(l);
     }
 
     // discard records that do not belong to the zone in question.
-    for (Iterator i = keysetRecords.iterator(); i.hasNext();)
+    for (Iterator<Record> i = keysetRecords.iterator(); i.hasNext();)
     {
-      Record r = (Record) i.next();
+      Record r = i.next();
       if (!r.getName().subdomain(zonename))
       {
         i.remove();
@@ -519,10 +522,10 @@ public class SignZone extends CLBase
    *          the path of a file containing a bare list of DNS names.
    * @return a list of {@link org.xbill.DNS.Name} objects.
    */
-  private static List getNameList(File nameListFile) throws IOException
+  private static List<Name> getNameList(File nameListFile) throws IOException
   {
     BufferedReader br = new BufferedReader(new FileReader(nameListFile));
-    List res = new ArrayList();
+    List<Name> res = new ArrayList<Name>();
 
     String line = null;
     while ((line = br.readLine()) != null)
@@ -559,13 +562,12 @@ public class SignZone extends CLBase
    *          zone.
    * @return true if the keypairs valid.
    */
-  private static boolean keyPairsValidForZone(Name zonename, List keypairs)
+  private static boolean keyPairsValidForZone(Name zonename, List<DnsKeyPair> keypairs)
   {
     if (keypairs == null) return true; // technically true, I guess.
 
-    for (Iterator i = keypairs.iterator(); i.hasNext();)
+    for (DnsKeyPair kp : keypairs)
     {
-      DnsKeyPair kp = (DnsKeyPair) i.next();
       Name keyname = kp.getDNSKEYRecord().getName();
       if (!keyname.equals(zonename))
       {
@@ -579,7 +581,7 @@ public class SignZone extends CLBase
   public void execute() throws Exception
   {
     // Read in the zone
-    List records = ZoneUtils.readZoneFile(state.zonefile, null);
+    List<Record> records = ZoneUtils.readZoneFile(state.zonefile, null);
     if (records == null || records.size() == 0)
     {
       System.err.println("error: empty zone file");
@@ -596,14 +598,14 @@ public class SignZone extends CLBase
 
     // Load the key pairs.
 
-    List keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
-    List kskpairs = getKeys(state.kskFiles, 0, state.keyDirectory);
+    List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
+    List<DnsKeyPair> kskpairs = getKeys(state.kskFiles, 0, state.keyDirectory);
 
     // If we didn't get any keys on the command line, look at the zone apex for
     // any public keys.
     if (keypairs == null && kskpairs == null)
     {
-      List dnskeys = ZoneUtils.findRRs(records, zonename, Type.DNSKEY);
+      List<Record> dnskeys = ZoneUtils.findRRs(records, zonename, Type.DNSKEY);
       keypairs = getKeys(dnskeys, state.keyDirectory);
     }
 
@@ -621,13 +623,13 @@ public class SignZone extends CLBase
     if ((kskpairs == null || kskpairs.size() == 0) && keypairs != null
         && keypairs.size() > 1)
     {
-      for (Iterator i = keypairs.iterator(); i.hasNext();)
+      for (Iterator<DnsKeyPair> i = keypairs.iterator(); i.hasNext();)
       {
-        DnsKeyPair pair = (DnsKeyPair) i.next();
+        DnsKeyPair pair = i.next();
         DNSKEYRecord kr = pair.getDNSKEYRecord();
         if ((kr.getFlags() & DNSKEYRecord.Flags.SEP_KEY) != 0)
         {
-          if (kskpairs == null) kskpairs = new ArrayList();
+          if (kskpairs == null) kskpairs = new ArrayList<DnsKeyPair>();
           kskpairs.add(pair);
           i.remove();
         }
@@ -674,21 +676,21 @@ public class SignZone extends CLBase
     // removes duplicate records.
     if (kskpairs != null)
     {
-      for (Iterator i = kskpairs.iterator(); i.hasNext();)
+      for (DnsKeyPair pair : kskpairs)
       {
-        records.add(((DnsKeyPair) i.next()).getDNSKEYRecord());
+        records.add(pair.getDNSKEYRecord());
       }
     }
     if (keypairs != null)
     {
-      for (Iterator i = keypairs.iterator(); i.hasNext();)
+      for (DnsKeyPair pair : keypairs)
       {
-        records.add(((DnsKeyPair) i.next()).getDNSKEYRecord());
+        records.add(pair.getDNSKEYRecord());
       }
     }
 
     // read in the keysets, if any.
-    List keysetrecs = getKeysets(state.keysetDirectory, zonename);
+    List<Record> keysetrecs = getKeysets(state.keysetDirectory, zonename);
     if (keysetrecs != null)
     {
       records.addAll(keysetrecs);
@@ -697,7 +699,7 @@ public class SignZone extends CLBase
     JCEDnsSecSigner signer = new JCEDnsSecSigner(state.verboseSigning);
 
     // Sign the zone.
-    List signed_records;
+    List<Record> signed_records;
 
     if (state.useNsec3)
     {

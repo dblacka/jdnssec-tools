@@ -48,23 +48,23 @@ public class DnsSecVerifier implements Verifier
 
   private class TrustedKeyStore
   {
-    // for now, this is implemented as a hashtable of lists of
+    // for now, this is implemented as a hash table of lists of
     // DnsKeyPair objects (obviously, all of them will not have
     // private keys).
-    private HashMap mKeyMap;
+    private HashMap<String, List<DnsKeyPair>> mKeyMap;
 
     public TrustedKeyStore()
     {
-      mKeyMap = new HashMap();
+      mKeyMap = new HashMap<String, List<DnsKeyPair>>();
     }
 
     public void add(DnsKeyPair pair)
     {
       String n = pair.getDNSKEYName().toString().toLowerCase();
-      List l = (List) mKeyMap.get(n);
+      List<DnsKeyPair> l = mKeyMap.get(n);
       if (l == null)
       {
-        l = new ArrayList();
+        l = new ArrayList<DnsKeyPair>();
         mKeyMap.put(n, l);
       }
 
@@ -86,14 +86,13 @@ public class DnsSecVerifier implements Verifier
     public DnsKeyPair find(Name name, int algorithm, int keyid)
     {
       String n = name.toString().toLowerCase();
-      List l = (List) mKeyMap.get(n);
+      List<DnsKeyPair> l = mKeyMap.get(n);
       if (l == null) return null;
 
       // FIXME: this algorithm assumes that name+alg+footprint is
       // unique, which isn't necessarily true.
-      for (Iterator i = l.iterator(); i.hasNext();)
+      for (DnsKeyPair p : l)
       {
-        DnsKeyPair p = (DnsKeyPair) i.next();
         if (p.getDNSKEYAlgorithm() == algorithm && p.getDNSKEYFootprint() == keyid)
         {
           return p;
@@ -158,6 +157,7 @@ public class DnsSecVerifier implements Verifier
     mIgnoreTime = v;
   }
 
+  @SuppressWarnings("unchecked")
   private DnsKeyPair findCachedKey(Cache cache, Name name, int algorithm, int footprint)
   {
     RRset[] keysets = cache.findAnyRecords(name, Type.KEY);
@@ -165,11 +165,11 @@ public class DnsSecVerifier implements Verifier
 
     // look for the particular key
     // FIXME: this assumes that name+alg+footprint is unique.
-    for (Iterator i = keysets[0].rrs(); i.hasNext();)
+    for (Iterator<Record> i = keysets[0].rrs(); i.hasNext();)
     {
-      Object o = i.next();
-      if (!(o instanceof DNSKEYRecord)) continue;
-      DNSKEYRecord keyrec = (DNSKEYRecord) o;
+      Record r = i.next();
+      if (r.getType() != Type.DNSKEY) continue;
+      DNSKEYRecord keyrec = (DNSKEYRecord) r;
       if (keyrec.getAlgorithm() == algorithm && keyrec.getFootprint() == footprint)
       {
         return new DnsKeyPair(keyrec, (PrivateKey) null);
@@ -190,7 +190,7 @@ public class DnsSecVerifier implements Verifier
     return pair;
   }
 
-  private byte validateSignature(RRset rrset, RRSIGRecord sigrec, List reasons)
+  private byte validateSignature(RRset rrset, RRSIGRecord sigrec, List<String> reasons)
   {
     if (rrset == null || sigrec == null) return DNSSEC.Failed;
     if (!rrset.getName().equals(sigrec.getName()))
@@ -255,7 +255,7 @@ public class DnsSecVerifier implements Verifier
    *         could not be completed (usually because the public key was not
    *         available).
    */
-  public byte verifySignature(RRset rrset, RRSIGRecord sigrec, Cache cache, List reasons)
+  public byte verifySignature(RRset rrset, RRSIGRecord sigrec, Cache cache, List<String> reasons)
   {
     byte result = validateSignature(rrset, sigrec, reasons);
     if (result != DNSSEC.Secure) return result;
@@ -314,6 +314,7 @@ public class DnsSecVerifier implements Verifier
    * @return DNSSEC.Secure if the set verified, DNSSEC.Failed if it did not, and
    *         DNSSEC.Insecure if verification could not complete.
    */
+  @SuppressWarnings("unchecked")
   public int verify(RRset rrset, Cache cache)
   {
     int result = mVerifyAllSigs ? DNSSEC.Secure : DNSSEC.Insecure;

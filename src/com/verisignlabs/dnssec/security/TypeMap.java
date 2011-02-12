@@ -22,29 +22,29 @@ public class TypeMap
 {
   private static final Integer[] integerArray = new Integer[0];
 
-  private Set                    typeSet;
+  private Set<Integer>           typeSet;
 
   public TypeMap()
   {
-    this.typeSet = new HashSet();
+    this.typeSet = new HashSet<Integer>();
   }
 
   /** Add the given type to the typemap. */
   public void set(int type)
   {
-    typeSet.add(new Integer(type));
+    typeSet.add(type);
   }
 
   /** Remove the given type from the type map. */
   public void clear(int type)
   {
-    typeSet.remove(new Integer(type));
+    typeSet.remove(type);
   }
 
   /** @return true if the given type is present in the type map. */
   public boolean get(int type)
   {
-    return typeSet.contains(new Integer(type));
+    return typeSet.contains(type);
   }
 
   public static TypeMap fromTypes(int[] types)
@@ -109,8 +109,7 @@ public class TypeMap
     return sb.toString();
   }
 
-  protected static void mapToWire(DNSOutput out, int[] types, int base,
-                                  int start, int end)
+  protected static void mapToWire(DNSOutput out, int[] types, int base, int start, int end)
   {
     // calculate the length of this map by looking at the largest
     // typecode in this section.

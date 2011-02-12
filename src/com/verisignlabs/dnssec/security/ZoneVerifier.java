@@ -337,25 +337,26 @@ public class ZoneVerifier
     return errors;
   }
 
-  private static String reasonListToString(List reasons)
+  private static String reasonListToString(List<String> reasons)
   {
     if (reasons == null) return "";
     StringBuffer out = new StringBuffer();
-    for (Iterator i = reasons.iterator(); i.hasNext();)
+    for (Iterator<String> i = reasons.iterator(); i.hasNext();)
     {
       out.append("Reason: ");
-      out.append((String) i.next());
+      out.append(i.next());
       if (i.hasNext()) out.append("\n");
     }
     return out.toString();
   }
 
+  @SuppressWarnings("unchecked")
   private int processRRset(RRset rrset)
   {
-    List reasons = new ArrayList();
+    List<String> reasons = new ArrayList<String>();
     int result = DNSSEC.Failed;
 
-    for (Iterator i = rrset.sigs(); i.hasNext();)
+    for (Iterator<Record> i = rrset.sigs(); i.hasNext();)
     {
       RRSIGRecord sigrec = (RRSIGRecord) i.next();
       byte res = mVerifier.verifySignature(rrset, sigrec, null, reasons);
@@ -415,7 +416,7 @@ public class ZoneVerifier
     // should be empty.
     if (typeset == null) return types.length == 0;
 
-    Set compareTypeset = new HashSet();
+    Set<Integer> compareTypeset = new HashSet<Integer>();
     for (int i = 0; i < types.length; ++i)
     {
       compareTypeset.add(types[i]);
@@ -705,7 +706,7 @@ public class ZoneVerifier
     return errors;
   }
 
-  public int verifyZone(List records) throws NoSuchAlgorithmException, TextParseException
+  public int verifyZone(List<Record> records) throws NoSuchAlgorithmException, TextParseException
   {
     int errors = 0;
 
