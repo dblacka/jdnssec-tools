@@ -1,4 +1,8 @@
-2011-02-12  David Blacka  <davidb@verisignlabs.com>
+2011-02-14  David Blacka  <davidb@verisign.com>
+
+	* Released version 0.10.1.
+
+2011-02-12  David Blacka  <davidb@verisign.com>
 
 	* Use Java 1.5 generic types when possible.  DNSJava itself still
 	doesn't use them, so we have to suppress warnings when we use
@@ -8,7 +12,7 @@
 	base class has been created to eliminate much of the duplicated
 	code.
 
-2011-02-09  Blacka  <davidb@verisignlabs.com>
+2011-02-09  David Blacka  <davidb@verisign.com>
 
 	* Enable reading and writing from stdin/stdout for most tools.  To
 	do this, use '-' as the zonefile name.
@@ -17,12 +21,13 @@
 	That is, these tools will output each RR on a single line by
 	default, adding -m will restore the prior behavior.
 
-2011-02-08  Blacka  <davidb@verisignlabs.com>
+2011-02-08  David Blacka  <davidb@verisign.com>
 
 	* Minor cleanups to usage statement printing across most of the tools.
 
-2011-02-03  Blacka  <davidb@verisignlabs.com>
+2011-02-03  David Blacka  <davidb@verisign.com>
 
+	* Released version 0.10
 	* jdnssec-keygen: update the default algorithm to 8 (instead of 5).
 	* Update logging across all command line tools to use a consistent
 	'-v' option, and consistent, simpler log formatting.
@@ -30,31 +35,31 @@
 	but make the default log level WARNING.  To see the old logging
 	behavior, use -v 4.
 
-2011-02-02  Blacka  <davidb@verisignlabs.com>
+2011-02-02  David Blacka  <davidb@verisign.com>
 
 	* DnsKeyConverter: support the new BIND 9.7 private key format,
 	which only entails recognizing the new version string, since the
 	new format is a superset of the old format.
 
-2011-01-11  Blacka  <davidb@verisignlabs.com>
+2011-01-11  David Blacka  <davidb@verisign.com>
 
 	* jdnssec-zoneformat: add a -m option for formatting as
 	multiline.  Add a -N option for determining the original
 	ownernames for NSEC3 signed zones.
 
-2010-12-14  Blacka  <davidb@verisignlabs.com>
+2010-12-14  David Blacka  <davidb@verisign.com>
 
 	* jdnssec-verifyzone: Add options to either fudge or ignore RRSIG
 	inception and expiration times.
 
-2010-12-06  David Blacka  <davidb@verisignlabs.com>
+2010-12-06  David Blacka  <davidb@verisign.com>
 
 	* jdnssec-verifyzone: Complete refactored the verification code to
 	more comprehensively check a zone for DNSSEC validity.  Instead of
 	just verifying signatures, it will also check to see if the NSEC
 	or NSEC3 chains are valid.
 
-2010-12-05  David Blacka  <davidb@verisignlabs.com>
+2010-12-05  David Blacka  <davidb@verisign.com>
 
 	* jdnssec-signzone: Fix a bug that would incorrectly handle
 	delgations below delegations (those should be ignored.)
@@ -76,29 +81,29 @@
 	Unfortunately, also a lot of rewrapping and whitespace changes due
 	to Eclipse.  Sigh.
 
-2010-01-14  David Blacka  <davidb@verisignlabs.com>
+2010-01-14  David Blacka  <davidb@verisign.com>
 
 	* Released version 0.9.6
 
-2010-01-09  David Blacka  <davidb@verisignlabs.com>
+2010-01-09  David Blacka  <davidb@verisign.com>
 
 	* Upgrade to DNSJava 2.0.8 (plus a few local changes).  2.0.8
 	fixes a major bug in typemap wire conversion.
 
-2009-11-02  David Blacka  <davidb@verisignlabs.com>
+2009-11-02  David Blacka  <davidb@verisign.com>
 
 	* Released version 0.9.5
 
-2009-11-01  David Blacka  <davidb@verisignlabs.com>
+2009-11-01  David Blacka  <davidb@verisign.com>
 
 	* Upgrade to DNSJava 2.0.7 (plus a few local changes).
 	* DnsKeyAlogorithm: change the RSASHA512 number to 10.
 
-2009-08-23  David Blacka  <davidb@verisignlabs.com>
+2009-08-23  David Blacka  <davidb@verisign.com>
 
 	* Released version 0.9.4
 
-2009-07-15  David Blacka  <davidb@verisignlabs.com>
+2009-07-15  David Blacka  <davidb@verisign.com>
 
 	* SignUtils: Fix major issue where the code that generates that
 	canonical RRset given signature data wasn't obeying the "Orig TTL"
@@ -108,7 +113,7 @@
 	* VerifyZone:  Fix bug where the whole-zone security status was
 	still wrong: unsigned RRsets shouldn't make the zone Bogus.
 
-2009-06-12  David Blacka  <davidb@verisignlabs.com>
+2009-06-12  David Blacka  <davidb@verisign.com>
 
 	* VerifyZone: Fix bug in verification logic so that RRsets that
 	never find a valid signature (i.e., only have signatures by keys
@@ -122,17 +127,17 @@
 	adds a minimal DHCIDRecord type.  Note that the DNSjava trunk has
 	a different (although functional similar) version of this type.
 
-2009-06-09  David Blacka  <davidb@verisignlabs.com>
+2009-06-09  David Blacka  <davidb@verisign.com>
 
 	* VerifyZone: Improve the output.
 
 	* SignKeyset: Add a command line tool for just signing DNSKEY RRsets.
 
-2009-02-10  David Blacka  <davidb@verisignlabs.com>
+2009-02-10  David Blacka  <davidb@verisign.com>
 
 	* Released version 0.9.0
 
-2009-02-08  David Blacka  <davidb@verisignlabs.com>
+2009-02-08  David Blacka  <davidb@verisign.com>
 
 	* KeyGen: make RSA large exponent the default.  Make it possible
 	to select small exponent.
@@ -143,7 +148,7 @@
 	* DnsKeyAlgorithm: use DNSjava constants, BIND 9.6 mnemonics for
 	NSEC3 key aliases.
 
-2009-02-07  David Blacka  <davidb@verisignlabs.com>
+2009-02-07  David Blacka  <davidb@verisign.com>
 
 	* SignZone: add argument for setting the TTL of the NSEC3PARAM
 	record.  This is so we can match current dnssec-signzone
@@ -156,7 +161,7 @@
 	* SignUtils: Make sure to use the SOA minimum value for NSEC TTLs,
 	instead of the ttl of the "node".
 
-2009-02-04  David Blacka  <davidb@verisignlabs.com>
+2009-02-04  David Blacka  <davidb@verisign.com>
 
 	* update to dnsjava-2.0.1-vrsn-4 (updated typecodes for
 	NSEC3/NSEC3PARAM).
@@ -177,7 +182,7 @@
 	zone.  Specifying any keys at all on the command line will
 	override this behavior.
 
-2009-02-01  David Blacka  <davidb@verisignlabs.com>
+2009-02-01  David Blacka  <davidb@verisign.com>
 
 	* DnsKeyAlgorithm: add official aliases from RFC 5155.
 
