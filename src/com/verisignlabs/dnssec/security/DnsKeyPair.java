@@ -333,15 +333,15 @@ public class DnsKeyPair
     if (pk != null)
     {
       // currently, alg 5 is the default over alg 1 (RSASHA1).
-      if (pk instanceof RSAPublicKey) return DNSSEC.RSASHA1;
-      if (pk instanceof DSAPublicKey) return DNSSEC.DSA;
+      if (pk instanceof RSAPublicKey) return DNSSEC.Algorithm.RSASHA1;
+      if (pk instanceof DSAPublicKey) return DNSSEC.Algorithm.DSA;
     }
 
     PrivateKey priv = getPrivate();
     if (priv != null)
     {
-      if (priv instanceof RSAPrivateKey) return DNSSEC.RSASHA1;
-      if (priv instanceof DSAPrivateKey) return DNSSEC.DSA;
+      if (priv instanceof RSAPrivateKey) return DNSSEC.Algorithm.RSASHA1;
+      if (priv instanceof DSAPrivateKey) return DNSSEC.Algorithm.DSA;
     }
 
     return -1;

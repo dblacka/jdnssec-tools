@@ -105,25 +105,25 @@ public class DnsKeyAlgorithm
     mIdToMnemonicMap = new HashMap<Integer, String>();
 
     // Load the standard DNSSEC algorithms.
-    addAlgorithm(DNSSEC.RSAMD5, new Entry("MD5withRSA", RSA));
-    addMnemonic("RSAMD5", DNSSEC.RSAMD5);
+    addAlgorithm(DNSSEC.Algorithm.RSAMD5, new Entry("MD5withRSA", RSA));
+    addMnemonic("RSAMD5", DNSSEC.Algorithm.RSAMD5);
 
-    addAlgorithm(DNSSEC.DH, new Entry("", DH));
-    addMnemonic("DH", DNSSEC.DH);
+    addAlgorithm(DNSSEC.Algorithm.DH, new Entry("", DH));
+    addMnemonic("DH", DNSSEC.Algorithm.DH);
 
-    addAlgorithm(DNSSEC.DSA, new Entry("SHA1withDSA", DSA));
-    addMnemonic("DSA", DNSSEC.DSA);
+    addAlgorithm(DNSSEC.Algorithm.DSA, new Entry("SHA1withDSA", DSA));
+    addMnemonic("DSA", DNSSEC.Algorithm.DSA);
 
-    addAlgorithm(DNSSEC.RSASHA1, new Entry("SHA1withRSA", RSA));
-    addMnemonic("RSASHA1", DNSSEC.RSASHA1);
-    addMnemonic("RSA", DNSSEC.RSASHA1);
+    addAlgorithm(DNSSEC.Algorithm.RSASHA1, new Entry("SHA1withRSA", RSA));
+    addMnemonic("RSASHA1", DNSSEC.Algorithm.RSASHA1);
+    addMnemonic("RSA", DNSSEC.Algorithm.RSASHA1);
 
     // Load the (now) standard aliases
-    addAlias(DNSSEC.DSA_NSEC3_SHA1, "DSA-NSEC3-SHA1", DNSSEC.DSA);
-    addAlias(DNSSEC.RSA_NSEC3_SHA1, "RSA-NSEC3-SHA1", DNSSEC.RSASHA1);
+    addAlias(DNSSEC.Algorithm.DSA_NSEC3_SHA1, "DSA-NSEC3-SHA1", DNSSEC.Algorithm.DSA);
+    addAlias(DNSSEC.Algorithm.RSA_NSEC3_SHA1, "RSA-NSEC3-SHA1", DNSSEC.Algorithm.RSASHA1);
     // Also recognize the BIND 9.6 mnemonics
-    addMnemonic("NSEC3DSA", DNSSEC.DSA_NSEC3_SHA1);
-    addMnemonic("NSEC3RSASHA1", DNSSEC.RSA_NSEC3_SHA1);
+    addMnemonic("NSEC3DSA", DNSSEC.Algorithm.DSA_NSEC3_SHA1);
+    addMnemonic("NSEC3RSASHA1", DNSSEC.Algorithm.RSA_NSEC3_SHA1);
 
     // Algorithms added by RFC 5702.
     // NOTE: these algorithms aren't available in Java 1.4's sunprovider
@@ -221,11 +221,11 @@ public class DnsKeyAlgorithm
     switch (baseType(algorithm))
     {
       case RSA:
-        return DNSSEC.RSASHA1;
+        return DNSSEC.Algorithm.RSASHA1;
       case DSA:
-        return DNSSEC.DSA;
+        return DNSSEC.Algorithm.DSA;
       case DH:
-        return DNSSEC.DH;
+        return DNSSEC.Algorithm.DH;
       default:
         return UNKNOWN;
     }
