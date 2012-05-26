@@ -44,6 +44,7 @@ import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPrivateKeySpec;
 
 import org.xbill.DNS.DNSKEYRecord;
+import org.xbill.DNS.DNSSEC.DNSSECException;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.utils.base64;
 
@@ -95,7 +96,14 @@ public class DnsKeyConverter
                                     pKeyRecord.getKey());
     }
 
-    return pKeyRecord.getPublicKey();
+    try
+    {
+      return pKeyRecord.getPublicKey();
+    }
+    catch (DNSSECException e)
+    {
+      throw new NoSuchAlgorithmException(e);
+    }
   }
 
   /**
@@ -104,8 +112,16 @@ public class DnsKeyConverter
   public DNSKEYRecord generateDNSKEYRecord(Name name, int dclass, long ttl,
                                            int flags, int alg, PublicKey key)
   {
-    return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
-                            key);
+    try
+    {
+      return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
+                              key);
+    }
+    catch (DNSSECException e)
+    {
+      // FIXME: this mimics the behavior of KEYConverter.buildRecord(), which would return null if the algorithm was unknown.
+      return null;
+    }
   }
 
   // Private Key Specific Parsing routines
