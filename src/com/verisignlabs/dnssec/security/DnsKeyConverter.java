@@ -47,7 +47,6 @@ import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
-import org.xbill.DNS.security.KEYConverter;
 import org.xbill.DNS.utils.base64;
 
 /**
@@ -98,7 +97,7 @@ public class DnsKeyConverter
                                     pKeyRecord.getKey());
     }
 
-    return KEYConverter.parseRecord(pKeyRecord);
+    return pKeyRecord.getPublicKey();
   }
 
   /**
@@ -107,10 +106,8 @@ public class DnsKeyConverter
   public DNSKEYRecord generateDNSKEYRecord(Name name, int dclass, long ttl,
                                            int flags, int alg, PublicKey key)
   {
-    Record kr = KEYConverter.buildRecord(name, Type.DNSKEY, dclass, ttl, flags,
-                                         DNSKEYRecord.Protocol.DNSSEC, alg, key);
-
-    return (DNSKEYRecord) kr;
+    return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
+                            key);
   }
 
   // Private Key Specific Parsing routines
