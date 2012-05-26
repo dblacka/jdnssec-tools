@@ -33,7 +33,6 @@ import java.util.TreeMap;
 import java.util.logging.Logger;
 
 import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.NSEC3PARAMRecord;
 import org.xbill.DNS.NSEC3Record;
 import org.xbill.DNS.NSECRecord;
@@ -354,24 +353,24 @@ public class ZoneVerifier
   private int processRRset(RRset rrset)
   {
     List<String> reasons = new ArrayList<String>();
-    int result = DNSSEC.Failed;
+    boolean result = false;
 
     for (Iterator<Record> i = rrset.sigs(); i.hasNext();)
     {
       RRSIGRecord sigrec = (RRSIGRecord) i.next();
-      byte res = mVerifier.verifySignature(rrset, sigrec, null, reasons);
-      if (res != DNSSEC.Secure)
+      boolean res = mVerifier.verifySignature(rrset, sigrec, reasons);
+      if (!res)
       {
         log.warning("Signature failed to verify RRset:\n  rr:  "
             + ZoneUtils.rrsetToString(rrset, false) + "\n  sig: " + sigrec + "\n"
             + reasonListToString(reasons));
       }
 
-      if (res > result) result = res;
+      if (res) result = res;
     }
 
     String rrsetname = rrset.getName() + "/" + Type.string(rrset.getType());
-    if (result == DNSSEC.Secure)
+    if (result)
     {
       log.fine("RRset " + rrsetname + " verified.");
     }
@@ -380,7 +379,7 @@ public class ZoneVerifier
       log.warning("RRset " + rrsetname + " did not verify.");
     }
 
-    return result == DNSSEC.Secure ? 0 : 1;
+    return result ? 0 : 1;
   }
 
   private String typesToString(int[] types)

@@ -43,7 +43,7 @@ import org.xbill.DNS.*;
  * @author $Author$
  * @version $Revision$
  */
-public class DnsSecVerifier implements Verifier
+public class DnsSecVerifier
 {
 
   private class TrustedKeyStore
@@ -157,47 +157,19 @@ public class DnsSecVerifier implements Verifier
     mIgnoreTime = v;
   }
 
-  @SuppressWarnings("unchecked")
-  private DnsKeyPair findCachedKey(Cache cache, Name name, int algorithm, int footprint)
+  private DnsKeyPair findKey(Name name, int algorithm, int footprint)
   {
-    RRset[] keysets = cache.findAnyRecords(name, Type.KEY);
-    if (keysets == null) return null;
-
-    // look for the particular key
-    // FIXME: this assumes that name+alg+footprint is unique.
-    for (Iterator<Record> i = keysets[0].rrs(); i.hasNext();)
-    {
-      Record r = i.next();
-      if (r.getType() != Type.DNSKEY) continue;
-      DNSKEYRecord keyrec = (DNSKEYRecord) r;
-      if (keyrec.getAlgorithm() == algorithm && keyrec.getFootprint() == footprint)
-      {
-        return new DnsKeyPair(keyrec, (PrivateKey) null);
-      }
-    }
-
-    return null;
+    return mKeyStore.find(name, algorithm, footprint);
   }
 
-  private DnsKeyPair findKey(Cache cache, Name name, int algorithm, int footprint)
+  private boolean validateSignature(RRset rrset, RRSIGRecord sigrec, List<String> reasons)
   {
-    DnsKeyPair pair = mKeyStore.find(name, algorithm, footprint);
-    if (pair == null && cache != null)
-    {
-      pair = findCachedKey(cache, name, algorithm, footprint);
-    }
-
-    return pair;
-  }
-
-  private byte validateSignature(RRset rrset, RRSIGRecord sigrec, List<String> reasons)
-  {
-    if (rrset == null || sigrec == null) return DNSSEC.Failed;
+    if (rrset == null || sigrec == null) return false;
     if (!rrset.getName().equals(sigrec.getName()))
     {
       log.fine("Signature name does not match RRset name");
       if (reasons != null) reasons.add("Signature name does not match RRset name");
-      return DNSSEC.Failed;
+      return false;
     }
     if (rrset.getType() != sigrec.getTypeCovered())
     {
@@ -205,7 +177,7 @@ public class DnsSecVerifier implements Verifier
       if (reasons != null) reasons.add("Signature type does not match RRset type");
     }
 
-    if (mIgnoreTime) return DNSSEC.Secure;
+    if (mIgnoreTime) return true;
 
     Date now = new Date();
     Date start = sigrec.getTimeSigned();
@@ -221,7 +193,7 @@ public class DnsSecVerifier implements Verifier
       {
         log.fine("Signature is not yet valid");
         if (reasons != null) reasons.add("Signature not yet valid");
-        return DNSSEC.Failed;
+        return false;
       }
     }
 
@@ -235,39 +207,37 @@ public class DnsSecVerifier implements Verifier
       {
         log.fine("Signature has expired (now = " + now + ", sig expires = " + expire);
         if (reasons != null) reasons.add("Signature has expired.");
-        return DNSSEC.Failed;
+        return false;
       }
     }
 
-    return DNSSEC.Secure;
+    return true;
   }
 
-  public byte verifySignature(RRset rrset, RRSIGRecord sigrec, Cache cache)
+  public boolean verifySignature(RRset rrset, RRSIGRecord sigrec)
   {
-    return verifySignature(rrset, sigrec, cache, null);
+    return verifySignature(rrset, sigrec, null);
   }
 
   /**
    * Verify an RRset against a particular signature.
    * 
-   * @return DNSSEC.Secure if the signature verified, DNSSEC.Failed if it did
-   *         not verify (for any reason), and DNSSEC.Insecure if verification
-   *         could not be completed (usually because the public key was not
-   *         available).
+   * @return true if the signature verified, false if it did
+   *         not verify (for any reason, including not finding the DNSKEY.)
    */
-  public byte verifySignature(RRset rrset, RRSIGRecord sigrec, Cache cache, List<String> reasons)
+  public boolean verifySignature(RRset rrset, RRSIGRecord sigrec, List<String> reasons)
   {
-    byte result = validateSignature(rrset, sigrec, reasons);
-    if (result != DNSSEC.Secure) return result;
+    boolean result = validateSignature(rrset, sigrec, reasons);
+    if (!result) return result;
 
-    DnsKeyPair keypair = findKey(cache, sigrec.getSigner(), sigrec.getAlgorithm(),
+    DnsKeyPair keypair = findKey(sigrec.getSigner(), sigrec.getAlgorithm(),
                                  sigrec.getFootprint());
 
     if (keypair == null)
     {
       if (reasons != null) reasons.add("Could not find matching trusted key");
       log.fine("could not find matching trusted key");
-      return DNSSEC.Insecure;
+      return false;
     }
 
     try
@@ -290,10 +260,10 @@ public class DnsSecVerifier implements Verifier
       {
         if (reasons != null) reasons.add("Signature failed to verify cryptographically");
         log.fine("Signature failed to verify cryptographically");
-        return DNSSEC.Failed;
+        return false;
       }
 
-      return DNSSEC.Secure;
+      return true;
     }
     catch (IOException e)
     {
@@ -305,39 +275,38 @@ public class DnsSecVerifier implements Verifier
     }
     if (reasons != null) reasons.add("Signature failed to verify due to exception");
     log.fine("Signature failed to verify due to exception");
-    return DNSSEC.Insecure;
+    return false;
   }
 
   /**
    * Verifies an RRset. This routine does not modify the RRset.
    * 
-   * @return DNSSEC.Secure if the set verified, DNSSEC.Failed if it did not, and
-   *         DNSSEC.Insecure if verification could not complete.
+   * @return true if the set verified, false if it did not.
    */
   @SuppressWarnings("unchecked")
-  public int verify(RRset rrset, Cache cache)
+  public boolean verify(RRset rrset)
   {
-    int result = mVerifyAllSigs ? DNSSEC.Secure : DNSSEC.Insecure;
+    boolean result = mVerifyAllSigs ? true : false;
 
     Iterator i = rrset.sigs();
 
     if (!i.hasNext())
     {
       log.fine("RRset failed to verify due to lack of signatures");
-      return DNSSEC.Insecure;
+      return false;
     }
 
     while (i.hasNext())
     {
       RRSIGRecord sigrec = (RRSIGRecord) i.next();
 
-      byte res = verifySignature(rrset, sigrec, cache);
+      boolean res = verifySignature(rrset, sigrec);
 
-      if (!mVerifyAllSigs && res == DNSSEC.Secure) return res;
+      // If not requiring all signature to validate, then any successful validation is sufficient.
+      if (!mVerifyAllSigs && res) return res;
 
-      if (!mVerifyAllSigs && res < result) result = res;
-
-      if (mVerifyAllSigs && res != DNSSEC.Secure && res < result)
+      // Otherwise, note if a signature failed to validate.
+      if (mVerifyAllSigs && !res)
       {
         result = res;
       }

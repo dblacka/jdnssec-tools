@@ -45,8 +45,6 @@ import javax.crypto.spec.DHPrivateKeySpec;
 
 import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.Name;
-import org.xbill.DNS.Record;
-import org.xbill.DNS.Type;
 import org.xbill.DNS.utils.base64;
 
 /**

@@ -34,7 +34,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.DSRecord;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRset;
@@ -343,11 +342,11 @@ public class SignZone extends CLBase
       // skip unsigned rrsets.
       if (!rrset.sigs().hasNext()) continue;
 
-      int result = verifier.verify(rrset, null);
+      boolean result = verifier.verify(rrset);
 
-      if (result != DNSSEC.Secure)
+      if (!result)
       {
-        log.fine("Signatures did not verify for RRset: (" + result + "): " + rrset);
+        log.fine("Signatures did not verify for RRset: " + rrset);
         secure = false;
       }
     }

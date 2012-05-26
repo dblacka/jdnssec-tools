@@ -28,7 +28,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 
-import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
@@ -185,11 +184,11 @@ public class SignRRset extends CLBase
       // skip unsigned rrsets.
       if (!rrset.sigs().hasNext()) continue;
 
-      int result = verifier.verify(rrset, null);
+      boolean result = verifier.verify(rrset);
 
-      if (result != DNSSEC.Secure)
+      if (!result)
       {
-        log.fine("Signatures did not verify for RRset: (" + result + "): " + rrset);
+        log.fine("Signatures did not verify for RRset: " + rrset);
         secure = false;
       }
     }
