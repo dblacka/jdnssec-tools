@@ -1040,7 +1040,7 @@ public class SignUtils
   {
     byte[] hash = nsec3hash(name, NSEC3Record.SHA1_DIGEST_ID, iterations, salt);
     byte flags = (byte) (optIn ? 0x01 : 0x00);
-
+    
     ProtoNSEC3 r = new ProtoNSEC3(hash, name, zonename, DClass.IN, ttl,
                                   NSEC3Record.SHA1_DIGEST_ID, flags, iterations, salt,
                                   null, types);
@@ -1430,7 +1430,7 @@ public class SignUtils
    * @throws NoSuchAlgorithmException
    *           If the hash algorithm is unrecognized.
    */
-  public static byte[] nsec3hash(Name n, byte hash_algorithm, int iterations, byte[] salt)
+  public static byte[] nsec3hash(Name n, int hash_algorithm, int iterations, byte[] salt)
       throws NoSuchAlgorithmException
   {
     MessageDigest md;

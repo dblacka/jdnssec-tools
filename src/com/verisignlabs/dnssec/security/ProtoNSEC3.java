@@ -45,7 +45,7 @@ import org.xbill.DNS.utils.base32;
 public class ProtoNSEC3
 {
   private Name                originalOwner;
-  private byte                hashAlg;
+  private int                 hashAlg;
   private byte                flags;
   private int                 iterations;
   private byte[]              salt;
@@ -63,7 +63,7 @@ public class ProtoNSEC3
    * Creates an NSEC3 Record from the given data.
    */
   public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass, long ttl,
-                    byte hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
+                    int hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
                     TypeMap typemap)
   {
     this.zone = zone;
@@ -80,7 +80,7 @@ public class ProtoNSEC3
   }
 
   public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass, long ttl,
-                    byte hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
+                    int hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
                     int[] types)
   {
     this(owner, originalOwner, zone, dclass, ttl, hashAlg, flags, iterations, salt, next,
@@ -168,7 +168,7 @@ public class ProtoNSEC3
     return dclass;
   }
 
-  public byte getHashAlgorithm()
+  public int getHashAlgorithm()
   {
     return hashAlg;
   }
