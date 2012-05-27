@@ -48,6 +48,7 @@ public class VerifyZone extends CLBase
     public int      startfudge  = 0;
     public int      expirefudge = 0;
     public boolean  ignoreTime  = false;
+    public boolean  ignoreDups  = false;
 
     public CLIState()
     {
@@ -71,6 +72,10 @@ public class VerifyZone extends CLBase
       OptionBuilder.withLongOpt("ignore-time");
       OptionBuilder.withDescription("Ignore RRSIG inception and expiration time errors.");
       opts.addOption(OptionBuilder.create());
+
+      OptionBuilder.withLongOpt("ignore-duplicate-rrs");
+      OptionBuilder.withDescription("Ignore duplicate record errors.");
+      opts.addOption(OptionBuilder.create());
     }
     
     protected void processOptions(CommandLine cli)
@@ -78,6 +83,11 @@ public class VerifyZone extends CLBase
       if (cli.hasOption("ignore-time"))
       {
         ignoreTime = true;
+      }
+
+      if (cli.hasOption("ignore-duplicate-rrs"))
+      {
+        ignoreDups = true;
       }
 
       String optstr = null;
@@ -126,6 +136,7 @@ public class VerifyZone extends CLBase
     zoneverifier.getVerifier().setStartFudge(state.startfudge);
     zoneverifier.getVerifier().setExpireFudge(state.expirefudge);
     zoneverifier.getVerifier().setIgnoreTime(state.ignoreTime);
+    zoneverifier.setIgnoreDuplicateRRs(state.ignoreDups);
 
     List<Record> records = ZoneUtils.readZoneFile(state.zonefile, null);
 

@@ -48,7 +48,7 @@ import org.xbill.DNS.utils.base32;
  * A class for whole zone DNSSEC verification. Along with cryptographically
  * verifying signatures, this class will also detect invalid NSEC and NSEC3
  * chains.
- * 
+ *
  * @author David Blacka (original)
  * @author $Author: davidb $
  * @version $Revision: 172 $
@@ -63,6 +63,7 @@ public class ZoneVerifier
   private Name                          mZoneName;
   private DNSSECType                    mDNSSECType;
   private NSEC3PARAMRecord              mNSEC3params;
+  private boolean                       mIgnoreDuplicateRRs;
 
   private DnsSecVerifier                mVerifier;
   private base32                        mBase32;
@@ -107,11 +108,18 @@ public class ZoneVerifier
     mVerifier = new DnsSecVerifier();
     mBase32 = new base32(base32.Alphabet.BASE32HEX, false, true);
     mBAcmp = new ByteArrayComparator();
+    mIgnoreDuplicateRRs = false;
   }
 
+  /** @return the DnsSecVerifier object used to verify individual RRsets. */
   public DnsSecVerifier getVerifier()
   {
     return mVerifier;
+  }
+
+  public void setIgnoreDuplicateRRs(boolean value)
+  {
+    mIgnoreDuplicateRRs = value;
   }
 
   private static String key(Name n, int type)
@@ -119,10 +127,29 @@ public class ZoneVerifier
     return n.toString() + ':' + type;
   }
 
+  @SuppressWarnings("rawtypes")
+  private boolean addRRtoRRset(RRset rrset, Record rr)
+  {
+    if (mIgnoreDuplicateRRs)
+    {
+      rrset.addRR(rr);
+      return true;
+    }
+
+    for (Iterator i = rrset.rrs(); i.hasNext(); )
+    {
+      Record record = (Record) i.next();
+      if (rr.equals(record)) return false;
+    }
+    rrset.addRR(rr);
+    return true;
+  }
+
   /**
    * Add a record to the various maps.
+   * @return TODO
    */
-  private void addRR(Record r)
+  private boolean addRR(Record r)
   {
     Name r_name = r.getName();
     int r_type = r.getType();
@@ -138,8 +165,8 @@ public class ZoneVerifier
         rrset = new MarkRRset();
         mNSECMap.put(r_name, rrset);
       }
-      rrset.addRR(r);
-      return;
+
+      return addRRtoRRset(rrset, r);
     }
 
     if (r_type == Type.NSEC3)
@@ -151,8 +178,8 @@ public class ZoneVerifier
         rrset = new MarkRRset();
         mNSEC3Map.put(r_name, rrset);
       }
-      rrset.addRR(r);
-      return;
+
+      return addRRtoRRset(rrset, r);
     }
 
     // Add the name and type to the node map
@@ -172,7 +199,7 @@ public class ZoneVerifier
       rrset = new RRset();
       mRRsetMap.put(k, rrset);
     }
-    rrset.addRR(r);
+    return addRRtoRRset(rrset, r);
   }
 
   /**
@@ -198,10 +225,11 @@ public class ZoneVerifier
   /**
    * Given an unsorted list of records, load the node and rrset maps, as well as
    * determine the NSEC3 parameters and signing type.
-   * 
+   *
    * @param records
+   * @return TODO
    */
-  private void calculateNodes(List<Record> records)
+  private int calculateNodes(List<Record> records)
   {
     mNodeMap = new TreeMap<Name, Set<Integer>>();
     mRRsetMap = new HashMap<String, RRset>();
@@ -209,13 +237,19 @@ public class ZoneVerifier
     // The zone is unsigned until we get a clue otherwise.
     mDNSSECType = DNSSECType.UNSIGNED;
 
+    int errors = 0;
     for (Record r : records)
     {
       Name r_name = r.getName();
       int r_type = r.getType();
 
       // Add the record to the various maps.
-      addRR(r);
+      boolean res = addRR(r);
+      if (!res)
+      {
+        log.warning("Record '" + r + "' detected as a duplicate");
+        errors++;
+      }
 
       // Learn some things about the zone as we do this pass.
       if (r_type == Type.SOA) mZoneName = r_name;
@@ -229,6 +263,8 @@ public class ZoneVerifier
 
       if (mDNSSECType == DNSSECType.UNSIGNED) mDNSSECType = determineDNSSECType(r);
     }
+
+    return errors;
   }
 
   /**
@@ -290,7 +326,7 @@ public class ZoneVerifier
         last_cut = n;
       }
 
-      // check all of the RRset that should be signed
+      // check all of the RRsets that should be signed
       for (int type : typeset)
       {
         if (type == Type.RRSIG) continue;
@@ -709,9 +745,9 @@ public class ZoneVerifier
   {
     int errors = 0;
 
-    calculateNodes(records);
+    errors += calculateNodes(records);
 
-    errors = processNodes();
+    errors += processNodes();
 
     if (mDNSSECType == DNSSECType.NSEC)
     {
