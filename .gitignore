@@ -1,3 +1,5 @@
 build
 .classpath
 .project
+jdnssec-tools*.tar.gz
+docs
