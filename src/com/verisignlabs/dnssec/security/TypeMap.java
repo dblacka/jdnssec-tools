@@ -21,6 +21,7 @@ import org.xbill.DNS.Type;
 public class TypeMap
 {
   private static final Integer[] integerArray = new Integer[0];
+  private static final byte[] emptyBitmap = new byte[0];
 
   private Set<Integer>           typeSet;
 
@@ -47,6 +48,9 @@ public class TypeMap
     return typeSet.contains(type);
   }
 
+  /**
+   * Given an array of DNS type code, construct a TypeMap object.
+   */
   public static TypeMap fromTypes(int[] types)
   {
     TypeMap m = new TypeMap();
@@ -68,12 +72,12 @@ public class TypeMap
     int m = 0;
     TypeMap typemap = new TypeMap();
 
-    int map_number;
+    int page;
     int byte_length;
 
     while (m < map.length)
     {
-      map_number = map[m++];
+      page = map[m++];
       byte_length = map[m++];
 
       for (int i = 0; i < byte_length; i++)
@@ -82,11 +86,26 @@ public class TypeMap
         {
           if ((map[m + i] & (1 << (7 - j))) != 0)
           {
-            typemap.set(map_number * 8 + j);
+            typemap.set((page << 8) + (i * 8) + j);
           }
         }
       }
       m += byte_length;
+    }
+
+    return typemap;
+  }
+
+  /**
+   * Given list of type mnemonics, construct a TypeMap object.
+   */
+  public static TypeMap fromString(String types)
+  {
+    TypeMap typemap = new TypeMap();
+
+    for (String type : types.split("\\s+"))
+    {
+      typemap.set(Type.value(type));
     }
 
     return typemap;
@@ -102,7 +121,7 @@ public class TypeMap
 
     for (int i = 0; i < types.length; i++)
     {
-      sb.append(" ");
+      if (i > 0) sb.append(" ");
       sb.append(Type.string(types[i]));
     }
 
@@ -140,6 +159,8 @@ public class TypeMap
   {
     int[] types = getTypes();
 
+    if (types.length == 0) return emptyBitmap;
+
     Arrays.sort(types);
 
     int mapbase = -1;
@@ -149,7 +170,7 @@ public class TypeMap
 
     for (int i = 0; i < types.length; i++)
     {
-      int base = types[i] >> 8;
+      int base = (types[i] >> 8) & 0xFF;
       if (base == mapbase) continue;
       if (mapstart >= 0)
       {
