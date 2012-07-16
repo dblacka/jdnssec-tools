@@ -242,14 +242,8 @@ public class ProtoNSEC3
     sb.append(' ');
     String nextstr = (next == null) ? "(null)" : b32.toString(next);
     sb.append(nextstr);
-
-    int[] types = getTypes();
-    for (int i = 0; i < types.length; i++)
-    {
-      sb.append(" ");
-      sb.append(Type.string(types[i]));
-    }
-    if (originalOwner != null) sb.append(" ; " + originalOwner);
+    sb.append(' ');
+    sb.append(typemap.toString());
 
     return sb.toString();
   }
