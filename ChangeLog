@@ -1,3 +1,12 @@
+2012-07-16  David Blacka  <davidb@verisign.com>
+
+	* Released version 0.12.
+
+	* TypeMap: fix the fromBytes() method, which was incorrect and add
+	a static fromString() method.
+	* ProtoNSEC3: use TypeMap's toString method, rather than fetching
+	the array of types and rendering them directly.
+
 2012-05-29  David Blacka  <davidb@verisign.com>
 
 	* Released version 0.11.
