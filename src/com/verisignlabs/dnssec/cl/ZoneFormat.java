@@ -42,7 +42,7 @@ import com.verisignlabs.dnssec.security.RecordComparator;
 /**
  * This class forms the command line implementation of a zone file normalizer.
  * That is, a tool to rewrite zones in a consistent, comparable format.
- * 
+ *
  * @author David Blacka (original)
  * @author $Author: davidb $
  * @version $Revision: 2218 $
@@ -126,13 +126,20 @@ public class ZoneFormat extends CLBase
     Collections.sort(zone, new RecordComparator());
 
     // first, find the NSEC3PARAM record -- this is an inefficient linear
-    // search.
+    // search, although it should be near the head of the list.
     NSEC3PARAMRecord nsec3param = null;
     HashMap<String, String> map = new HashMap<String, String>();
     base32 b32 = new base32(base32.Alphabet.BASE32HEX, false, true);
+    Name zonename = null;
 
     for (Record r : zone)
     {
+      if (r.getType() == Type.SOA)
+      {
+        zonename = r.getName();
+        continue;
+      }
+
       if (r.getType() == Type.NSEC3PARAM)
       {
         nsec3param = (NSEC3PARAMRecord) r;
@@ -140,6 +147,8 @@ public class ZoneFormat extends CLBase
       }
     }
 
+    // If we couldn't determine a zone name, we have an issue.
+    if (zonename == null) return;
     // If there wasn't one, we have nothing to do.
     if (nsec3param == null) return;
 
@@ -150,10 +159,23 @@ public class ZoneFormat extends CLBase
       if (r.getName().equals(last_name)) continue;
       if (r.getType() == Type.NSEC3) continue;
 
-      byte[] hash = nsec3param.hashName(r.getName());
+      Name n = r.getName();
+      byte[] hash = nsec3param.hashName(n);
       String hashname = b32.toString(hash);
-      map.put(hashname, r.getName().toString().toLowerCase());
-      last_name = r.getName();
+      map.put(hashname, n.toString().toLowerCase());
+      last_name = n;
+
+      // inefficiently create hashes for the possible ancestor ENTs
+      for (int i = zonename.labels() + 1; i < n.labels(); ++i)
+      {
+        Name parent = new Name(n, n.labels() - i);
+        byte[] parent_hash = nsec3param.hashName(parent);
+        String parent_hashname = b32.toString(parent_hash);
+        if (!map.containsKey(parent_hashname))
+        {
+          map.put(parent_hashname, parent.toString().toLowerCase());
+        }
+      }
     }
 
     // Final pass, assign the names if we can
