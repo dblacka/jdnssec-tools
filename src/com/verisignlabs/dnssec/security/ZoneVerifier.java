@@ -276,6 +276,11 @@ public class ZoneVerifier
     // All RRs at the zone apex are normal
     if (n.equals(mZoneName)) return NodeType.NORMAL;
 
+    // If the node is not below the zone itself, we will treat it as glue (it is really junk).
+    if (!n.subdomain(mZoneName))
+    {
+      return NodeType.GLUE;
+    }
     // If the node is below a zone cut (either a delegation or DNAME), it is
     // glue.
     if (last_cut != null && n.subdomain(last_cut) && !n.equals(last_cut))
