@@ -429,6 +429,126 @@ public class SignUtils
     return sig;
   }
 
+  // Given one of the ECDSA algorithms determine the "length", which is the
+  // length, in bytes, of both 'r' and 's' in the ECDSA signature.
+  private static int ecdsaLength(int algorithm) throws SignatureException
+  {
+    switch (algorithm)
+    {
+      case DNSSEC.Algorithm.ECDSAP256SHA256: return 32;
+      case DNSSEC.Algorithm.ECDSAP384SHA384: return 48;
+      default:
+        throw new SignatureException("Algorithm " + algorithm + 
+                                     " is not a supported ECDSA signature algorithm.");
+    }
+  }
+
+  /**
+   * Convert a JCE standard ECDSA signature (which is a ASN.1 encoding) into a
+   * standard DNS signature.
+   * 
+   * The format of the ASN.1 signature is
+   * 
+   * ASN1_SEQ . seq_length . ASN1_INT . r_length . R . ANS1_INT . s_length . S
+   * 
+   * where R and S may have a leading zero byte if without it the values would
+   * be negative.
+   *
+   * The format of the DNSSEC signature is just R . S where R and S are both
+   * exactly "length" bytes.
+   * 
+   * @param signature
+   *          The output of a ECDSA signature object.
+   * @return signature data formatted for use in DNSSEC.
+   * @throws SignatureException if the ASN.1 encoding appears to be corrupt.
+   */
+  public static byte[] convertECDSASignature(int algorithm, byte[] signature) 
+      throws SignatureException
+  {
+    int exp_length = ecdsaLength(algorithm);
+    byte[] sig = new byte[exp_length * 2];
+
+    if (signature[0] != ASN1_SEQ || signature[2] != ASN1_INT)
+    {
+      throw new SignatureException("Invalid ASN.1 signature format: expected SEQ, INT");
+    }
+    int r_len = signature[3];
+    int r_pos = 4;
+ 
+    if (signature[r_pos + r_len] != ASN1_INT)
+    {
+      throw new SignatureException("Invalid ASN.1 signature format: expected SEQ, INT, INT");
+    }
+    int s_pos = r_pos + r_len + 2;
+    int s_len = signature[r_pos + r_len + 1];
+
+    // Adjust for leading zeros on both R and S
+    if (signature[r_pos] == 0) {
+      r_pos++;
+    }
+    if (signature[s_pos] == 0) {
+      s_pos++;
+    }
+
+    System.arraycopy(signature, r_pos, sig, 0, exp_length);
+    System.arraycopy(signature, s_pos, sig, exp_length, exp_length);
+
+    return sig;
+  }
+
+  /**
+   * Convert a DNS standard ECDSA signature (defined in RFC 6605) into a
+   * JCE standard ECDSA signature, which is encoded in ASN.1.
+   * 
+   * The format of the ASN.1 signature is
+   * 
+   * ASN1_SEQ . seq_length . ASN1_INT . r_length . R . ANS1_INT . s_length . S
+   * 
+   * where R and S may have a leading zero byte if without it the values would
+   * be negative.
+   *
+   * The format of the DNSSEC signature is just R . S where R and S are both
+   * exactly "length" bytes.
+   * 
+   * @param signature
+   *          The binary signature data from an RRSIG record.
+   * @return signature data that may be used in a JCE Signature object for
+   *         verification purposes.
+   */
+  public static byte[] convertECDSASignature(byte[] signature)
+  {
+    byte r_src_pos, r_src_len, r_pad, s_src_pos, s_src_len, s_pad, len;
+
+    r_src_len = s_src_len = (byte) (signature.length / 2);
+    r_src_pos = 0; r_pad = 0;
+    s_src_pos = (byte) (r_src_pos + r_src_len); s_pad = 0;
+    len = (byte) (6 + r_src_len + s_src_len);
+
+    if (signature[r_src_pos] < 0) {
+        r_pad = 1; len++;
+    }
+    if (signature[s_src_pos] < 0) {
+      s_pad = 1; len++;
+    }
+    byte[] sig = new byte[len];
+    byte pos = 0;
+
+    sig[pos++] = ASN1_SEQ;
+    sig[pos++] = (byte) (len - 2);
+    sig[pos++] = ASN1_INT;
+    sig[pos++] = (byte) (r_src_len + r_pad);
+    pos += r_pad;
+    System.arraycopy(signature, r_src_pos, sig, pos, r_src_len);
+    pos += r_src_len;
+
+    sig[pos++] = ASN1_INT;
+    sig[pos++] = (byte) (s_src_len + s_pad);
+    pos += s_pad;
+    System.arraycopy(signature, s_src_pos, sig, pos, s_src_len);
+
+    return sig;
+  }
+
   /**
    * This is a convenience routine to help us classify records/RRsets.
    * 

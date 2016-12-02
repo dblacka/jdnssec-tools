@@ -14,7 +14,7 @@
 
   <property file="build.properties" />
   <property file="VERSION" />
-  
+
   <property name="sectools-distname" value="jdnssec-tools-${version}" />
 
   <property name="build.dir" value="build" />
@@ -41,12 +41,10 @@
   </target>
 
   <target name="sectools" depends="prepare-src" >
-    <javac srcdir="${build.src}" 
+    <javac srcdir="${build.src}"
            destdir="${build.dest}"
            classpathref="project.classpath"
-           source="1.5"
-           target="1.5"
-           deprecation="true" 
+           deprecation="true"
            includeantruntime="false"
            includes="com/verisignlabs/dnssec/" />
   </target>
@@ -57,20 +55,20 @@
          includes="com/verisignlabs/dnssec/" />
   </target>
 
-  <target name="compile" 
+  <target name="compile"
           depends="usage,sectools-jar">
   </target>
 
   <target name="javadoc" depends="usage">
     <mkdir dir="${javadoc.dest}"/>
-    <javadoc packagenames="${packages}" 
+    <javadoc packagenames="${packages}"
              classpath="${project.classpath}"
-             sourcepath="${build.src}" 
+             sourcepath="${build.src}"
              destdir="${javadoc.dest}"
-             verbose="true" author="true" 
-             windowtitle="jdnssec-tools-${version}" 
+             verbose="true" author="true"
+             windowtitle="jdnssec-tools-${version}"
              use="true">
-      <link href="http://java.sun.com/j2se/1.4.2/docs/api/" />
+      <link href="https://docs.oracle.com/javase/8/docs/api/" />
       <link href="http://www.xbill.org/dnsjava/doc/" />
     </javadoc>
   </target>
@@ -148,7 +146,7 @@
     </tar>
   </target>
 
-  <target name="sectools-dist" 
+  <target name="sectools-dist"
          depends="sectools-bin-dist,sectools-src-dist, sectools-dist-clean">
   </target>
 
@@ -172,4 +170,3 @@
   </target>
 
 </project>
-

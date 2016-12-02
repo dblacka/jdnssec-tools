@@ -33,12 +33,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.logging.Logger;
 
-import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.Name;
-import org.xbill.DNS.RRSIGRecord;
-import org.xbill.DNS.RRset;
-import org.xbill.DNS.Record;
-import org.xbill.DNS.Type;
+import org.xbill.DNS.*;
 import org.xbill.DNS.utils.hexdump;
 
 /**
@@ -58,7 +53,7 @@ public class JCEDnsSecSigner
   private DnsKeyConverter mKeyConverter;
   private boolean         mVerboseSigning = false;
 
-  private Logger          log;
+  private Logger          log = Logger.getLogger(this.getClass().toString());
 
   public JCEDnsSecSigner()
   {
@@ -196,6 +191,12 @@ public class JCEDnsSecSigner
       {
         DSAPublicKey pk = (DSAPublicKey) pair.getPublic();
         sig = SignUtils.convertDSASignature(pk.getParams(), sig);
+      }
+      // Convert to RFC 6605, etc format
+      if (pair.getDNSKEYAlgorithm() == DNSSEC.Algorithm.ECDSAP256SHA256 ||
+          pair.getDNSKEYAlgorithm() == DNSSEC.Algorithm.ECDSAP384SHA384)
+      {
+        sig = SignUtils.convertECDSASignature(pair.getDNSKEYAlgorithm(), sig);
       }
       RRSIGRecord sigrec = SignUtils.generateRRSIG(sig, presig);
       if (mVerboseSigning)

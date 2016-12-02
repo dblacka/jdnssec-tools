@@ -74,17 +74,18 @@ public class KeyGen extends CLBase
       OptionBuilder.withDescription("ZONE | OTHER (default ZONE)");
       opts.addOption(OptionBuilder.create('n'));
 
+      String[] algStrings = DnsKeyAlgorithm.getInstance().supportedAlgMnemonics();
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("algorithm");
-      OptionBuilder.withDescription("RSA | RSASHA1 | RSAMD5 | DH | DSA "
-          + "| RSA-NSEC3-SHA1 | DSA-NSEC3-SHA1 "
-          + "| RSASHA256 | RSASHA512 | alias, RSASHA1 is default.");
+      OptionBuilder.withDescription(String.join(" | ", algStrings) +
+                                    " | alias, RSASHA256 is default.");
       opts.addOption(OptionBuilder.create('a'));
 
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("size");
-      OptionBuilder.withDescription("key size, in bits. (default = 1024)\n"
-          + "RSA: [512..4096]\n" + "DSA: [512..1024]\n" + "DH:  [128..4096]");
+      OptionBuilder.withDescription("key size, in bits. default is 1024. "
+          + "RSA: [512..4096], DSA: [512..1024], DH:  [128..4096], "
+          + "ECDSA: ignored");
       opts.addOption(OptionBuilder.create('b'));
 
       OptionBuilder.hasArg();
@@ -98,7 +99,6 @@ public class KeyGen extends CLBase
       OptionBuilder.withArgName("dir");
       OptionBuilder.withDescription("place generated key files in this " + "directory");
       opts.addOption(OptionBuilder.create('d'));
-      opts.addOption(OptionBuilder.create('A'));
     }
 
     protected void processOptions(CommandLine cli)
@@ -106,7 +106,7 @@ public class KeyGen extends CLBase
     {
       String optstr = null;
       String[] optstrs = null;
-      
+
       if (cli.hasOption('k')) kskFlag = true;
       if (cli.hasOption('e')) useLargeE = true;
 
@@ -136,6 +136,11 @@ public class KeyGen extends CLBase
       if ((optstr = cli.getOptionValue('a')) != null)
       {
         algorithm = parseAlg(optstr);
+        if (algorithm < 0)
+        {
+          System.err.println("DNSSEC algorithm " + optstr + " is not supported");
+          usage();
+        }
       }
 
       if ((optstr = cli.getOptionValue('b')) != null)
@@ -166,7 +171,11 @@ public class KeyGen extends CLBase
     DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
     int alg = parseInt(s, -1);
-    if (alg > 0) return alg;
+    if (alg > 0)
+    {
+      if (algs.supportedAlgorithm(alg)) return alg;
+      return -1;
+    }
 
     return algs.stringToAlgorithm(s);
   }
@@ -211,7 +220,7 @@ public class KeyGen extends CLBase
   {
     KeyGen tool = new KeyGen();
     tool.state = new CLIState();
-    
+
     tool.run(tool.state, args);
   }
 }

@@ -546,6 +546,7 @@ public class SignZone extends CLBase
       }
     }
 
+    br.close();
     if (res.size() == 0) return null;
     return res;
   }

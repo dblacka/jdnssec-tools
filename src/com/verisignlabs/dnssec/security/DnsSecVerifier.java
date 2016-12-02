@@ -256,6 +256,12 @@ public class DnsSecVerifier
         sig = SignUtils.convertDSASignature(sig);
       }
 
+      if (sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP256SHA256 || 
+          sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP384SHA384) 
+      {
+        sig = SignUtils.convertECDSASignature(sig);
+      }
+
       if (!signer.verify(sig))
       {
         if (reasons != null) reasons.add("Signature failed to verify cryptographically");
@@ -283,7 +289,6 @@ public class DnsSecVerifier
    * 
    * @return true if the set verified, false if it did not.
    */
-  @SuppressWarnings("unchecked")
   public boolean verify(RRset rrset)
   {
     boolean result = mVerifyAllSigs ? true : false;
