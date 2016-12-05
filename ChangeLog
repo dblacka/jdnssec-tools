@@ -1,7 +1,12 @@
-2016-12-05  David Blacka  <davidb@verisign.com>
+2016-12-09  David Blacka  <davidb@verisign.com>
 
         * Add key generation, signing, verification support for elliptic
-        curve algorithms: ECC-GOST (12), ECDSA P-256 (13) and ECDSA P-384 (15).
+        curve algorithms: ECDSA P-256 (13) and ECDSA P-384 (15).
+        - Opportunistically load the bouncycastle provider for ECCGOST
+        support.
+        * DnsKeyAlgorithms: refactoring, new methods to better support
+        elliptic curve, alias, knowing what algorithms are supported.
+        * KeyGen: do not display unsupported algorithms.
 
 2016-08-22  David Blacka  <davidb@verisign.com>
 
