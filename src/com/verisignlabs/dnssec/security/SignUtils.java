@@ -485,13 +485,15 @@ public class SignUtils
     // Adjust for leading zeros on both R and S
     if (signature[r_pos] == 0) {
       r_pos++;
+      r_len--;
     }
     if (signature[s_pos] == 0) {
       s_pos++;
+      s_len--;
     }
 
-    System.arraycopy(signature, r_pos, sig, 0, exp_length);
-    System.arraycopy(signature, s_pos, sig, exp_length, exp_length);
+    System.arraycopy(signature, r_pos, sig, 0 + (exp_length - r_len), r_len);
+    System.arraycopy(signature, s_pos, sig, exp_length + (exp_length - s_len), s_len);
 
     return sig;
   }
