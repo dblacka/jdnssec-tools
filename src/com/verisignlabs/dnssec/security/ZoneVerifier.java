@@ -136,7 +136,8 @@ public class ZoneVerifier
       return true;
     }
 
-    for (Iterator i = rrset.rrs(); i.hasNext(); )
+    Iterator i = (rr instanceof RRSIGRecord) ? rrset.sigs() : rrset.rrs();
+    for ( ; i.hasNext(); )
     {
       Record record = (Record) i.next();
       if (rr.equals(record)) return false;
