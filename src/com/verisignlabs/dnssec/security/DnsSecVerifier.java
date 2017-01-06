@@ -211,6 +211,13 @@ public class DnsSecVerifier
       }
     }
 
+    if (rrset.getTTL() > sigrec.getOrigTTL())
+    {
+      log.fine("RRset's TTL is greater than the Signature's orignal TTL");
+      if (reasons != null) reasons.add("RRset TTL greater than RRSIG origTTL");
+      return false;
+    }
+
     return true;
   }
 
