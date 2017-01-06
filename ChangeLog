@@ -1,3 +1,11 @@
+2017-01-06  David Blacka  <davidb@verisign.com>
+
+        * Released version 0.13
+
+        * ZoneVerifier: detect duplicate RRSIGs as well as other duplicate
+        RRs.
+        * DnsSecVerifier: check that the RRset's TTL <= OrigTTL.
+
 2016-12-09  David Blacka  <davidb@verisign.com>
 
         * Add key generation, signing, verification support for elliptic
