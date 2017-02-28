@@ -526,6 +526,15 @@ public class SignUtils
     s_src_pos = (byte) (r_src_pos + r_src_len); s_pad = 0;
     len = (byte) (6 + r_src_len + s_src_len);
 
+    // leading zeroes are forbidden
+    if (signature[r_src_pos] == 0) {
+       r_src_pos++; r_src_len--; len--;
+    }
+    if (signature[s_src_pos] == 0) {
+       s_src_pos++; s_src_len--; len--;
+    }
+
+    // except when they are mandatory
     if (signature[r_src_pos] < 0) {
         r_pad = 1; len++;
     }
