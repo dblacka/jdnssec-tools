@@ -147,13 +147,13 @@ public class VerifyZone extends CLBase
     if (errors > 0)
     {
       System.out.println("zone did not verify.");
+      System.exit(1);
     }
     else
     {
       System.out.println("zone verified.");
+      System.exit(0);
     }
-
-    System.exit(0);
   }
 
   public static void main(String[] args)
