@@ -526,10 +526,19 @@ public class SignUtils
     s_src_pos = (byte) (r_src_pos + r_src_len); s_pad = 0;
     len = (byte) (6 + r_src_len + s_src_len);
 
-    if (signature[r_src_pos] < 0) {
-        r_pad = 1; len++;
+    // leading zeroes are forbidden
+    while (signature[r_src_pos] == 0 && r_src_len > 0) {
+      r_src_pos++; r_src_len--; len--;
     }
-    if (signature[s_src_pos] < 0) {
+    while (signature[s_src_pos] == 0 && s_src_len > 0) {
+      s_src_pos++; s_src_len--; len--;
+    }
+
+    // except when they are mandatory
+    if (r_src_len > 0 && signature[r_src_pos] < 0) {
+      r_pad = 1; len++;
+    }
+    if (s_src_len > 0 && signature[s_src_pos] < 0) {
       s_pad = 1; len++;
     }
     byte[] sig = new byte[len];
