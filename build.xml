@@ -46,7 +46,9 @@
            classpathref="project.classpath"
            deprecation="true"
            includeantruntime="false"
-           includes="com/verisignlabs/dnssec/" />
+           includes="com/verisignlabs/dnssec/"
+           source="1.7"
+           target="1.7" />
   </target>
 
   <target name="sectools-jar" depends="usage,sectools">
