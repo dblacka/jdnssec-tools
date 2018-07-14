@@ -39,6 +39,11 @@ import java.util.logging.Logger;
 
 import org.xbill.DNS.DNSSEC;
 
+// for now, we need to import the EdDSA parameter spec classes
+// because they have no generic form in java.security.spec.*
+// sadly, this will currently fail if you don't have the lib.
+import net.i2p.crypto.eddsa.spec.*;
+
 /**
  * This class handles translating DNS signing algorithm identifiers into various
  * usable java implementations.
@@ -64,6 +69,7 @@ public class DnsKeyAlgorithm
   public static final int DSA        = 3;
   public static final int ECC_GOST   = 4;
   public static final int ECDSA      = 5;
+  public static final int EDDSA      = 6;
 
   private static class AlgEntry
   {
@@ -90,6 +96,17 @@ public class DnsKeyAlgorithm
     }
   }
 
+  private static class EdAlgEntry extends AlgEntry
+  {
+    public EdDSAParameterSpec ed_spec;
+
+    public EdAlgEntry(int algorithm, String sigName, int baseType, EdDSAParameterSpec spec)
+    {
+      super(algorithm, sigName, baseType);
+      this.ed_spec = spec;
+    }
+  }
+
   /**
    * This is a mapping of algorithm identifier to Entry. The Entry contains the
    * data needed to map the algorithm to the various crypto implementations.
@@ -113,6 +130,8 @@ public class DnsKeyAlgorithm
   private KeyPairGenerator         mECGOSTKeyGenerator;
   /** This is a cached key pair generator for ECDSA_P256 keys. */
   private KeyPairGenerator         mECKeyGenerator;
+  /** This is a cached key pair generator for EdDSA keys. */
+  private KeyPairGenerator         mEdKeyGenerator;
 
   private Logger                   log = Logger.getLogger(this.getClass().toString());
 
@@ -131,6 +150,17 @@ public class DnsKeyAlgorithm
       Security.addProvider(bc_provider);
     }
     catch (ReflectiveOperationException e) { }
+
+    // Attempt to add the EdDSA-Java provider.
+    try
+    {
+      Class<?> eddsa_provider_class = Class.forName("net.i2p.crypto.eddsa.EdDSASecurityProvider");
+      Provider eddsa_provider = (Provider) eddsa_provider_class.newInstance();
+      Security.addProvider(eddsa_provider);
+    }
+    catch (ReflectiveOperationException e) {
+      log.warning("Unable to load EdDSA provider");
+    }
 
     initialize();
   }
@@ -184,6 +214,13 @@ public class DnsKeyAlgorithm
     addAlgorithm(DNSSEC.Algorithm.ECDSAP384SHA384, "SHA384withECDSA", ECDSA, "secp384r1");
     addMnemonic("ECDSAP384SHA384", DNSSEC.Algorithm.ECDSAP384SHA384);
     addMnemonic("ECDSA-P384", DNSSEC.Algorithm.ECDSAP384SHA384);
+
+    // EdDSA is not supported by either the Java 1.8 Sun crypto
+    // provider or bouncycastle.  It is added by the Ed25519-Java
+    // library.
+    // FIXME: add constant for the EdDSA algs to DNSJava.
+    addAlgorithm(15, "NONEwithEdDSA", EDDSA, "Ed25519");
+    addMnemonic("ED25519", 15);
   }
 
   private void addAlgorithm(int algorithm, String sigName, int baseType)
@@ -193,19 +230,45 @@ public class DnsKeyAlgorithm
 
   private void addAlgorithm(int algorithm, String sigName, int baseType, String curveName)
   {
-    ECParameterSpec ec_spec = ECSpecFromAlgorithm(algorithm);
-    if (ec_spec == null) ec_spec = ECSpecFromName(curveName);
-    if (ec_spec == null) return;
-    // Check to see if we can get a Signature object for this algorithm.
-    try {
-      Signature.getInstance(sigName);
-    } catch (NoSuchAlgorithmException e) {
-      // If not, do not add the algorithm.
-      return;
+    if (baseType == ECDSA)
+    {
+      ECParameterSpec ec_spec = ECSpecFromAlgorithm(algorithm);
+      if (ec_spec == null) ec_spec = ECSpecFromName(curveName);
+      if (ec_spec == null) return;
+
+      // Check to see if we can get a Signature object for this algorithm.
+      try {
+        Signature.getInstance(sigName);
+      } catch (NoSuchAlgorithmException e) {
+        // for now, let's find out
+        log.severe("could not get signature for " + sigName + ": " + e.getMessage());
+        // If not, do not add the algorithm.
+        return;
+      }
+      ECAlgEntry entry = new ECAlgEntry(algorithm, sigName, baseType, ec_spec);
+      mAlgorithmMap.put(algorithm, entry);
+    }
+    else if (baseType == EDDSA)
+    {
+      EdDSAParameterSpec ed_spec = EdDSASpecFromAlgorithm(algorithm);
+      if (ed_spec == null) ed_spec = EdDSASpecFromName(curveName);
+      if (ed_spec == null) return;
+
+      // Check to see if we can get a Signature object for this algorithm.
+      try {
+        Signature.getInstance(sigName);
+      } catch (NoSuchAlgorithmException e) {
+        // for now, let's find out
+        log.severe("could not get signature for " + sigName + ": " + e.getMessage());
+        // If not, do not add the algorithm.
+        return;
+      }
+      EdAlgEntry entry = new EdAlgEntry(algorithm, sigName, baseType, ed_spec);
+      mAlgorithmMap.put(algorithm, entry);
+
     }
 
-    ECAlgEntry entry = new ECAlgEntry(algorithm, sigName, baseType, ec_spec);
-    mAlgorithmMap.put(algorithm, entry);
+
   }
 
   private void addMnemonic(String m, int alg)
@@ -230,7 +293,7 @@ public class DnsKeyAlgorithm
 
     if (!mAlgorithmMap.containsKey(original_algorithm))
     {
-      log.warning("Unable to alias algorith " + alias
+      log.warning("Unable to alias algorithm " + alias
           + " to unknown algorithm identifier " + original_algorithm);
       return;
     }
@@ -292,6 +355,31 @@ public class DnsKeyAlgorithm
     return null;
   }
 
+
+  // For curves where we don't (or can't) get the parameters from a standard
+  // name, we can construct the parameters here.
+  private EdDSAParameterSpec EdDSASpecFromAlgorithm(int algorithm)
+  {
+    return null;
+  }
+
+  private EdDSAParameterSpec EdDSASpecFromName(String stdName)
+  {
+    try
+    {
+      EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName(stdName);
+      if (spec != null) return spec;
+      throw new InvalidParameterSpecException("Edwards Curve " + stdName + " not found.");
+    }
+    // catch (NoSuchAlgorithmException e) {
+    //   log.info("Edwards Curve not supported by any crypto provider: " + e.getMessage());
+    // }
+    catch (InvalidParameterSpecException e) {
+      log.info("Edwards Curve " + stdName + " not supported");
+    }
+    return null;
+  }
+
   public String[] supportedAlgMnemonics()
   {
     Set<Integer> keyset = mAlgorithmMap.keySet();
@@ -348,6 +436,16 @@ public class DnsKeyAlgorithm
     ECAlgEntry ec_entry = (ECAlgEntry) entry;
 
     return ec_entry.ec_spec;
+  }
+
+  public EdDSAParameterSpec getEdwardsCurveParams(int algorithm)
+  {
+    AlgEntry entry = getEntry(algorithm);
+    if (entry == null) return null;
+    if (!(entry instanceof EdAlgEntry)) return null;
+    EdAlgEntry ed_entry = (EdAlgEntry) entry;
+
+    return ed_entry.ed_spec;
   }
 
   /**
@@ -507,8 +605,29 @@ public class DnsKeyAlgorithm
         pair = mECKeyGenerator.generateKeyPair();
         break;
       }
-      default:
-        throw new NoSuchAlgorithmException("Alg " + algorithm);
+    case EDDSA:
+      {
+        if (mEdKeyGenerator == null)
+        {
+          mEdKeyGenerator = KeyPairGenerator.getInstance("EdDSA");
+        }
+
+        EdDSAParameterSpec ed_spec = getEdwardsCurveParams(algorithm);
+        try
+        {
+          mEdKeyGenerator.initialize(ed_spec);
+        }
+        catch (InvalidAlgorithmParameterException e)
+        {
+          // Fold the InvalidAlgorithmParameterException into our existing
+          // thrown exception. Ugly, but requires less code change.
+          throw new NoSuchAlgorithmException("invalid key parameter spec");
+        }
+        pair = mEdKeyGenerator.generateKeyPair();
+        break;
+      }
+    default:
+      throw new NoSuchAlgorithmException("Alg " + algorithm);
     }
 
     return pair;

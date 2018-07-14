@@ -47,6 +47,7 @@
            deprecation="true"
            includeantruntime="false"
            includes="com/verisignlabs/dnssec/"
+           debug="true"
            source="1.7"
            target="1.7" />
   </target>
