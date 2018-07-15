@@ -748,7 +748,7 @@ public class DnsKeyConverter
     out.println("Algorithm: " + alg + " (" + mAlgorithms.algToString(alg)
         + ")");
     out.print("PrivateKey: ");
-    out.println(base64.toString(priv.geta()));
+    out.println(base64.toString(priv.getSeed()));
 
     return sw.toString();
   }

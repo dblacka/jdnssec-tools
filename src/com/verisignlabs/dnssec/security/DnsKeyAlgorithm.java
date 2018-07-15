@@ -614,7 +614,7 @@ public class DnsKeyAlgorithm
         EdDSAParameterSpec ed_spec = getEdwardsCurveParams(algorithm);
         try
         {
-          mEdKeyGenerator.initialize(ed_spec);
+          mEdKeyGenerator.initialize(ed_spec, new SecureRandom());
         }
         catch (InvalidAlgorithmParameterException e)
         {
