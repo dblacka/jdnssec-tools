@@ -20,7 +20,7 @@
   <property name="build.dir" value="build" />
   <property name="build.dest" value="${build.dir}/classes" />
   <property name="build.lib.dest" value="${build.dir}/lib" />
-  <property name="build.src" value="src" />
+  <property name="build.src" value="src/main/java" />
 
   <property name="packages" value="com.verisignlabs.dnssec.*" />
   <property name="doc.dir" value="docs" />

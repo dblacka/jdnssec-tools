@@ -1,0 +1,25 @@
+/**
+
+Declares dependencies for Jdnssec-tools
+
+**/
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
+jar {
+    baseName = 'jdnssec-tools'
+    version =  '0.13'
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile fileTree(dir: 'lib', include: '*.jar') 
+}
