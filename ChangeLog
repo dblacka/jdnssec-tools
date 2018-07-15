@@ -1,3 +1,14 @@
+2018-07-15  Pallavi Aras
+
+        * Add Gradle build support.  Adjust ant to use same paths.
+
+2018-07-15  David Blacka <davidb@versigin.com
+
+        * Add algorithm 15 support.  This included adding a public domain
+        EdDSA library to the distribution.
+        * Add minor feature to specify signature inception and expiration
+        times as UNIX epoch time values.
+
 2017-06-22  Peter van Dijk <peter.van.dijk@powerdns.com>, Kees Monshouwer <mind04@monshouwer.eu>
 
         * Fix leading zero(s) padding in ECDSA sig conversion

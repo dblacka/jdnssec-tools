@@ -37,7 +37,7 @@ Building from source:
 4. You can build the distribution tarballs with 'ant dist'.  You can run the tools directly from the build area (without building the jdnssec-tools.jar file) by using the ./bin/_jdnssec_* wrappers.
 
 5. Build the project using gradle
-./gradlew clean 
+./gradlew clean
 ./gradlew assemble -i
 
 jar file gets generated in build/libs

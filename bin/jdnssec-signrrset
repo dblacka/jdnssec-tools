@@ -4,7 +4,7 @@ thisdir=`dirname $0`
 basedir=`cd $thisdir/..; pwd`
 
 # set the classpath
-for i in $basedir/lib/*.jar $basedir/lib/*.zip $basedir/build/lib/*.jar; do
+for i in $basedir/lib/*.jar $basedir/lib/*.zip $basedir/build/libs/*.jar; do
   CLASSPATH="$CLASSPATH":"$i"
 done
 export CLASSPATH
