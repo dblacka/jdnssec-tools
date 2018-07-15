@@ -122,9 +122,10 @@ public class DnsKeyConverter
   private PublicKey parseEdDSADNSKEYRecord(DNSKEYRecord pKeyRecord)
     throws IllegalArgumentException, NoSuchAlgorithmException, InvalidKeySpecException
   {
+    byte[] seed = pKeyRecord.getKey();
 
     EdDSAPublicKeySpec spec = new EdDSAPublicKeySpec
-      (pKeyRecord.getKey(), mAlgorithms.getEdwardsCurveParams(pKeyRecord.getAlgorithm()));
+      (seed, mAlgorithms.getEdwardsCurveParams(pKeyRecord.getAlgorithm()));
 
     KeyFactory factory = KeyFactory.getInstance("EdDSA");
     return factory.generatePublic(spec);
@@ -156,8 +157,9 @@ public class DnsKeyConverter
                                                  int flags, int alg, PublicKey key)
   {
     EdDSAPublicKey ed_key = (EdDSAPublicKey) key;
+    byte[] key_data = ed_key.getAbyte();
     return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
-                            ed_key.getEncoded());
+                            key_data);
   }
   // Private Key Specific Parsing routines
 
@@ -541,7 +543,7 @@ public class DnsKeyConverter
   private PrivateKey parsePrivateEdDSA(StringTokenizer lines, int algorithm)
       throws NoSuchAlgorithmException
   {
-    BigInteger s = null;
+    byte[] seed = null;
 
     while (lines.hasMoreTokens())
     {
@@ -557,7 +559,7 @@ public class DnsKeyConverter
 
       if (line.startsWith("PrivateKey: "))
       {
-        s = new BigInteger(1, data);
+        seed = data;
       }
     }
 
@@ -572,7 +574,7 @@ public class DnsKeyConverter
                                          " is not a recognized Edwards Curve algorithm");
     }
 
-    KeySpec spec = new EdDSAPrivateKeySpec(s.toByteArray(), ed_spec);
+    KeySpec spec = new EdDSAPrivateKeySpec(seed, ed_spec);
 
     try
     {
