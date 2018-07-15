@@ -1,11 +1,11 @@
 /*
  * $Id$
- * 
+ *
  * Copyright (c) 2006 VeriSign. All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer. 2. Redistributions in
  * binary form must reproduce the above copyright notice, this list of
@@ -13,7 +13,7 @@
  * materials provided with the distribution. 3. The name of the author may not
  * be used to endorse or promote products derived from this software without
  * specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *  
+ *
  */
 
 package com.verisignlabs.dnssec.security;
@@ -47,12 +47,12 @@ import net.i2p.crypto.eddsa.spec.*;
 /**
  * This class handles translating DNS signing algorithm identifiers into various
  * usable java implementations.
- * 
+ *
  * Besides centralizing the logic surrounding matching a DNSKEY algorithm
  * identifier with various crypto implementations, it also handles algorithm
  * aliasing -- that is, defining a new algorithm identifier to be equivalent to
  * an existing identifier.
- * 
+ *
  * @author David Blacka (orig)
  * @author $Author: davidb $ (latest)
  * @version $Revision: 2098 $
@@ -265,7 +265,6 @@ public class DnsKeyAlgorithm
       }
       EdAlgEntry entry = new EdAlgEntry(algorithm, sigName, baseType, ed_spec);
       mAlgorithmMap.put(algorithm, entry);
-
     }
 
 
@@ -451,7 +450,7 @@ public class DnsKeyAlgorithm
   /**
    * Translate a possible algorithm alias back to the original DNSSEC algorithm
    * number
-   * 
+   *
    * @param algorithm
    *          a DNSSEC algorithm that may be an alias.
    * @return -1 if the algorithm isn't recognised, the orignal algorithm number
@@ -466,7 +465,7 @@ public class DnsKeyAlgorithm
 
   /**
    * Test if a given algorithm is supported.
-   * 
+   *
    * @param algorithm The DNSSEC algorithm number.
    * @return true if the algorithm is a recognized and supported algorithm or alias.
    */
@@ -479,7 +478,7 @@ public class DnsKeyAlgorithm
   /**
    * Given an algorithm mnemonic, convert the mnemonic to a DNSSEC algorithm
    * number.
-   * 
+   *
    * @param s
    *          The mnemonic string. This is case-insensitive.
    * @return -1 if the mnemonic isn't recognized or supported, the algorithm
@@ -494,7 +493,7 @@ public class DnsKeyAlgorithm
 
   /**
    * Given a DNSSEC algorithm number, return the "preferred" mnemonic.
-   * 
+   *
    * @param algorithm
    *          A DNSSEC algorithm number.
    * @return The preferred mnemonic string, or null if not supported or

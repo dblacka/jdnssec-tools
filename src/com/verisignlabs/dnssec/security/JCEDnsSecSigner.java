@@ -38,11 +38,11 @@ import org.xbill.DNS.utils.hexdump;
 
 /**
  * This class contains routines for signing DNS zones.
- * 
+ *
  * In particular, it contains both an ability to sign an individual RRset and
  * the ability to sign an entire zone. It primarily glues together the more
  * basic primitives found in {@link SignUtils}.
- * 
+ *
  * @author David Blacka (original)
  * @author $Author$
  * @version $Revision$
@@ -69,7 +69,7 @@ public class JCEDnsSecSigner
 
   /**
    * Cryptographically generate a new DNSSEC key.
-   * 
+   *
    * @param owner
    *          the KEY RR's owner name.
    * @param ttl
@@ -114,7 +114,7 @@ public class JCEDnsSecSigner
 
   /**
    * Sign an RRset.
-   * 
+   *
    * @param rrset
    *          the RRset to sign -- any existing signatures are ignored.
    * @param keypars
@@ -211,7 +211,7 @@ public class JCEDnsSecSigner
 
   /**
    * Create a completely self-signed DNSKEY RRset.
-   * 
+   *
    * @param keypairs
    *          the public & private keypairs to use in the keyset.
    * @param start
@@ -244,7 +244,7 @@ public class JCEDnsSecSigner
 
   /**
    * Conditionally sign an RRset and add it to the toList.
-   * 
+   *
    * @param toList
    *          the list to which we are adding the processed RRsets.
    * @param zonename
@@ -263,7 +263,7 @@ public class JCEDnsSecSigner
    *          if true, sign the zone apex keyset with both KSKs and ZSKs.
    * @param last_cut
    *          the name of the last delegation point encountered.
-   * 
+   *
    * @return the name of the new last_cut.
    */
   @SuppressWarnings("unchecked")
@@ -324,7 +324,7 @@ public class JCEDnsSecSigner
    * signing variants (NSEC with or without Opt-In, NSEC3 with or without
    * Opt-Out, etc.) External users of this class are expected to use the
    * appropriate public signZone* methods instead of this.
-   * 
+   *
    * @param zonename
    *          The name of the zone
    * @param records
@@ -363,7 +363,7 @@ public class JCEDnsSecSigner
    *          values will use the SOA TTL.
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
-   * 
+   *
    * @throws IOException
    * @throws GeneralSecurityException
    */
@@ -459,7 +459,7 @@ public class JCEDnsSecSigner
 
   /**
    * Given a zone, sign it using standard NSEC records.
-   * 
+   *
    * @param zonename
    *          The name of the zone.
    * @param records
@@ -478,7 +478,7 @@ public class JCEDnsSecSigner
    *          the key signing keys).
    * @param ds_digest_alg
    *          The digest algorithm to use when generating DS records.
-   * 
+   *
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
    */
@@ -494,7 +494,7 @@ public class JCEDnsSecSigner
 
   /**
    * Given a zone, sign it using NSEC3 records.
-   * 
+   *
    * @param signer
    *          A signer (utility) object used to actually sign stuff.
    * @param zonename
@@ -529,7 +529,7 @@ public class JCEDnsSecSigner
    *          values will use the SOA TTL.
    * @return an ordered list of {@link org.xbill.DNS.Record} objects,
    *         representing the signed zone.
-   * 
+   *
    * @throws IOException
    * @throws GeneralSecurityException
    */
@@ -558,7 +558,7 @@ public class JCEDnsSecSigner
   /**
    * Given a zone, sign it using experimental Opt-In NSEC records (see RFC
    * 4956).
-   * 
+   *
    * @param zonename
    *          the name of the zone.
    * @param records
