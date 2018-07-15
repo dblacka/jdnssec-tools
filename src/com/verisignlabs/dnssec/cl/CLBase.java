@@ -65,7 +65,7 @@ public abstract class CLBase
 
     /**
      * The base constructor. This will setup the command line options.
-     * 
+     *
      * @param usage
      *          The command line usage string (e.g.,
      *          "jdnssec-foo [..options..] zonefile")
@@ -106,7 +106,7 @@ public abstract class CLBase
     /**
      * This is an overridable method for subclasses to add their own command
      * line options.
-     * 
+     *
      * @param opts
      *          the options object to add (via OptionBuilder, typically) new
      *          options to.
@@ -121,7 +121,7 @@ public abstract class CLBase
      * Subclasses generally override processOptions() rather than this method.
      * This method create the parsing objects and processes the standard
      * options.
-     * 
+     *
      * @param args
      *          The command line arguments.
      * @throws ParseException
@@ -188,7 +188,7 @@ public abstract class CLBase
     /**
      * Process additional tool-specific options. Subclasses generally override
      * this.
-     * 
+     *
      * @param cli
      *          The {@link CommandLine} object containing the parsed command
      *          line state.
@@ -247,9 +247,22 @@ public abstract class CLBase
     }
   }
 
+  public static long parseLong(String s, long def)
+  {
+    try
+    {
+      long v = Long.parseLong(s);
+      return v;
+    }
+    catch (NumberFormatException e)
+    {
+      return def;
+    }
+  }
+
   /**
    * Calculate a date/time from a command line time/offset duration string.
-   * 
+   *
    * @param start
    *          the start time to calculate offsets from.
    * @param duration
@@ -271,6 +284,11 @@ public abstract class CLBase
     {
       long offset = (long) parseInt(duration.substring(1), 0) * 1000;
       return new Date(start.getTime() + offset);
+    }
+    if (duration.length() <= 10)
+    {
+      long epoch = parseLong(duration, 0) * 1000;
+      return new Date(epoch);
     }
 
     SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMddHHmmss");

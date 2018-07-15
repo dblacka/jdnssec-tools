@@ -42,7 +42,7 @@ import com.verisignlabs.dnssec.security.*;
  * RRset. Note that it will sign any RRset with any private key without
  * consideration of whether or not the RRset *should* be signed in the context
  * of a zone.
- * 
+ *
  * @author David Blacka
  */
 public class SignRRset extends CLBase
@@ -61,6 +61,7 @@ public class SignRRset extends CLBase
     public String   inputfile    = null;
     public String   outputfile   = null;
     public boolean  verifySigs   = false;
+    public boolean  verboseSigning = false;
 
     public CLIState()
     {
@@ -74,6 +75,7 @@ public class SignRRset extends CLBase
     {
       // boolean options
       opts.addOption("a", "verify", false, "verify generated signatures>");
+      opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
 
       OptionBuilder.hasArg();
       OptionBuilder.withArgName("dir");
@@ -104,6 +106,7 @@ public class SignRRset extends CLBase
       String optstr = null;
 
       if (cli.hasOption('a')) verifySigs = true;
+      if (cli.hasOption('V')) verboseSigning = true;
 
       if ((optstr = cli.getOptionValue('D')) != null)
       {
@@ -155,7 +158,7 @@ public class SignRRset extends CLBase
 
   /**
    * Verify the generated signatures.
-   * 
+   *
    * @param zonename
    *          the origin name of the zone.
    * @param records
@@ -198,7 +201,7 @@ public class SignRRset extends CLBase
 
   /**
    * Load the key pairs from the key files.
-   * 
+   *
    * @param keyfiles
    *          a string array containing the base names or paths of the keys
    *          to be loaded.
@@ -310,7 +313,7 @@ public class SignRRset extends CLBase
       state.outputfile = state.inputfile + ".signed";
     }
 
-    JCEDnsSecSigner signer = new JCEDnsSecSigner();
+    JCEDnsSecSigner signer = new JCEDnsSecSigner(state.verboseSigning);
 
     List<RRSIGRecord> sigs = signer.signRRset(rrset, keypairs, state.start, state.expire);
     for (RRSIGRecord s : sigs)
@@ -355,7 +358,7 @@ public class SignRRset extends CLBase
   {
     SignRRset tool = new SignRRset();
     tool.state = new CLIState();
-    
+
     tool.run(tool.state, args);
   }
 }
