@@ -200,7 +200,7 @@ public class DnsKeyAlgorithm
     addMnemonic("RSASHA512", DNSSEC.Algorithm.RSASHA512);
 
     // ECC-GOST is not supported by Java 1.8's Sun crypto provider. The
-    // bouncycastle.org provider, however, does.
+    // bouncycastle.org provider, however, does support it.
     // GostR3410-2001-CryptoPro-A is the named curve in the BC provider, but we
     // will get the parameters directly.
     addAlgorithm(DNSSEC.Algorithm.ECC_GOST, "GOST3411withECGOST3410", ECC_GOST, null);
@@ -217,8 +217,8 @@ public class DnsKeyAlgorithm
 
     // EdDSA is not supported by either the Java 1.8 Sun crypto
     // provider or bouncycastle.  It is added by the Ed25519-Java
-    // library.
-    // FIXME: add constant for the EdDSA algs to DNSJava.
+    // library.  We don't have a corresponding constant in
+    // org.xbill.DNS.DNSSEC yet, though.
     addAlgorithm(15, "NONEwithEdDSA", EDDSA, "Ed25519");
     addMnemonic("ED25519", 15);
   }
@@ -250,8 +250,7 @@ public class DnsKeyAlgorithm
     }
     else if (baseType == EDDSA)
     {
-      EdDSAParameterSpec ed_spec = EdDSASpecFromAlgorithm(algorithm);
-      if (ed_spec == null) ed_spec = EdDSASpecFromName(curveName);
+      EdDSAParameterSpec ed_spec = EdDSASpecFromName(curveName);
       if (ed_spec == null) return;
 
       // Check to see if we can get a Signature object for this algorithm.
@@ -335,7 +334,7 @@ public class DnsKeyAlgorithm
     }
   }
 
-  // Fetch the curve parameters from a named curve.
+  // Fetch the curve parameters from a named ECDSA curve.
   private ECParameterSpec ECSpecFromName(String stdName)
   {
     try
@@ -354,14 +353,7 @@ public class DnsKeyAlgorithm
     return null;
   }
 
-
-  // For curves where we don't (or can't) get the parameters from a standard
-  // name, we can construct the parameters here.
-  private EdDSAParameterSpec EdDSASpecFromAlgorithm(int algorithm)
-  {
-    return null;
-  }
-
+  // Fetch the curve parameters from a named EdDSA curve.
   private EdDSAParameterSpec EdDSASpecFromName(String stdName)
   {
     try
@@ -393,6 +385,7 @@ public class DnsKeyAlgorithm
 
     return result;
   }
+
   /**
    * Return a Signature object for the specified DNSSEC algorithm.
    * @param algorithm The DNSSEC algorithm (by number).
@@ -437,6 +430,14 @@ public class DnsKeyAlgorithm
     return ec_entry.ec_spec;
   }
 
+  /** Given one of the EdDSA algorithms (Ed25519, Ed448) return the
+   * elliptic curve parameters.
+   *
+   * @param algorithm
+   *          The DNSSEC algorithm number.
+   * @return The stored EdDSAParameterSpec for that algorithm, or
+   *         null if not a recognized/supported EdDSA algorithm.
+   */
   public EdDSAParameterSpec getEdwardsCurveParams(int algorithm)
   {
     AlgEntry entry = getEntry(algorithm);
@@ -604,7 +605,7 @@ public class DnsKeyAlgorithm
         pair = mECKeyGenerator.generateKeyPair();
         break;
       }
-    case EDDSA:
+      case EDDSA:
       {
         if (mEdKeyGenerator == null)
         {
