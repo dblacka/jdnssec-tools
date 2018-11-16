@@ -1,3 +1,7 @@
+2018-11-16  David Blacka  <davidb@verisign.com>
+
+        * Released version 0.14
+
 2018-07-15  Pallavi Aras
 
         * Add Gradle build support.  Adjust ant to use same paths.
