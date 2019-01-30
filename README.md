@@ -1,6 +1,5 @@
 # jdnssec-tools
 
-* http://www.verisignlabs.com/jdnssec-tools/
 * https://github.com/dblacka/jdnssec-tools/wiki
 
 Author: David Blacka (davidb@verisign.com)
