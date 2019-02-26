@@ -1,3 +1,11 @@
+2019-02-26  David Blacka  <davidb@verisign.com>
+
+        * Released version 0.15
+        * Ensure when a command line tool throws an exception it exits
+        with a non-zero exit code.
+        * Update local dnsjava jar to match actual build for
+        jdnssec-dnsjava.
+
 2018-11-16  David Blacka  <davidb@verisign.com>
 
         * Released version 0.14
