@@ -1,16 +1,21 @@
 #! /bin/sh
 
-thisdir=`dirname $0`
-basedir=`cd $thisdir/..; pwd`
+thisdir=$(dirname $0)
+basedir=$(cd $thisdir/.. || exit; pwd)
 
-ulimit_max=`ulimit -H -n`
+ulimit_max=$(ulimit -H -n)
 if [ $ulimit_max != "unlimited" ]; then
     ulimit -n $ulimit_max
 fi
 
 # set the classpath
-for i in $basedir/lib/*.jar $basedir/lib/*.zip $basedir/build/libs/*.jar; do
-  CLASSPATH="$CLASSPATH":"$i"
+for i in "$basedir"/lib/*.jar "$basedir"/lib/*.zip "$basedir"/build/libs/*.jar; do
+    if ! [ -f $i ]; then continue; fi
+    if [ -z "$CLASSPATH" ]; then
+        CLASSPATH=$i
+    else
+        CLASSPATH="$CLASSPATH":"$i"
+    fi
 done
 export CLASSPATH
 

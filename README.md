@@ -6,7 +6,7 @@ Author: David Blacka (davidb@verisign.com)
 
 This is a collection of DNSSEC tools written in Java.  They are intended to be an addition or replacement for the DNSSEC tools that are part of BIND 9.
 
-These tools depend upon DNSjava (http://www.xbill.org/dnsjava), the Jakarta Commons CLI and Logging libraries (https://commons.apache.org/proper/commons-cli), and Sun's Java Cryptography extensions.  A copy of each of these libraries is included in the distribution.  Currently, these tools use a custom version of the DNSjava library with minor modifications, which is provided.
+These tools depend upon DNSjava (https://github.com/dnsjava/dnsjava), the Jakarta Commons CLI and Logging libraries (https://commons.apache.org/proper/commons-cli), and Sun's Java Cryptography extensions.  A copy of each of these libraries is included in the distribution.  Currently, these tools use a custom version of the DNSjava library with minor modifications, which is provided.
 
 See the "licenses" directory for the licensing information of this package and the other packages that are distributed with it.
 
@@ -33,13 +33,14 @@ Building from source:
 
         ant
 
-4. You can build the distribution tarballs with 'ant dist'.  You can run the tools directly from the build area (without building the jdnssec-tools.jar file) by using the ./bin/_jdnssec_* wrappers.
+4. You can build the distribution tarballs with 'ant dist'.  You can run the tools directly from the build area (without building the jdnssec-tools.jar file) by using the ./bin/\_jdnssec_* wrappers.
 
-5. Build the project using gradle
-./gradlew clean
-./gradlew assemble -i
+5. Alternatively, build the project using gradle:
 
-jar file gets generated in build/libs
+        gradlew clean
+        gradlew assemble -i
+
+The resulting jar file gets generated in build/libs.
 
 The source for this project is available in git on github: https://github.com/dblacka/jdnssec-tools
 
@@ -47,4 +48,4 @@ Source for the modified DNSjava library can be found on github as well: https://
 
 ---
 
-Questions or comments may be directed to the author (mailto:davidb@verisign.com) or sent to the dnssec@verisignlabs.com mailing list (https://lists.verisignlabs.com/mailman/listinfo/dnssec).
+Questions or comments may be directed to the author (mailto:davidb@verisign.com), or by creating issues in the [github issue tracker](https://github.com/dblacka/jdnssec-tools/issues).

@@ -1,3 +1,8 @@
+2019-07-23  David Blacka  <davidb@verisign.com>
+
+        * Released version 0.16
+        * Updated to dnsjava 2.1.9
+
 2019-02-26  David Blacka  <davidb@verisign.com>
 
         * Released version 0.15
