@@ -355,6 +355,8 @@ public class BINDKeyUtils
     StringBuffer buf = new StringBuffer();
 
     buf.append(rec.getName());
+    buf.append(" ");
+    buf.append(rec.getTTL());
     buf.append(" IN DNSKEY ");
     buf.append(rec.getFlags() & 0xFFFF);
     buf.append(" ");
