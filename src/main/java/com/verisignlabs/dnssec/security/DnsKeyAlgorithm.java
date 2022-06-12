@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (c) 2006 VeriSign. All rights reserved.
+ * Copyright (c) 2006, 2022 Verisign. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -30,8 +28,22 @@
 package com.verisignlabs.dnssec.security;
 
 import java.math.BigInteger;
-import java.security.*;
-import java.security.spec.*;
+import java.security.AlgorithmParameters;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.Provider;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.Signature;
+import java.security.spec.ECFieldFp;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
+import java.security.spec.EllipticCurve;
+import java.security.spec.InvalidParameterSpecException;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
@@ -39,10 +51,11 @@ import java.util.logging.Logger;
 
 import org.xbill.DNS.DNSSEC;
 
+import net.i2p.crypto.eddsa.spec.EdDSANamedCurveTable;
 // for now, we need to import the EdDSA parameter spec classes
 // because they have no generic form in java.security.spec.*
 // sadly, this will currently fail if you don't have the lib.
-import net.i2p.crypto.eddsa.spec.*;
+import net.i2p.crypto.eddsa.spec.EdDSAParameterSpec;
 
 /**
  * This class handles translating DNS signing algorithm identifiers into various
@@ -53,9 +66,7 @@ import net.i2p.crypto.eddsa.spec.*;
  * aliasing -- that is, defining a new algorithm identifier to be equivalent to
  * an existing identifier.
  *
- * @author David Blacka (orig)
- * @author $Author: davidb $ (latest)
- * @version $Revision: 2098 $
+ * @author David Blacka
  */
 public class DnsKeyAlgorithm
 {
@@ -146,7 +157,8 @@ public class DnsKeyAlgorithm
     try
     {
       Class<?> bc_provider_class = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
-      Provider bc_provider = (Provider) bc_provider_class.newInstance();
+      // Provider bc_provider = (Provider) bc_provider_class.newInstance();
+      Provider bc_provider = (Provider) bc_provider_class.getDeclaredConstructor().newInstance();
       Security.addProvider(bc_provider);
     }
     catch (ReflectiveOperationException e) { }
@@ -155,7 +167,8 @@ public class DnsKeyAlgorithm
     try
     {
       Class<?> eddsa_provider_class = Class.forName("net.i2p.crypto.eddsa.EdDSASecurityProvider");
-      Provider eddsa_provider = (Provider) eddsa_provider_class.newInstance();
+      // Provider eddsa_provider = (Provider) eddsa_provider_class.newInstance();
+      Provider eddsa_provider = (Provider) eddsa_provider_class.getDeclaredConstructor().newInstance();
       Security.addProvider(eddsa_provider);
     }
     catch (ReflectiveOperationException e) {

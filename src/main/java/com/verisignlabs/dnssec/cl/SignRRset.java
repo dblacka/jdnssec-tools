@@ -19,22 +19,25 @@ package com.verisignlabs.dnssec.cl;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
-
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
 
-import com.verisignlabs.dnssec.security.*;
+import com.verisignlabs.dnssec.security.BINDKeyUtils;
+import com.verisignlabs.dnssec.security.DnsKeyPair;
+import com.verisignlabs.dnssec.security.DnsSecVerifier;
+import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
+import com.verisignlabs.dnssec.security.SignUtils;
+import com.verisignlabs.dnssec.security.ZoneUtils;
 
 /**
  * This class forms the command line implementation of a DNSSEC RRset signer.
@@ -56,8 +59,8 @@ public class SignRRset extends CLBase
   {
     private File    keyDirectory = null;
     public String[] keyFiles     = null;
-    public Date     start        = null;
-    public Date     expire       = null;
+    public Instant  start        = null;
+    public Instant  expire       = null;
     public String   inputfile    = null;
     public String   outputfile   = null;
     public boolean  verifySigs   = false;
@@ -125,7 +128,7 @@ public class SignRRset extends CLBase
       else
       {
         // default is now - 1 hour.
-        start = new Date(System.currentTimeMillis() - (3600 * 1000));
+        start = Instant.now().minusSeconds(3600);
       }
 
       if ((optstr = cli.getOptionValue('e')) != null)
@@ -185,7 +188,9 @@ public class SignRRset extends CLBase
     for (RRset rrset : rrsets)
     {
       // skip unsigned rrsets.
-      if (!rrset.sigs().hasNext()) continue;
+      if (rrset.sigs().isEmpty()) {
+        continue;
+      }
 
       boolean result = verifier.verify(rrset);
 
@@ -231,7 +236,6 @@ public class SignRRset extends CLBase
     return keys;
   }
 
-  @SuppressWarnings("unchecked")
   public void execute() throws Exception
   {
     // Read in the zone
@@ -323,13 +327,13 @@ public class SignRRset extends CLBase
 
     // write out the signed RRset
     List<Record> signed_records = new ArrayList<Record>();
-    for (Iterator<Record> i = rrset.rrs(); i.hasNext();)
+    for (Record r : rrset.rrs())
     {
-      signed_records.add(i.next());
+      signed_records.add(r);
     }
-    for (Iterator<Record> i = rrset.sigs(); i.hasNext();)
+    for (RRSIGRecord sigrec : rrset.sigs())
     {
-      signed_records.add(i.next());
+      signed_records.add(sigrec);
     }
 
     // write out the signed zone

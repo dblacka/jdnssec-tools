@@ -2,6 +2,7 @@ package com.verisignlabs.dnssec.cl;
 
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.logging.Formatter;
@@ -269,36 +270,36 @@ public abstract class CLBase
    *          the time/offset string to parse.
    * @return the calculated time.
    */
-  public static Date convertDuration(Date start, String duration) throws ParseException
+  public static Instant convertDuration(Instant start, String duration) throws ParseException
   {
-    if (start == null) start = new Date();
-    if (duration.startsWith("now"))
-    {
-      start = new Date();
+    if (start == null) {
+      start = Instant.now();
+    } 
+    
+    if (duration.startsWith("now")) {
+      start = Instant.now();
       if (duration.indexOf("+") < 0) return start;
 
       duration = duration.substring(3);
     }
 
-    if (duration.startsWith("+"))
-    {
-      long offset = (long) parseInt(duration.substring(1), 0) * 1000;
-      return new Date(start.getTime() + offset);
+    if (duration.startsWith("+")) {
+      long offset = (long) parseInt(duration.substring(1), 0);
+      return start.plusSeconds(offset);
     }
-    if (duration.length() <= 10)
-    {
-      long epoch = parseLong(duration, 0) * 1000;
-      return new Date(epoch);
+
+    if (duration.length() <= 10) {
+      long epoch = parseLong(duration, 0);
+      return Instant.ofEpochSecond(epoch);
     }
 
     SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMddHHmmss");
     dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-    try
-    {
-      return dateFormatter.parse(duration);
+    try {
+      Date parsedDate = dateFormatter.parse(duration);
+      return parsedDate.toInstant();
     }
-    catch (java.text.ParseException e)
-    {
+    catch (java.text.ParseException e) {
       throw new ParseException(e.getMessage());
     }
   }

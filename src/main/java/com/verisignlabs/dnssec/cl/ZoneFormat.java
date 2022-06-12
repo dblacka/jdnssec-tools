@@ -187,11 +187,16 @@ public class ZoneFormat extends CLBase
       String hashname = nsec3.getName().getLabelString(0).toLowerCase();
       String ownername = (String) map.get(hashname);
 
+      // NSEC3Record new_nsec3 = new NSEC3Record(nsec3.getName(), nsec3.getDClass(),
+      //                                         nsec3.getTTL(), nsec3.getHashAlgorithm(),
+      //                                         nsec3.getFlags(), nsec3.getIterations(),
+      //                                         nsec3.getSalt(), nsec3.getNext(),
+      //                                         nsec3.getTypes(), ownername);
       NSEC3Record new_nsec3 = new NSEC3Record(nsec3.getName(), nsec3.getDClass(),
                                               nsec3.getTTL(), nsec3.getHashAlgorithm(),
                                               nsec3.getFlags(), nsec3.getIterations(),
                                               nsec3.getSalt(), nsec3.getNext(),
-                                              nsec3.getTypes(), ownername);
+                                              nsec3.getTypes());
       i.set(new_nsec3);
     }
   }

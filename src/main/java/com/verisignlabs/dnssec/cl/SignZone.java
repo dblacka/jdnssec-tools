@@ -22,8 +22,8 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -32,9 +32,8 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-
 import org.xbill.DNS.DNSKEYRecord;
-import org.xbill.DNS.DSRecord;
+import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
@@ -68,8 +67,8 @@ public class SignZone extends CLBase
     public String[]   kskFiles        = null;
     public String[]   keyFiles        = null;
     public String     zonefile        = null;
-    public Date       start           = null;
-    public Date       expire          = null;
+    public Instant    start           = null;
+    public Instant    expire          = null;
     public String     outputfile      = null;
     public boolean    verifySigs      = false;
     public boolean    useOptOut       = false;
@@ -78,7 +77,7 @@ public class SignZone extends CLBase
     public boolean    useNsec3        = false;
     public byte[]     salt            = null;
     public int        iterations      = 0;
-    public int        digest_id       = DSRecord.SHA1_DIGEST_ID;
+    public int        digest_id       = DNSSEC.Digest.SHA1;
     public long       nsec3paramttl   = -1;
     public boolean    verboseSigning  = false;
 
@@ -218,7 +217,7 @@ public class SignZone extends CLBase
       else
       {
         // default is now - 1 hour.
-        start = new Date(System.currentTimeMillis() - (3600 * 1000));
+        start = Instant.now().minusSeconds(3600);
       }
 
       if ((optstr = cli.getOptionValue('e')) != null)
@@ -340,7 +339,9 @@ public class SignZone extends CLBase
     for (RRset rrset : rrsets)
     {
       // skip unsigned rrsets.
-      if (!rrset.sigs().hasNext()) continue;
+      if (rrset.sigs().isEmpty()) {
+        continue;
+      }
 
       boolean result = verifier.verify(rrset);
 

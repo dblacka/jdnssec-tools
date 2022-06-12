@@ -1,6 +1,4 @@
-// $Id$
-//
-// Copyright (C) 2001-2003 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2022 Verisign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -25,10 +23,31 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.interfaces.DSAParams;
-import java.util.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Set;
 import java.util.logging.Logger;
 
-import org.xbill.DNS.*;
+import org.xbill.DNS.DClass;
+import org.xbill.DNS.DNSKEYRecord;
+import org.xbill.DNS.DNSOutput;
+import org.xbill.DNS.DNSSEC;
+import org.xbill.DNS.DSRecord;
+import org.xbill.DNS.NSEC3PARAMRecord;
+import org.xbill.DNS.NSEC3Record;
+import org.xbill.DNS.NSECRecord;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.RRSIGRecord;
+import org.xbill.DNS.RRset;
+import org.xbill.DNS.Record;
+import org.xbill.DNS.SOARecord;
+import org.xbill.DNS.Type;
 import org.xbill.DNS.utils.base64;
 
 /**
@@ -81,8 +100,8 @@ public class SignUtils
    * 
    * @return a prototype signature based on the RRset and key information.
    */
-  public static RRSIGRecord generatePreRRSIG(RRset rrset, DNSKEYRecord key, Date start,
-                                             Date expire, long sig_ttl)
+  public static RRSIGRecord generatePreRRSIG(RRset rrset, DNSKEYRecord key, Instant start,
+                                             Instant expire, long sig_ttl)
   {
     return new RRSIGRecord(rrset.getName(), rrset.getDClass(), sig_ttl, rrset.getType(),
                            key.getAlgorithm(), (int) rrset.getTTL(), expire, start,
@@ -106,8 +125,8 @@ public class SignUtils
    * 
    * @return a prototype signature based on the Record and key information.
    */
-  public static RRSIGRecord generatePreRRSIG(Record rec, DNSKEYRecord key, Date start,
-                                             Date expire, long sig_ttl)
+  public static RRSIGRecord generatePreRRSIG(Record rec, DNSKEYRecord key, Instant start,
+                                             Instant expire, long sig_ttl)
   {
     return new RRSIGRecord(rec.getName(), rec.getDClass(), sig_ttl, rec.getType(),
                            key.getAlgorithm(), rec.getTTL(), expire, start,
@@ -128,8 +147,8 @@ public class SignUtils
     DNSOutput image = new DNSOutput();
 
     // precalc some things
-    int start_time = (int) (presig.getTimeSigned().getTime() / 1000);
-    int expire_time = (int) (presig.getExpire().getTime() / 1000);
+    long start_time = presig.getTimeSigned().getEpochSecond();
+    long expire_time = presig.getExpire().getEpochSecond();
     Name signer = presig.getSigner();
 
     // first write out the partial SIG record (this is the SIG RDATA
@@ -160,12 +179,14 @@ public class SignUtils
    * @return the canonical wire line format of the rrset. This is the second
    *         part of data to be signed.
    */
-  @SuppressWarnings("unchecked")
   public static byte[] generateCanonicalRRsetData(RRset rrset, long ttl, int labels)
   {
     DNSOutput image = new DNSOutput();
+    
+    if (ttl == 0) {
+      ttl = rrset.getTTL();
+    }
 
-    if (ttl == 0) ttl = rrset.getTTL();
     Name n = rrset.getName();
     if (labels == 0)
     {
@@ -187,9 +208,7 @@ public class SignUtils
     // now convert the wire format records in the RRset into a
     // list of byte arrays.
     ArrayList<byte[]> canonical_rrs = new ArrayList<byte[]>();
-    for (Iterator<Record> i = rrset.rrs(); i.hasNext();)
-    {
-      Record r = i.next();
+    for (Record r : rrset.rrs()) {
       if (r.getTTL() != ttl || wildcardName)
       {
         // If necessary, we need to create a new record with a new ttl
@@ -714,7 +733,7 @@ public class SignUtils
 
     public void addType(int type)
     {
-      this.typemap.add(new Integer(type));
+      this.typemap.add(Integer.valueOf(type));
 
       // Opt-In support.
       if (type != Type.NS && type != Type.NSEC && type != Type.RRSIG
@@ -1522,11 +1541,11 @@ public class SignUtils
 
       switch (digest_alg)
       {
-        case DSRecord.SHA1_DIGEST_ID:
+        case DNSSEC.Digest.SHA1:
           md = MessageDigest.getInstance("SHA");
           digest = md.digest(os.toByteArray());
           break;
-        case DSRecord.SHA256_DIGEST_ID:
+        case DNSSEC.Digest.SHA256:
           md = MessageDigest.getInstance("SHA-256");
           digest = md.digest(os.toByteArray());
           break;

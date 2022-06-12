@@ -20,13 +20,18 @@ package com.verisignlabs.dnssec.cl;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
 import org.xbill.DNS.DLVRecord;
 import org.xbill.DNS.DNSKEYRecord;
+import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.DSRecord;
 import org.xbill.DNS.Record;
 
-import com.verisignlabs.dnssec.security.*;
+import com.verisignlabs.dnssec.security.BINDKeyUtils;
+import com.verisignlabs.dnssec.security.DnsKeyPair;
+import com.verisignlabs.dnssec.security.SignUtils;
 
 /**
  * This class forms the command line implementation of a DNSSEC DS/DLV generator
@@ -46,7 +51,7 @@ public class DSTool extends CLBase
     public boolean createDLV  = false;
     public String  outputfile = null;
     public String  keyname    = null;
-    public int     digest_id  = DSRecord.SHA1_DIGEST_ID;
+    public int     digest_id  = DNSSEC.Digest.SHA1;
 
     public CLIState()
     {

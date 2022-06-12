@@ -20,10 +20,14 @@ package com.verisignlabs.dnssec.cl;
 import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.RSAPublicKey;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.DNSKEYRecord;
 
-import com.verisignlabs.dnssec.security.*;
+import com.verisignlabs.dnssec.security.BINDKeyUtils;
+import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
+import com.verisignlabs.dnssec.security.DnsKeyPair;
 
 /**
  * This class forms the command line implementation of a key introspection tool.

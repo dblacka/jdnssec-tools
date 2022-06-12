@@ -24,14 +24,17 @@ import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-import org.xbill.DNS.*;
+import org.xbill.DNS.DNSKEYRecord;
+import org.xbill.DNS.DNSSEC;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.RRSIGRecord;
+import org.xbill.DNS.RRset;
 
 /**
  * A class for performing basic DNSSEC verification. The DNSJAVA package
@@ -179,17 +182,17 @@ public class DnsSecVerifier
 
     if (mIgnoreTime) return true;
 
-    Date now = new Date();
-    Date start = sigrec.getTimeSigned();
-    Date expire = sigrec.getExpire();
+    Instant now = Instant.now();
+    Instant start = sigrec.getTimeSigned();
+    Instant expire = sigrec.getExpire();
 
     if (mStartFudge >= 0)
     {
       if (mStartFudge > 0)
       {
-        start = new Date(start.getTime() - ((long) mStartFudge * 1000));
+        start = start.minusSeconds(mStartFudge);
       }
-      if (now.before(start))
+      if (now.isBefore(start))
       {
         log.fine("Signature is not yet valid");
         if (reasons != null) reasons.add("Signature not yet valid");
@@ -201,9 +204,9 @@ public class DnsSecVerifier
     {
       if (mExpireFudge > 0)
       {
-        expire = new Date(expire.getTime() + ((long) mExpireFudge * 1000));
+        expire = expire.plusSeconds(mExpireFudge);
       }
-      if (now.after(expire))
+      if (now.isAfter(expire))
       {
         log.fine("Signature has expired (now = " + now + ", sig expires = " + expire);
         if (reasons != null) reasons.add("Signature has expired.");
@@ -300,18 +303,12 @@ public class DnsSecVerifier
   {
     boolean result = mVerifyAllSigs ? true : false;
 
-    Iterator i = rrset.sigs();
-
-    if (!i.hasNext())
-    {
+    if (rrset.sigs().size() == 0) {
       log.fine("RRset failed to verify due to lack of signatures");
       return false;
     }
-
-    while (i.hasNext())
-    {
-      RRSIGRecord sigrec = (RRSIGRecord) i.next();
-
+    for (RRSIGRecord sigrec : rrset.sigs()) {
+    
       boolean res = verifySignature(rrset, sigrec);
 
       // If not requiring all signature to validate, then any successful validation is sufficient.

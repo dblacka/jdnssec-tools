@@ -24,11 +24,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.xbill.DNS.Master;
 import org.xbill.DNS.Name;
+import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
@@ -60,19 +60,15 @@ public class ZoneUtils
   {
     ArrayList<Record> records = new ArrayList<Record>();
     Master m;
-    if (zonefile.equals("-"))
-    {
+    if (zonefile.equals("-")) {
       m = new Master(System.in);
-    }
-    else
-    {
+    } else {
       m = new Master(zonefile, origin);
     }
 
     Record r = null;
 
-    while ((r = m.nextRecord()) != null)
-    {
+    while ((r = m.nextRecord()) != null) {
       records.add(r);
     }
 
@@ -92,17 +88,13 @@ public class ZoneUtils
   {
     PrintWriter out = null;
 
-    if (zonefile == null || zonefile.equals("-"))
-    {
+    if (zonefile == null || zonefile.equals("-")) {
       out = new PrintWriter(System.out);
-    }
-    else
-    {
+    } else {
       out = new PrintWriter(new BufferedWriter(new FileWriter(zonefile)));
     }
 
-    for (Record r : records)
-    {
+    for (Record r : records) {
       out.println(r);
     }
 
@@ -118,11 +110,10 @@ public class ZoneUtils
    */
   public static Name findZoneName(List<Record> records)
   {
-    for (Record r : records)
-    {
-      int type = r.getType();
-
-      if (type == Type.SOA) return r.getName(); 
+    for (Record r : records) {
+      if (r.getType() == Type.SOA) {
+        return r.getName(); 
+      }
     }
 
     return null;
@@ -131,36 +122,27 @@ public class ZoneUtils
   public static List<Record> findRRs(List<Record> records, Name name, int type)
   {
     List<Record> res = new ArrayList<Record>();
-    for (Record r : records)
-    {
-      if (r.getName().equals(name) && r.getType() == type)
-      {
+    for (Record r : records) {
+      if (r.getName().equals(name) && r.getType() == type) {
         res.add(r);
       }
     }
-
     return res;
   }
 
   /** This is an alternate way to format an RRset into a string */
-  @SuppressWarnings("unchecked")
   public static String rrsetToString(RRset rrset, boolean includeSigs)
   {
     StringBuilder out = new StringBuilder();
 
-    for (Iterator<Record> i = rrset.rrs(false); i.hasNext();)
-    {
-      Record r = i.next();
+    for (Record r : rrset.rrs(false)) {
       out.append(r.toString());
       out.append("\n");
     }
 
-    if (includeSigs)
-    {
-      for (Iterator<Record> i = rrset.sigs(); i.hasNext();)
-      {
-        Record r = i.next();
-        out.append(r.toString());
+    if (includeSigs) {
+      for (RRSIGRecord s : rrset.sigs()) {
+        out.append(s.toString());
         out.append("\n");
       }
     }

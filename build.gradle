@@ -10,15 +10,15 @@ apply plugin: 'idea'
 
 jar {
     baseName = 'jdnssec-tools'
-    version =  '0.16'
+    version =  '0.17'
 }
 
 repositories {
     mavenCentral()
 }
 
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 dependencies {
     compile fileTree(dir: 'lib', include: '*.jar')

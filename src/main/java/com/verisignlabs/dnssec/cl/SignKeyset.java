@@ -20,9 +20,8 @@ package com.verisignlabs.dnssec.cl;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
@@ -34,7 +33,12 @@ import org.xbill.DNS.RRset;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
 
-import com.verisignlabs.dnssec.security.*;
+import com.verisignlabs.dnssec.security.BINDKeyUtils;
+import com.verisignlabs.dnssec.security.DnsKeyPair;
+import com.verisignlabs.dnssec.security.DnsSecVerifier;
+import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
+import com.verisignlabs.dnssec.security.SignUtils;
+import com.verisignlabs.dnssec.security.ZoneUtils;
 
 /**
  * This class forms the command line implementation of a DNSSEC keyset signer.
@@ -54,8 +58,8 @@ public class SignKeyset extends CLBase
   {
     public File     keyDirectory = null;
     public String[] keyFiles     = null;
-    public Date     start        = null;
-    public Date     expire       = null;
+    public Instant  start        = null;
+    public Instant  expire       = null;
     public String   inputfile    = null;
     public String   outputfile   = null;
     public boolean  verifySigs   = false;
@@ -122,7 +126,7 @@ public class SignKeyset extends CLBase
       else
       {
         // default is now - 1 hour.
-        start = new Date(System.currentTimeMillis() - (3600 * 1000));
+        start = Instant.now().minusSeconds(3600);
       }
 
       if ((optstr = cli.getOptionValue('e')) != null)
@@ -183,7 +187,7 @@ public class SignKeyset extends CLBase
     for (RRset rrset : rrsets)
     {
       // skip unsigned rrsets.
-      if (!rrset.sigs().hasNext()) continue;
+      if (rrset.sigs().isEmpty()) continue;
 
       boolean result = verifier.verify(rrset);
 
@@ -271,7 +275,6 @@ public class SignKeyset extends CLBase
     return null;
   }
 
-  @SuppressWarnings("unchecked")
   public void execute() throws Exception
   {
     // Read in the zone
@@ -352,13 +355,11 @@ public class SignKeyset extends CLBase
 
     // write out the signed RRset
     List<Record> signed_records = new ArrayList<Record>();
-    for (Iterator<Record> i = keyset.rrs(); i.hasNext();)
-    {
-      signed_records.add(i.next());
+    for (Record r : keyset.rrs()){
+      signed_records.add(r);
     }
-    for (Iterator<Record> i = keyset.sigs(); i.hasNext();)
-    {
-      signed_records.add(i.next());
+    for (RRSIGRecord s : keyset.sigs()) {
+      signed_records.add(s);
     }
 
     // write out the signed zone

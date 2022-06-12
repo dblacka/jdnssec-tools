@@ -127,21 +127,27 @@ public class ZoneVerifier
     return n.toString() + ':' + type;
   }
 
-  @SuppressWarnings("rawtypes")
   private boolean addRRtoRRset(RRset rrset, Record rr)
   {
-    if (mIgnoreDuplicateRRs)
-    {
+    if (mIgnoreDuplicateRRs) {
       rrset.addRR(rr);
       return true;
     }
 
-    Iterator i = (rr instanceof RRSIGRecord) ? rrset.sigs() : rrset.rrs();
-    for ( ; i.hasNext(); )
-    {
-      Record record = (Record) i.next();
-      if (rr.equals(record)) return false;
+    if (rr instanceof RRSIGRecord) {
+      for (RRSIGRecord sigrec : rrset.sigs()) {
+        if (rr.equals(sigrec)) {
+          return false;
+        }
+      }
+    } else {
+      for (Record record : rrset.rrs()) {
+        if (rr.equals(record)) {
+          return false;
+        }
+      }
     }
+
     rrset.addRR(rr);
     return true;
   }
@@ -290,7 +296,7 @@ public class ZoneVerifier
     }
 
     // If the node has a NS record it is a delegation.
-    if (typeset.contains(new Integer(Type.NS))) return NodeType.DELEGATION;
+    if (typeset.contains(Integer.valueOf(Type.NS))) return NodeType.DELEGATION;
 
     return NodeType.NORMAL;
   }
@@ -397,9 +403,7 @@ public class ZoneVerifier
     List<String> reasons = new ArrayList<String>();
     boolean result = false;
 
-    for (Iterator<Record> i = rrset.sigs(); i.hasNext();)
-    {
-      RRSIGRecord sigrec = (RRSIGRecord) i.next();
+    for (RRSIGRecord sigrec : rrset.sigs()) {
       boolean res = mVerifier.verifySignature(rrset, sigrec, reasons);
       if (!res)
       {

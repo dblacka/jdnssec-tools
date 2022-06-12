@@ -29,7 +29,10 @@
 
 package com.verisignlabs.dnssec.security;
 
-import org.xbill.DNS.*;
+import org.xbill.DNS.DClass;
+import org.xbill.DNS.NSEC3Record;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.TextParseException;
 import org.xbill.DNS.utils.base16;
 import org.xbill.DNS.utils.base32;
 
@@ -195,10 +198,15 @@ public class ProtoNSEC3
 
   public NSEC3Record getNSEC3Record()
   {
-    String comment = (originalOwner == null) ? "(unknown original ownername)"
-                                            : originalOwner.toString();
+    // String comment = (originalOwner == null) ? "(unknown original ownername)"
+    //                                         : originalOwner.toString();
+    // return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt,
+    //                        next, getTypes(), comment);
+
+    // FIXME: this used to use a custom hack of dnsjava that allowed a "comment" field.
+    // Either create the same hack in the new dnsjava, or (preferrably) find another way.
     return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt,
-                           next, getTypes(), comment);
+                           next, getTypes());                           
   }
 
   public void mergeTypes(TypeMap new_types)
