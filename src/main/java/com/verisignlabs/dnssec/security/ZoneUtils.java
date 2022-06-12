@@ -1,6 +1,4 @@
-// $Id$
-//
-// Copyright (C) 2003 VeriSign, Inc.
+// Copyright (C) 2003, 2022 Verisign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -37,27 +35,24 @@ import org.xbill.DNS.Type;
  * This class contains a bunch of utility methods that are generally useful in
  * manipulating zones.
  * 
- * @author David Blacka (original)
- * @author $Author$
- * @version $Revision$
+ * @author David Blacka
  */
 
-public class ZoneUtils
-{
+public class ZoneUtils {
   /**
    * Load a zone file.
    * 
    * @param zonefile
-   *          the filename/path of the zonefile to read.
+   *                 the filename/path of the zonefile to read.
    * @param origin
-   *          the origin to use for the zonefile (may be null if the origin is
-   *          specified in the zone file itself).
+   *                 the origin to use for the zonefile (may be null if the origin
+   *                 is
+   *                 specified in the zone file itself).
    * @return a {@link java.util.List} of {@link org.xbill.DNS.Record} objects.
    * @throws IOException
-   *           if something goes wrong reading the zone file.
+   *                     if something goes wrong reading the zone file.
    */
-  public static List<Record> readZoneFile(String zonefile, Name origin) throws IOException
-  {
+  public static List<Record> readZoneFile(String zonefile, Name origin) throws IOException {
     ArrayList<Record> records = new ArrayList<Record>();
     Master m;
     if (zonefile.equals("-")) {
@@ -79,13 +74,14 @@ public class ZoneUtils
    * Write the records out into a zone file.
    * 
    * @param records
-   *          a {@link java.util.List} of {@link org.xbill.DNS.Record} objects
-   *          forming a zone.
+   *                 a {@link java.util.List} of {@link org.xbill.DNS.Record}
+   *                 objects
+   *                 forming a zone.
    * @param zonefile
-   *          the file to write to. If null or equal to "-", System.out is used.
+   *                 the file to write to. If null or equal to "-", System.out is
+   *                 used.
    */
-  public static void writeZoneFile(List<Record> records, String zonefile) throws IOException
-  {
+  public static void writeZoneFile(List<Record> records, String zonefile) throws IOException {
     PrintWriter out = null;
 
     if (zonefile == null || zonefile.equals("-")) {
@@ -105,22 +101,20 @@ public class ZoneUtils
    * Given just the list of records, determine the zone name (origin).
    * 
    * @param records
-   *          a list of {@link org.xbill.DNS.Record} objects.
+   *                a list of {@link org.xbill.DNS.Record} objects.
    * @return the zone name, if found. null if one couldn't be found.
    */
-  public static Name findZoneName(List<Record> records)
-  {
+  public static Name findZoneName(List<Record> records) {
     for (Record r : records) {
       if (r.getType() == Type.SOA) {
-        return r.getName(); 
+        return r.getName();
       }
     }
 
     return null;
   }
 
-  public static List<Record> findRRs(List<Record> records, Name name, int type)
-  {
+  public static List<Record> findRRs(List<Record> records, Name name, int type) {
     List<Record> res = new ArrayList<Record>();
     for (Record r : records) {
       if (r.getName().equals(name) && r.getType() == type) {
@@ -131,8 +125,7 @@ public class ZoneUtils
   }
 
   /** This is an alternate way to format an RRset into a string */
-  public static String rrsetToString(RRset rrset, boolean includeSigs)
-  {
+  public static String rrsetToString(RRset rrset, boolean includeSigs) {
     StringBuilder out = new StringBuilder();
 
     for (Record r : rrset.rrs(false)) {

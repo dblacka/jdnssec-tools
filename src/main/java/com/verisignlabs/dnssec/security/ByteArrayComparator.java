@@ -1,6 +1,4 @@
-// $Id$
-//
-// Copyright (C) 2001-2003 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2022 VeriSign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -26,34 +24,25 @@ import java.util.logging.Logger;
  * useful for comparing RDATA portions of DNS records in doing DNSSEC canonical
  * ordering.
  * 
- * @author David Blacka (original)
- * @author $Author$
- * @version $Revision$
+ * @author David Blacka
  */
-public class ByteArrayComparator implements Comparator<byte[]>
-{
-  private int     mOffset = 0;
-  private boolean mDebug  = false;
+public class ByteArrayComparator implements Comparator<byte[]> {
+  private int mOffset = 0;
+  private boolean mDebug = false;
   private Logger log;
 
-  public ByteArrayComparator()
-  {
+  public ByteArrayComparator() {
   }
 
-  public ByteArrayComparator(int offset, boolean debug)
-  {
+  public ByteArrayComparator(int offset, boolean debug) {
     mOffset = offset;
     mDebug = debug;
   }
 
-  public int compare(byte[] b1, byte[] b2)
-  {
-    for (int i = mOffset; i < b1.length && i < b2.length; i++)
-    {
-      if (b1[i] != b2[i])
-      {
-        if (mDebug)
-        {
+  public int compare(byte[] b1, byte[] b2) {
+    for (int i = mOffset; i < b1.length && i < b2.length; i++) {
+      if (b1[i] != b2[i]) {
+        if (mDebug) {
           log.info("offset " + i + " differs (this is "
               + (i - mOffset) + " bytes in from our offset.)");
         }

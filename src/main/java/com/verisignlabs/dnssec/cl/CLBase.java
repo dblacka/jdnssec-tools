@@ -1,3 +1,20 @@
+// Copyright (C) 2022 Verisign, Inc.
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+
 package com.verisignlabs.dnssec.cl;
 
 import java.io.PrintWriter;
@@ -30,19 +47,16 @@ import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
  * Subclasses also have their own main() methods, which should just create the
  * subclass variant of the CLIState and call run().
  */
-public abstract class CLBase
-{
+public abstract class CLBase {
   protected static Logger log;
 
   /**
    * This is a very simple log formatter that simply outputs the log level and
    * log string.
    */
-  public static class BareLogFormatter extends Formatter
-  {
-    @Override
-    public String format(LogRecord arg0)
-    {
+  public static class BareLogFormatter extends Formatter {
+
+    public String format(LogRecord arg0) {
       StringBuilder out = new StringBuilder();
       String lvl = arg0.getLevel().getName();
 
@@ -59,34 +73,32 @@ public abstract class CLBase
    * This is a base class for command line parsing state. Subclasses should
    * override setupOptions and processOptions.
    */
-  public static class CLIStateBase
-  {
+  public static class CLIStateBase {
     protected Options opts;
-    protected String  usageStr;
+    protected String usageStr;
 
     /**
      * The base constructor. This will setup the command line options.
      *
      * @param usage
-     *          The command line usage string (e.g.,
-     *          "jdnssec-foo [..options..] zonefile")
+     *              The command line usage string (e.g.,
+     *              "jdnssec-foo [..options..] zonefile")
      */
-    public CLIStateBase(String usage)
-    {
+    public CLIStateBase(String usage) {
       usageStr = usage;
       setup();
     }
 
     /** This is the base set of command line options provided to all subclasses. */
-    private void setup()
-    {
-      // Set up the standard set of options that all jdnssec command line tools will implement.
+    private void setup() {
+      // Set up the standard set of options that all jdnssec command line tools will
+      // implement.
       opts = new Options();
 
       // boolean options
       opts.addOption("h", "help", false, "Print this message.");
       opts.addOption("m", "multiline", false,
-                     "Output DNS records using 'multiline' format");
+          "Output DNS records using 'multiline' format");
 
       OptionBuilder.hasOptionalArg();
       OptionBuilder.withLongOpt("verbose");
@@ -109,11 +121,10 @@ public abstract class CLBase
      * line options.
      *
      * @param opts
-     *          the options object to add (via OptionBuilder, typically) new
-     *          options to.
+     *             the options object to add (via OptionBuilder, typically) new
+     *             options to.
      */
-    protected void setupOptions(Options opts)
-    {
+    protected void setupOptions(Options opts) {
       // Subclasses generally override this.
     }
 
@@ -124,21 +135,21 @@ public abstract class CLBase
      * options.
      *
      * @param args
-     *          The command line arguments.
+     *             The command line arguments.
      * @throws ParseException
      */
-    public void parseCommandLine(String args[]) throws ParseException
-    {
+    public void parseCommandLine(String args[]) throws ParseException {
       CommandLineParser cli_parser = new PosixParser();
       CommandLine cli = cli_parser.parse(opts, args);
 
-      if (cli.hasOption('h')) usage();
+      if (cli.hasOption('h')) {
+        usage();
+      }
 
       Logger rootLogger = Logger.getLogger("");
       int value = parseInt(cli.getOptionValue('v'), -1);
 
-      switch (value)
-      {
+      switch (value) {
         case 0:
           rootLogger.setLevel(Level.OFF);
           break;
@@ -163,22 +174,18 @@ public abstract class CLBase
       }
 
       // I hate java.util.logging, btw.
-      for (Handler h : rootLogger.getHandlers())
-      {
+      for (Handler h : rootLogger.getHandlers()) {
         h.setLevel(rootLogger.getLevel());
         h.setFormatter(new BareLogFormatter());
       }
 
-      if (cli.hasOption('m'))
-      {
+      if (cli.hasOption('m')) {
         org.xbill.DNS.Options.set("multiline");
       }
 
       String[] optstrs = null;
-      if ((optstrs = cli.getOptionValues('A')) != null)
-      {
-        for (int i = 0; i < optstrs.length; i++)
-        {
+      if ((optstrs = cli.getOptionValues('A')) != null) {
+        for (int i = 0; i < optstrs.length; i++) {
           addArgAlias(optstrs[i]);
         }
       }
@@ -191,72 +198,66 @@ public abstract class CLBase
      * this.
      *
      * @param cli
-     *          The {@link CommandLine} object containing the parsed command
-     *          line state.
+     *            The {@link CommandLine} object containing the parsed command
+     *            line state.
      */
-    protected void processOptions(CommandLine cli) throws ParseException
-    {
+    protected void processOptions(CommandLine cli) throws ParseException {
       // Subclasses generally override this.
     }
 
     /** Print out the usage and help statements, then quit. */
-    public void usage()
-    {
+    public void usage() {
       HelpFormatter f = new HelpFormatter();
 
       PrintWriter out = new PrintWriter(System.err);
 
       // print our own usage statement:
       f.printHelp(out, 75, usageStr, null, opts, HelpFormatter.DEFAULT_LEFT_PAD,
-                  HelpFormatter.DEFAULT_DESC_PAD, null);
+          HelpFormatter.DEFAULT_DESC_PAD, null);
 
       out.flush();
       System.exit(64);
 
     }
 
-    protected void addArgAlias(String s)
-    {
-      if (s == null) return;
+    protected void addArgAlias(String s) {
+      if (s == null)
+        return;
 
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
       String[] v = s.split(":");
-      if (v.length < 2) return;
+      if (v.length < 2)
+        return;
 
       int alias = parseInt(v[0], -1);
-      if (alias <= 0) return;
+      if (alias <= 0)
+        return;
       int orig = parseInt(v[1], -1);
-      if (orig <= 0) return;
+      if (orig <= 0)
+        return;
       String mn = null;
-      if (v.length > 2) mn = v[2];
+      if (v.length > 2)
+        mn = v[2];
 
       algs.addAlias(alias, mn, orig);
     }
   }
 
-  public static int parseInt(String s, int def)
-  {
-    try
-    {
+  public static int parseInt(String s, int def) {
+    try {
       int v = Integer.parseInt(s);
       return v;
-    }
-    catch (NumberFormatException e)
-    {
+    } catch (NumberFormatException e) {
       return def;
     }
   }
 
-  public static long parseLong(String s, long def)
-  {
-    try
-    {
+  public static long parseLong(String s, long def) {
+    try {
       long v = Long.parseLong(s);
       return v;
-    }
-    catch (NumberFormatException e)
-    {
+    } catch (NumberFormatException e) {
       return def;
     }
   }
@@ -265,20 +266,20 @@ public abstract class CLBase
    * Calculate a date/time from a command line time/offset duration string.
    *
    * @param start
-   *          the start time to calculate offsets from.
+   *                 the start time to calculate offsets from.
    * @param duration
-   *          the time/offset string to parse.
+   *                 the time/offset string to parse.
    * @return the calculated time.
    */
-  public static Instant convertDuration(Instant start, String duration) throws ParseException
-  {
+  public static Instant convertDuration(Instant start, String duration) throws ParseException {
     if (start == null) {
       start = Instant.now();
-    } 
-    
+    }
+
     if (duration.startsWith("now")) {
       start = Instant.now();
-      if (duration.indexOf("+") < 0) return start;
+      if (duration.indexOf("+") < 0)
+        return start;
 
       duration = duration.substring(3);
     }
@@ -298,33 +299,24 @@ public abstract class CLBase
     try {
       Date parsedDate = dateFormatter.parse(duration);
       return parsedDate.toInstant();
-    }
-    catch (java.text.ParseException e) {
+    } catch (java.text.ParseException e) {
       throw new ParseException(e.getMessage());
     }
   }
 
   public abstract void execute() throws Exception;
 
-  public void run(CLIStateBase state, String[] args)
-  {
-    try
-    {
+  public void run(CLIStateBase state, String[] args) {
+    try {
       state.parseCommandLine(args);
-    }
-    catch (UnrecognizedOptionException e)
-    {
+    } catch (UnrecognizedOptionException e) {
       System.err.println("error: unknown option encountered: " + e.getMessage());
       state.usage();
-    }
-    catch (AlreadySelectedException e)
-    {
+    } catch (AlreadySelectedException e) {
       System.err.println("error: mutually exclusive options have "
           + "been selected:\n     " + e.getMessage());
       state.usage();
-    }
-    catch (Exception e)
-    {
+    } catch (Exception e) {
       System.err.println("error: unknown command line parsing exception:");
       e.printStackTrace();
       state.usage();
@@ -332,12 +324,9 @@ public abstract class CLBase
 
     log = Logger.getLogger(this.getClass().toString());
 
-    try
-    {
+    try {
       execute();
-    }
-    catch (Exception e)
-    {
+    } catch (Exception e) {
       e.printStackTrace();
       System.exit(1);
     }

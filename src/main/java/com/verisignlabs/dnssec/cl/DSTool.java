@@ -1,4 +1,4 @@
-// Copyright (C) 2001-2003, 2011 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2011, 2022 VeriSign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -38,23 +38,20 @@ import com.verisignlabs.dnssec.security.SignUtils;
  * 
  * @author David Blacka
  */
-public class DSTool extends CLBase
-{
+public class DSTool extends CLBase {
   private CLIState state;
 
   /**
    * This is a small inner class used to hold all of the command line option
    * state.
    */
-  protected static class CLIState extends CLIStateBase
-  {
-    public boolean createDLV  = false;
-    public String  outputfile = null;
-    public String  keyname    = null;
-    public int     digest_id  = DNSSEC.Digest.SHA1;
+  protected static class CLIState extends CLIStateBase {
+    public boolean createDLV = false;
+    public String outputfile = null;
+    public String keyname = null;
+    public int digest_id = DNSSEC.Digest.SHA1;
 
-    public CLIState()
-    {
+    public CLIState() {
       super("jdnssec-dstool [..options..] keyfile");
     }
 
@@ -63,8 +60,7 @@ public class DSTool extends CLBase
      * 
      * @return a set of command line options.
      */
-    protected void setupOptions(Options opts)
-    {
+    protected void setupOptions(Options opts) {
       OptionBuilder.withLongOpt("dlv");
       OptionBuilder.withDescription("Generate a DLV record instead.");
       opts.addOption(OptionBuilder.create());
@@ -77,17 +73,16 @@ public class DSTool extends CLBase
     }
 
     protected void processOptions(CommandLine cli)
-        throws org.apache.commons.cli.ParseException
-    {
+        throws org.apache.commons.cli.ParseException {
       outputfile = cli.getOptionValue('f');
       createDLV = cli.hasOption("dlv");
       String optstr = cli.getOptionValue('d');
-      if (optstr != null) digest_id = parseInt(optstr, digest_id);
+      if (optstr != null)
+        digest_id = parseInt(optstr, digest_id);
 
       String[] cl_args = cli.getArgs();
 
-      if (cl_args.length < 1)
-      {
+      if (cl_args.length < 1) {
         System.err.println("error: missing key file ");
         usage();
       }
@@ -97,42 +92,35 @@ public class DSTool extends CLBase
 
   }
 
-  public void execute() throws Exception
-  {
+  public void execute() throws Exception {
     DnsKeyPair key = BINDKeyUtils.loadKey(state.keyname, null);
     DNSKEYRecord dnskey = key.getDNSKEYRecord();
 
-    if ((dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) == 0)
-    {
+    if ((dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) == 0) {
       log.warning("DNSKEY is not an SEP-flagged key.");
     }
 
     DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digest_id, dnskey.getTTL());
     Record res = ds;
 
-    if (state.createDLV)
-    {
+    if (state.createDLV) {
       log.fine("creating DLV.");
       DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(), ds.getTTL(),
-                                    ds.getFootprint(), ds.getAlgorithm(),
-                                    ds.getDigestID(), ds.getDigest());
+          ds.getFootprint(), ds.getAlgorithm(),
+          ds.getDigestID(), ds.getDigest());
       res = dlv;
     }
 
-    if (state.outputfile != null)
-    {
+    if (state.outputfile != null) {
       PrintWriter out = new PrintWriter(new FileWriter(state.outputfile));
       out.println(res);
       out.close();
-    }
-    else
-    {
+    } else {
       System.out.println(res);
     }
   }
 
-  public static void main(String[] args)
-  {
+  public static void main(String[] args) {
     DSTool tool = new DSTool();
     tool.state = new CLIState();
 

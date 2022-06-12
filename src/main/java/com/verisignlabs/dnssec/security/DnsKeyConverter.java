@@ -1,6 +1,4 @@
-// $Id$
-//
-// Copyright (C) 2001-2003 VeriSign, Inc.
+// Copyright (C) 2001-2003, 2022 VeriSign, Inc.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -63,12 +61,9 @@ import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
  * This class handles conversions between JCA key formats and DNSSEC and BIND9
  * key formats.
  *
- * @author David Blacka (original)
- * @author $Author$ (latest)
- * @version $Revision$
+ * @author David Blacka
  */
-public class DnsKeyConverter
-{
+public class DnsKeyConverter {
   private KeyFactory mRSAKeyFactory;
   private KeyFactory mDSAKeyFactory;
   private KeyFactory mDHKeyFactory;
@@ -76,8 +71,7 @@ public class DnsKeyConverter
   private KeyFactory mEdKeyFactory;
   private DnsKeyAlgorithm mAlgorithms;
 
-  public DnsKeyConverter()
-  {
+  public DnsKeyConverter() {
     mAlgorithms = DnsKeyAlgorithm.getInstance();
   }
 
@@ -87,29 +81,28 @@ public class DnsKeyConverter
    * @throws NoSuchAlgorithmException
    */
   public PublicKey parseDNSKEYRecord(DNSKEYRecord pKeyRecord)
-      throws NoSuchAlgorithmException
-  {
-    if (pKeyRecord.getKey() == null) return null;
+      throws NoSuchAlgorithmException {
+    if (pKeyRecord.getKey() == null)
+      return null;
 
     // Because we have arbitrarily aliased algorithms, we need to possibly
     // translate the aliased algorithm back to the actual algorithm.
 
     int originalAlgorithm = mAlgorithms.originalAlgorithm(pKeyRecord.getAlgorithm());
 
-    if (originalAlgorithm <= 0) throw new NoSuchAlgorithmException("DNSKEY algorithm "
-        + pKeyRecord.getAlgorithm() + " is unrecognized");
+    if (originalAlgorithm <= 0)
+      throw new NoSuchAlgorithmException("DNSKEY algorithm "
+          + pKeyRecord.getAlgorithm() + " is unrecognized");
 
-    if (pKeyRecord.getAlgorithm() != originalAlgorithm)
-    {
+    if (pKeyRecord.getAlgorithm() != originalAlgorithm) {
       pKeyRecord = new DNSKEYRecord(pKeyRecord.getName(), pKeyRecord.getDClass(),
-                                    pKeyRecord.getTTL(), pKeyRecord.getFlags(),
-                                    pKeyRecord.getProtocol(), originalAlgorithm,
-                                    pKeyRecord.getKey());
+          pKeyRecord.getTTL(), pKeyRecord.getFlags(),
+          pKeyRecord.getProtocol(), originalAlgorithm,
+          pKeyRecord.getKey());
     }
 
     // do not rely on DNSJava's method for EdDSA for now.
-    if (mAlgorithms.baseType(originalAlgorithm) == DnsKeyAlgorithm.EDDSA)
-    {
+    if (mAlgorithms.baseType(originalAlgorithm) == DnsKeyAlgorithm.EDDSA) {
       try {
         return parseEdDSADNSKEYRecord(pKeyRecord);
       } catch (InvalidKeySpecException e) {
@@ -118,26 +111,24 @@ public class DnsKeyConverter
       }
     }
 
-    try
-    {
+    try {
       // This uses DNSJava's DNSSEC.toPublicKey() method.
       return pKeyRecord.getPublicKey();
-    }
-    catch (DNSSECException e)
-    {
+    } catch (DNSSECException e) {
       throw new NoSuchAlgorithmException(e);
     }
   }
 
-  /** Since we don't (yet) have support in DNSJava for parsing the
-      newer EdDSA algorithms, here is a local version. */
+  /**
+   * Since we don't (yet) have support in DNSJava for parsing the
+   * newer EdDSA algorithms, here is a local version.
+   */
   private PublicKey parseEdDSADNSKEYRecord(DNSKEYRecord pKeyRecord)
-    throws IllegalArgumentException, NoSuchAlgorithmException, InvalidKeySpecException
-  {
+      throws IllegalArgumentException, NoSuchAlgorithmException, InvalidKeySpecException {
     byte[] seed = pKeyRecord.getKey();
 
-    EdDSAPublicKeySpec spec = new EdDSAPublicKeySpec
-      (seed, mAlgorithms.getEdwardsCurveParams(pKeyRecord.getAlgorithm()));
+    EdDSAPublicKeySpec spec = new EdDSAPublicKeySpec(seed,
+        mAlgorithms.getEdwardsCurveParams(pKeyRecord.getAlgorithm()));
 
     KeyFactory factory = KeyFactory.getInstance("EdDSA");
     return factory.generatePublic(spec);
@@ -147,52 +138,42 @@ public class DnsKeyConverter
    * Given a JCA public key and the ancillary data, generate a DNSKEY record.
    */
   public DNSKEYRecord generateDNSKEYRecord(Name name, int dclass, long ttl,
-                                           int flags, int alg, PublicKey key)
-  {
-    try
-    {
+      int flags, int alg, PublicKey key) {
+    try {
       if (mAlgorithms.baseType(alg) == DnsKeyAlgorithm.EDDSA) {
         return generateEdDSADNSKEYRecord(name, dclass, ttl, flags, alg, key);
       }
       return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
-                              key);
-    }
-    catch (DNSSECException e)
-    {
-      // FIXME: this mimics the behavior of KEYConverter.buildRecord(), which would return null if the algorithm was unknown.
+          key);
+    } catch (DNSSECException e) {
+      // FIXME: this mimics the behavior of KEYConverter.buildRecord(), which would
+      // return null if the algorithm was unknown.
       return null;
     }
   }
 
-
   private DNSKEYRecord generateEdDSADNSKEYRecord(Name name, int dclass, long ttl,
-                                                 int flags, int alg, PublicKey key)
-  {
+      int flags, int alg, PublicKey key) {
     EdDSAPublicKey ed_key = (EdDSAPublicKey) key;
     byte[] key_data = ed_key.getAbyte();
     return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
-                            key_data);
+        key_data);
   }
   // Private Key Specific Parsing routines
 
   /**
    * Convert a PKCS#8 encoded private key into a PrivateKey object.
    */
-  public PrivateKey convertEncodedPrivateKey(byte[] key, int algorithm)
-  {
+  public PrivateKey convertEncodedPrivateKey(byte[] key, int algorithm) {
     PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(key);
-    try
-    {
-      switch (mAlgorithms.baseType(algorithm))
-      {
+    try {
+      switch (mAlgorithms.baseType(algorithm)) {
         case DnsKeyAlgorithm.RSA:
           return mRSAKeyFactory.generatePrivate(spec);
         case DnsKeyAlgorithm.DSA:
           return mDSAKeyFactory.generatePrivate(spec);
       }
-    }
-    catch (GeneralSecurityException e)
-    {
+    } catch (GeneralSecurityException e) {
       e.printStackTrace();
     }
 
@@ -203,14 +184,10 @@ public class DnsKeyConverter
    * A simple wrapper for parsing integers; parse failures result in the
    * supplied default.
    */
-  private static int parseInt(String s, int def)
-  {
-    try
-    {
+  private static int parseInt(String s, int def) {
+    try {
       return Integer.parseInt(s);
-    }
-    catch (NumberFormatException e)
-    {
+    } catch (NumberFormatException e) {
       return def;
     }
   }
@@ -219,37 +196,33 @@ public class DnsKeyConverter
    * @return a JCA private key, given a BIND9-style textual encoding
    */
   public PrivateKey parsePrivateKeyString(String key)
-      throws IOException, NoSuchAlgorithmException
-  {
+      throws IOException, NoSuchAlgorithmException {
     StringTokenizer lines = new StringTokenizer(key, "\n");
 
-    while (lines.hasMoreTokens())
-    {
+    while (lines.hasMoreTokens()) {
       String line = lines.nextToken();
-      if (line == null) continue;
+      if (line == null)
+        continue;
 
-      if (line.startsWith("#")) continue;
+      if (line.startsWith("#"))
+        continue;
 
       String val = value(line);
-      if (val == null) continue;
+      if (val == null)
+        continue;
 
-      if (line.startsWith("Private-key-format: "))
-      {
-        if (!val.equals("v1.2") && !val.equals("v1.3"))
-        {
+      if (line.startsWith("Private-key-format: ")) {
+        if (!val.equals("v1.2") && !val.equals("v1.3")) {
           throw new IOException("unsupported private key format: " + val);
         }
-      }
-      else if (line.startsWith("Algorithm: "))
-      {
+      } else if (line.startsWith("Algorithm: ")) {
         // here we assume that the value looks like # (MNEM) or just the
         // number.
         String[] toks = val.split("\\s", 2);
         val = toks[0];
         int alg = parseInt(val, -1);
 
-        switch (mAlgorithms.baseType(alg))
-        {
+        switch (mAlgorithms.baseType(alg)) {
           case DnsKeyAlgorithm.RSA:
             return parsePrivateRSA(lines);
           case DnsKeyAlgorithm.DSA:
@@ -273,14 +246,16 @@ public class DnsKeyConverter
   /**
    * @return the value part of an "attribute:value" pair. The value is trimmed.
    */
-  private static String value(String av)
-  {
-    if (av == null) return null;
+  private static String value(String av) {
+    if (av == null)
+      return null;
 
     int pos = av.indexOf(':');
-    if (pos < 0) return av;
+    if (pos < 0)
+      return av;
 
-    if (pos >= av.length()) return null;
+    if (pos >= av.length())
+      return null;
 
     return av.substring(pos + 1).trim();
   }
@@ -290,11 +265,10 @@ public class DnsKeyConverter
    * translate into a JCA private key
    *
    * @throws NoSuchAlgorithmException
-   *           if the RSA algorithm is not available.
+   *                                  if the RSA algorithm is not available.
    */
   private PrivateKey parsePrivateRSA(StringTokenizer lines)
-      throws NoSuchAlgorithmException
-  {
+      throws NoSuchAlgorithmException {
     BigInteger modulus = null;
     BigInteger public_exponent = null;
     BigInteger private_exponent = null;
@@ -304,71 +278,54 @@ public class DnsKeyConverter
     BigInteger prime_q_exponent = null;
     BigInteger coefficient = null;
 
-    while (lines.hasMoreTokens())
-    {
+    while (lines.hasMoreTokens()) {
       String line = lines.nextToken();
-      if (line == null) continue;
+      if (line == null)
+        continue;
 
-      if (line.startsWith("#")) continue;
+      if (line.startsWith("#"))
+        continue;
 
       String val = value(line);
-      if (val == null) continue;
+      if (val == null)
+        continue;
 
       byte[] data = base64.fromString(val);
 
-      if (line.startsWith("Modulus: "))
-      {
+      if (line.startsWith("Modulus: ")) {
         modulus = new BigInteger(1, data);
         // printBigIntCompare(data, modulus);
-      }
-      else if (line.startsWith("PublicExponent: "))
-      {
+      } else if (line.startsWith("PublicExponent: ")) {
         public_exponent = new BigInteger(1, data);
         // printBigIntCompare(data, public_exponent);
-      }
-      else if (line.startsWith("PrivateExponent: "))
-      {
+      } else if (line.startsWith("PrivateExponent: ")) {
         private_exponent = new BigInteger(1, data);
         // printBigIntCompare(data, private_exponent);
-      }
-      else if (line.startsWith("Prime1: "))
-      {
+      } else if (line.startsWith("Prime1: ")) {
         prime_p = new BigInteger(1, data);
         // printBigIntCompare(data, prime_p);
-      }
-      else if (line.startsWith("Prime2: "))
-      {
+      } else if (line.startsWith("Prime2: ")) {
         prime_q = new BigInteger(1, data);
         // printBigIntCompare(data, prime_q);
-      }
-      else if (line.startsWith("Exponent1: "))
-      {
+      } else if (line.startsWith("Exponent1: ")) {
         prime_p_exponent = new BigInteger(1, data);
-      }
-      else if (line.startsWith("Exponent2: "))
-      {
+      } else if (line.startsWith("Exponent2: ")) {
         prime_q_exponent = new BigInteger(1, data);
-      }
-      else if (line.startsWith("Coefficient: "))
-      {
+      } else if (line.startsWith("Coefficient: ")) {
         coefficient = new BigInteger(1, data);
       }
     }
 
-    try
-    {
+    try {
       KeySpec spec = new RSAPrivateCrtKeySpec(modulus, public_exponent,
-                                              private_exponent, prime_p,
-                                              prime_q, prime_p_exponent,
-                                              prime_q_exponent, coefficient);
-      if (mRSAKeyFactory == null)
-      {
+          private_exponent, prime_p,
+          prime_q, prime_p_exponent,
+          prime_q_exponent, coefficient);
+      if (mRSAKeyFactory == null) {
         mRSAKeyFactory = KeyFactory.getInstance("RSA");
       }
       return mRSAKeyFactory.generatePrivate(spec);
-    }
-    catch (InvalidKeySpecException e)
-    {
+    } catch (InvalidKeySpecException e) {
       e.printStackTrace();
       return null;
     }
@@ -379,52 +336,44 @@ public class DnsKeyConverter
    * info and translate it into a JCA private key.
    *
    * @throws NoSuchAlgorithmException
-   *           if the DH algorithm is not available.
+   *                                  if the DH algorithm is not available.
    */
   private PrivateKey parsePrivateDH(StringTokenizer lines)
-      throws NoSuchAlgorithmException
-  {
+      throws NoSuchAlgorithmException {
     BigInteger p = null;
     BigInteger x = null;
     BigInteger g = null;
 
-    while (lines.hasMoreTokens())
-    {
+    while (lines.hasMoreTokens()) {
       String line = lines.nextToken();
-      if (line == null) continue;
+      if (line == null)
+        continue;
 
-      if (line.startsWith("#")) continue;
+      if (line.startsWith("#"))
+        continue;
 
       String val = value(line);
-      if (val == null) continue;
+      if (val == null)
+        continue;
 
       byte[] data = base64.fromString(val);
 
-      if (line.startsWith("Prime(p): "))
-      {
+      if (line.startsWith("Prime(p): ")) {
         p = new BigInteger(1, data);
-      }
-      else if (line.startsWith("Generator(g): "))
-      {
+      } else if (line.startsWith("Generator(g): ")) {
         g = new BigInteger(1, data);
-      }
-      else if (line.startsWith("Private_value(x): "))
-      {
+      } else if (line.startsWith("Private_value(x): ")) {
         x = new BigInteger(1, data);
       }
     }
 
-    try
-    {
+    try {
       KeySpec spec = new DHPrivateKeySpec(x, p, g);
-      if (mDHKeyFactory == null)
-      {
+      if (mDHKeyFactory == null) {
         mDHKeyFactory = KeyFactory.getInstance("DH");
       }
       return mDHKeyFactory.generatePrivate(spec);
-    }
-    catch (InvalidKeySpecException e)
-    {
+    } catch (InvalidKeySpecException e) {
       e.printStackTrace();
       return null;
     }
@@ -435,57 +384,47 @@ public class DnsKeyConverter
    * info and translate it into a JCA private key.
    *
    * @throws NoSuchAlgorithmException
-   *           if the DSA algorithm is not available.
+   *                                  if the DSA algorithm is not available.
    */
   private PrivateKey parsePrivateDSA(StringTokenizer lines)
-      throws NoSuchAlgorithmException
-  {
+      throws NoSuchAlgorithmException {
     BigInteger p = null;
     BigInteger q = null;
     BigInteger g = null;
     BigInteger x = null;
 
-    while (lines.hasMoreTokens())
-    {
+    while (lines.hasMoreTokens()) {
       String line = lines.nextToken();
-      if (line == null) continue;
+      if (line == null)
+        continue;
 
-      if (line.startsWith("#")) continue;
+      if (line.startsWith("#"))
+        continue;
 
       String val = value(line);
-      if (val == null) continue;
+      if (val == null)
+        continue;
 
       byte[] data = base64.fromString(val);
 
-      if (line.startsWith("Prime(p): "))
-      {
+      if (line.startsWith("Prime(p): ")) {
         p = new BigInteger(1, data);
-      }
-      else if (line.startsWith("Subprime(q): "))
-      {
+      } else if (line.startsWith("Subprime(q): ")) {
         q = new BigInteger(1, data);
-      }
-      else if (line.startsWith("Base(g): "))
-      {
+      } else if (line.startsWith("Base(g): ")) {
         g = new BigInteger(1, data);
-      }
-      else if (line.startsWith("Private_value(x): "))
-      {
+      } else if (line.startsWith("Private_value(x): ")) {
         x = new BigInteger(1, data);
       }
     }
 
-    try
-    {
+    try {
       KeySpec spec = new DSAPrivateKeySpec(x, p, q, g);
-      if (mDSAKeyFactory == null)
-      {
+      if (mDSAKeyFactory == null) {
         mDSAKeyFactory = KeyFactory.getInstance("DSA");
       }
       return mDSAKeyFactory.generatePrivate(spec);
-    }
-    catch (InvalidKeySpecException e)
-    {
+    } catch (InvalidKeySpecException e) {
       e.printStackTrace();
       return null;
     }
@@ -494,52 +433,48 @@ public class DnsKeyConverter
   /**
    * Given the remaining lines in a BIND9-style ECDSA private key, parse the key
    * info and translate it into a JCA private key object.
+   * 
    * @param lines The remaining lines in a private key file (after
    * @throws NoSuchAlgorithmException
-   *           If elliptic curve is not available.
+   *                                  If elliptic curve is not available.
    */
   private PrivateKey parsePrivateECDSA(StringTokenizer lines, int algorithm)
-      throws NoSuchAlgorithmException
-  {
+      throws NoSuchAlgorithmException {
     BigInteger s = null;
 
-    while (lines.hasMoreTokens())
-    {
+    while (lines.hasMoreTokens()) {
       String line = lines.nextToken();
-      if (line == null) continue;
+      if (line == null)
+        continue;
 
-      if (line.startsWith("#")) continue;
+      if (line.startsWith("#"))
+        continue;
 
       String val = value(line);
-      if (val == null) continue;
+      if (val == null)
+        continue;
 
       byte[] data = base64.fromString(val);
 
-      if (line.startsWith("PrivateKey: "))
-      {
+      if (line.startsWith("PrivateKey: ")) {
         s = new BigInteger(1, data);
       }
     }
 
-    if (mECKeyFactory == null)
-    {
+    if (mECKeyFactory == null) {
       mECKeyFactory = KeyFactory.getInstance("EC");
     }
     ECParameterSpec ec_spec = mAlgorithms.getEllipticCurveParams(algorithm);
-    if (ec_spec == null)
-    {
+    if (ec_spec == null) {
       throw new NoSuchAlgorithmException("DNSSEC algorithm " + algorithm +
-                                         " is not a recognized Elliptic Curve algorithm");
+          " is not a recognized Elliptic Curve algorithm");
     }
 
     KeySpec spec = new ECPrivateKeySpec(s, ec_spec);
 
-    try
-    {
+    try {
       return mECKeyFactory.generatePrivate(spec);
-    }
-    catch (InvalidKeySpecException e)
-    {
+    } catch (InvalidKeySpecException e) {
       e.printStackTrace();
       return null;
     }
@@ -548,52 +483,48 @@ public class DnsKeyConverter
   /**
    * Given the remaining lines in a BIND9-style ECDSA private key, parse the key
    * info and translate it into a JCA private key object.
+   * 
    * @param lines The remaining lines in a private key file (after
    * @throws NoSuchAlgorithmException
-   *           If elliptic curve is not available.
+   *                                  If elliptic curve is not available.
    */
   private PrivateKey parsePrivateEdDSA(StringTokenizer lines, int algorithm)
-      throws NoSuchAlgorithmException
-  {
+      throws NoSuchAlgorithmException {
     byte[] seed = null;
 
-    while (lines.hasMoreTokens())
-    {
+    while (lines.hasMoreTokens()) {
       String line = lines.nextToken();
-      if (line == null) continue;
+      if (line == null)
+        continue;
 
-      if (line.startsWith("#")) continue;
+      if (line.startsWith("#"))
+        continue;
 
       String val = value(line);
-      if (val == null) continue;
+      if (val == null)
+        continue;
 
       byte[] data = base64.fromString(val);
 
-      if (line.startsWith("PrivateKey: "))
-      {
+      if (line.startsWith("PrivateKey: ")) {
         seed = data;
       }
     }
 
-    if (mEdKeyFactory == null)
-    {
+    if (mEdKeyFactory == null) {
       mEdKeyFactory = KeyFactory.getInstance("EdDSA");
     }
     EdDSAParameterSpec ed_spec = mAlgorithms.getEdwardsCurveParams(algorithm);
-    if (ed_spec == null)
-    {
+    if (ed_spec == null) {
       throw new NoSuchAlgorithmException("DNSSEC algorithm " + algorithm +
-                                         " is not a recognized Edwards Curve algorithm");
+          " is not a recognized Edwards Curve algorithm");
     }
 
     KeySpec spec = new EdDSAPrivateKeySpec(seed, ed_spec);
 
-    try
-    {
+    try {
       return mEdKeyFactory.generatePrivate(spec);
-    }
-    catch (InvalidKeySpecException e)
-    {
+    } catch (InvalidKeySpecException e) {
       e.printStackTrace();
       return null;
     }
@@ -603,26 +534,16 @@ public class DnsKeyConverter
    * Given a private key and public key, generate the BIND9 style private key
    * format.
    */
-  public String generatePrivateKeyString(PrivateKey priv, PublicKey pub, int alg)
-  {
-    if (priv instanceof RSAPrivateCrtKey)
-    {
+  public String generatePrivateKeyString(PrivateKey priv, PublicKey pub, int alg) {
+    if (priv instanceof RSAPrivateCrtKey) {
       return generatePrivateRSA((RSAPrivateCrtKey) priv, alg);
-    }
-    else if (priv instanceof DSAPrivateKey && pub instanceof DSAPublicKey)
-    {
+    } else if (priv instanceof DSAPrivateKey && pub instanceof DSAPublicKey) {
       return generatePrivateDSA((DSAPrivateKey) priv, (DSAPublicKey) pub, alg);
-    }
-    else if (priv instanceof DHPrivateKey && pub instanceof DHPublicKey)
-    {
+    } else if (priv instanceof DHPrivateKey && pub instanceof DHPublicKey) {
       return generatePrivateDH((DHPrivateKey) priv, (DHPublicKey) pub, alg);
-    }
-    else if (priv instanceof ECPrivateKey && pub instanceof ECPublicKey)
-    {
+    } else if (priv instanceof ECPrivateKey && pub instanceof ECPublicKey) {
       return generatePrivateEC((ECPrivateKey) priv, (ECPublicKey) pub, alg);
-    }
-    else if (priv instanceof EdDSAPrivateKey && pub instanceof EdDSAPublicKey)
-    {
+    } else if (priv instanceof EdDSAPrivateKey && pub instanceof EdDSAPublicKey) {
       return generatePrivateED((EdDSAPrivateKey) priv, (EdDSAPublicKey) pub, alg);
     }
 
@@ -632,12 +553,10 @@ public class DnsKeyConverter
   /**
    * Convert from 'unsigned' big integer to original 'signed format' in Base64
    */
-  private static String b64BigInt(BigInteger i)
-  {
+  private static String b64BigInt(BigInteger i) {
     byte[] orig_bytes = i.toByteArray();
 
-    if (orig_bytes[0] != 0 || orig_bytes.length == 1)
-    {
+    if (orig_bytes[0] != 0 || orig_bytes.length == 1) {
       return base64.toString(orig_bytes);
     }
 
@@ -651,8 +570,7 @@ public class DnsKeyConverter
    * Given a RSA private key (in Crt format), return the BIND9-style text
    * encoding.
    */
-  private String generatePrivateRSA(RSAPrivateCrtKey key, int algorithm)
-  {
+  private String generatePrivateRSA(RSAPrivateCrtKey key, int algorithm) {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
 
@@ -681,8 +599,7 @@ public class DnsKeyConverter
 
   /** Given a DH key pair, return the BIND9-style text encoding */
   private String generatePrivateDH(DHPrivateKey key, DHPublicKey pub,
-                                   int algorithm)
-  {
+      int algorithm) {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
 
@@ -705,8 +622,7 @@ public class DnsKeyConverter
 
   /** Given a DSA key pair, return the BIND9-style text encoding */
   private String generatePrivateDSA(DSAPrivateKey key, DSAPublicKey pub,
-                                    int algorithm)
-  {
+      int algorithm) {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
 
@@ -733,8 +649,7 @@ public class DnsKeyConverter
    * Given an elliptic curve key pair, and the actual algorithm (which will
    * describe the curve used), return the BIND9-style text encoding.
    */
-  private String generatePrivateEC(ECPrivateKey priv, ECPublicKey pub, int alg)
-  {
+  private String generatePrivateEC(ECPrivateKey priv, ECPublicKey pub, int alg) {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
 
@@ -751,8 +666,7 @@ public class DnsKeyConverter
    * Given an edwards curve key pair, and the actual algorithm (which will
    * describe the curve used), return the BIND9-style text encoding.
    */
-  private String generatePrivateED(EdDSAPrivateKey priv, EdDSAPublicKey pub, int alg)
-  {
+  private String generatePrivateED(EdDSAPrivateKey priv, EdDSAPublicKey pub, int alg) {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
 
