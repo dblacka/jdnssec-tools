@@ -4,3 +4,6 @@ build
 .gradle
 jdnssec-tools*.tar.gz
 docs
+test-zones
+settings.json
+.settings
