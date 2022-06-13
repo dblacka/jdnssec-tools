@@ -34,14 +34,14 @@ import org.xbill.DNS.Type;
 /**
  * This class contains a bunch of utility methods that are generally useful in
  * manipulating zones.
- * 
+ *
  * @author David Blacka
  */
 
 public class ZoneUtils {
   /**
    * Load a zone file.
-   * 
+   *
    * @param zonefile
    *                 the filename/path of the zonefile to read.
    * @param origin
@@ -65,7 +65,7 @@ public class ZoneUtils {
       Record r = null;
 
       while ((r = m.nextRecord()) != null) {
-        
+
         records.add(r);
       }
     } catch (IOException e) {
@@ -77,7 +77,7 @@ public class ZoneUtils {
 
   /**
    * Write the records out into a zone file.
-   * 
+   *
    * @param records
    *                 a {@link java.util.List} of {@link org.xbill.DNS.Record}
    *                 objects
@@ -104,7 +104,7 @@ public class ZoneUtils {
 
   /**
    * Given just the list of records, determine the zone name (origin).
-   * 
+   *
    * @param records
    *                a list of {@link org.xbill.DNS.Record} objects.
    * @return the zone name, if found. null if one couldn't be found.

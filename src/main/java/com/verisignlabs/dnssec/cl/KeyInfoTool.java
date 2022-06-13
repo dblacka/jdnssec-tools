@@ -31,7 +31,7 @@ import com.verisignlabs.dnssec.security.DnsKeyPair;
 
 /**
  * This class forms the command line implementation of a key introspection tool.
- * 
+ *
  * @author David Blacka
  */
 public class KeyInfoTool extends CLBase {
@@ -51,10 +51,12 @@ public class KeyInfoTool extends CLBase {
     /**
      * Set up the command line options.
      */
+    @Override
     protected void setupOptions(Options opts) {
       // no special options at the moment.
     }
 
+    @Override
     protected void processOptions(CommandLine cli) throws ParseException {
       keynames = cli.getArgs();
 
@@ -67,9 +69,9 @@ public class KeyInfoTool extends CLBase {
 
   public void execute() throws Exception {
     for (int i = 0; i < state.keynames.length; ++i) {
-      String keyname = state.keynames[i];
-      DnsKeyPair key = BINDKeyUtils.loadKey(keyname, null);
-      DNSKEYRecord dnskey = key.getDNSKEYRecord();
+      String          keyname   = state.keynames[i];
+      DnsKeyPair      key       = BINDKeyUtils.loadKey(keyname, null);
+      DNSKEYRecord    dnskey    = key.getDNSKEYRecord();
       DnsKeyAlgorithm dnskeyalg = DnsKeyAlgorithm.getInstance();
 
       boolean isSEP = (dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) != 0;
@@ -83,6 +85,7 @@ public class KeyInfoTool extends CLBase {
       System.out.println("ID: " + dnskey.getFootprint());
       System.out.println("KeyFileBase: " + BINDKeyUtils.keyFileBase(key));
       int basetype = dnskeyalg.baseType(dnskey.getAlgorithm());
+
       switch (basetype) {
         case DnsKeyAlgorithm.RSA: {
           RSAPublicKey pub = (RSAPublicKey) key.getPublic();

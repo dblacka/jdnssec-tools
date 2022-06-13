@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2005, 2022 Verisign. All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer. 2. Redistributions in
  * binary form must reproduce the above copyright notice, this list of
@@ -11,7 +11,7 @@
  * materials provided with the distribution. 3. The name of the author may not
  * be used to endorse or promote products derived from this software without
  * specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
@@ -22,7 +22,7 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *  
+ *
  */
 
 package com.verisignlabs.dnssec.security;
@@ -38,7 +38,7 @@ import org.xbill.DNS.utils.base32;
  * This is a class representing a "prototype NSEC3" resource record. These are
  * used as an intermediate stage (in zone signing) between determining the list
  * of NSEC3 records and forming them into a viable chain.
- * 
+ *
  * @author David Blacka
  */
 public class ProtoNSEC3 {
@@ -99,6 +99,10 @@ public class ProtoNSEC3 {
     }
 
     return name;
+  }
+
+  public Name getOriginalOwnerName() {
+    return this.originalOwner;
   }
 
   public byte[] getNext() {
@@ -169,18 +173,7 @@ public class ProtoNSEC3 {
   }
 
   public NSEC3Record getNSEC3Record() {
-    // String comment = (originalOwner == null) ? "(unknown original ownername)"
-    // : originalOwner.toString();
-    // return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations,
-    // salt,
-    // next, getTypes(), comment);
-
-    // FIXME: this used to use a custom hack of dnsjava that allowed a "comment"
-    // field.
-    // Either create the same hack in the new dnsjava, or (preferrably) find another
-    // way.
-    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt,
-        next, getTypes());
+    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt, next, getTypes());
   }
 
   public void mergeTypes(TypeMap new_types) {
@@ -205,7 +198,7 @@ public class ProtoNSEC3 {
   }
 
   public String toString() {
-    StringBuffer sb = new StringBuffer();
+    StringBuilder sb = new StringBuilder();
     sb.append(getName());
     sb.append(' ');
     sb.append(ttl);

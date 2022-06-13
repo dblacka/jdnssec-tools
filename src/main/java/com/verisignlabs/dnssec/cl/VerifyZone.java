@@ -20,8 +20,8 @@ package com.verisignlabs.dnssec.cl;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
+import org.apache.commons.cli.Option;
 import org.xbill.DNS.Record;
 
 import com.verisignlabs.dnssec.security.ZoneUtils;
@@ -52,28 +52,18 @@ public class VerifyZone extends CLBase {
       super("jdnssec-verifyzone [..options..] zonefile");
     }
 
+    @Override
     protected void setupOptions(Options opts) {
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("sig-start-fudge");
-      OptionBuilder.withArgName("seconds");
-      OptionBuilder.withDescription("'fudge' RRSIG inception times by 'seconds' seconds.");
-      opts.addOption(OptionBuilder.create('S'));
-
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("sig-expire-fudge");
-      OptionBuilder.withArgName("seconds");
-      OptionBuilder.withDescription("'fudge' RRSIG expiration times by 'seconds' seconds.");
-      opts.addOption(OptionBuilder.create('E'));
-
-      OptionBuilder.withLongOpt("ignore-time");
-      OptionBuilder.withDescription("Ignore RRSIG inception and expiration time errors.");
-      opts.addOption(OptionBuilder.create());
-
-      OptionBuilder.withLongOpt("ignore-duplicate-rrs");
-      OptionBuilder.withDescription("Ignore duplicate record errors.");
-      opts.addOption(OptionBuilder.create());
+      opts.addOption(Option.builder("S").optionalArg(true).argName("seconds").longOpt("sig-start-fudge")
+          .desc("'fudge' RRSIG inception ties by 'seconds'").build());
+      opts.addOption(Option.builder("E").optionalArg(true).argName("seconds").longOpt("sig-expire-fudge")
+          .desc("'fudge' RRSIG expiration times by 'seconds'").build());
+      opts.addOption(
+          Option.builder().longOpt("ignore-time").desc("Ignore RRSIG inception and expiration time errors.").build());
+      opts.addOption(Option.builder().longOpt("ignore-duplicate-rrs").desc("Ignore duplicate record errors.").build());
     }
 
+    @Override
     protected void processOptions(CommandLine cli) {
       if (cli.hasOption("ignore-time")) {
         ignoreTime = true;
@@ -99,18 +89,18 @@ public class VerifyZone extends CLBase {
         }
       }
 
-      String[] cl_args = cli.getArgs();
+      String[] args = cli.getArgs();
 
-      if (cl_args.length < 1) {
+      if (args.length < 1) {
         System.err.println("error: missing zone file");
         usage();
       }
 
-      zonefile = cl_args[0];
+      zonefile = args[0];
 
-      if (cl_args.length >= 2) {
-        keyfiles = new String[cl_args.length - 1];
-        System.arraycopy(cl_args, 1, keyfiles, 0, keyfiles.length);
+      if (args.length >= 2) {
+        keyfiles = new String[args.length - 1];
+        System.arraycopy(args, 1, keyfiles, 0, keyfiles.length);
       }
     }
   }

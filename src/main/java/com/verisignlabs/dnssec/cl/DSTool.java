@@ -21,7 +21,7 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.xbill.DNS.DLVRecord;
 import org.xbill.DNS.DNSKEYRecord;
@@ -49,7 +49,7 @@ public class DSTool extends CLBase {
     public boolean createDLV = false;
     public String outputfile = null;
     public String keyname = null;
-    public int digest_id = DNSSEC.Digest.SHA1;
+    public int digestId = DNSSEC.Digest.SHA1;
 
     public CLIState() {
       super("jdnssec-dstool [..options..] keyfile");
@@ -60,34 +60,31 @@ public class DSTool extends CLBase {
      * 
      * @return a set of command line options.
      */
+    @Override
     protected void setupOptions(Options opts) {
-      OptionBuilder.withLongOpt("dlv");
-      OptionBuilder.withDescription("Generate a DLV record instead.");
-      opts.addOption(OptionBuilder.create());
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withLongOpt("digest");
-      OptionBuilder.withArgName("id");
-      OptionBuilder.withDescription("The Digest ID to use (numerically): either 1 for SHA1 or 2 for SHA256");
-      opts.addOption(OptionBuilder.create('d'));
+      opts.addOption(Option.builder().longOpt("dlv").desc("Generate a DLV record instead.").build());
+      opts.addOption(Option.builder("C").desc("Generate a CDS record instead").build());
+      opts.addOption(Option.builder("d").longOpt("digest").argName("id").desc("The digest algorithm to use").build());
+      opts.addOption(Option.builder("f").hasArg().argName("file").desc("output to file").build());
     }
 
+    @Override
     protected void processOptions(CommandLine cli)
         throws org.apache.commons.cli.ParseException {
       outputfile = cli.getOptionValue('f');
       createDLV = cli.hasOption("dlv");
       String optstr = cli.getOptionValue('d');
       if (optstr != null)
-        digest_id = parseInt(optstr, digest_id);
+        digestId = DNSSEC.Digest.value(optstr);
 
-      String[] cl_args = cli.getArgs();
+      String[] args = cli.getArgs();
 
-      if (cl_args.length < 1) {
+      if (args.length < 1) {
         System.err.println("error: missing key file ");
         usage();
       }
 
-      keyname = cl_args[0];
+      keyname = args[0];
     }
 
   }
@@ -100,7 +97,7 @@ public class DSTool extends CLBase {
       log.warning("DNSKEY is not an SEP-flagged key.");
     }
 
-    DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digest_id, dnskey.getTTL());
+    DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digestId, dnskey.getTTL());
     Record res = ds;
 
     if (state.createDLV) {
@@ -111,7 +108,7 @@ public class DSTool extends CLBase {
       res = dlv;
     }
 
-    if (state.outputfile != null) {
+    if (state.outputfile != null && !state.outputfile.equals("-")) {
       PrintWriter out = new PrintWriter(new FileWriter(state.outputfile));
       out.println(res);
       out.close();

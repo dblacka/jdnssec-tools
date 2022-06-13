@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -60,48 +59,47 @@ public class ZoneFormat extends CLBase {
       super("jdnssec-zoneformat [..options..] zonefile");
     }
 
+    @Override
     protected void setupOptions(Options opts) {
       opts.addOption("N", "nsec3", false,
           "attempt to determine the original ownernames for NSEC3 RRs.");
     }
 
+    @Override
     protected void processOptions(CommandLine cli) throws ParseException {
       if (cli.hasOption('N'))
         assignNSEC3 = true;
 
-      String[] cl_args = cli.getArgs();
+      String[] args = cli.getArgs();
 
-      if (cl_args.length < 1) {
+      if (args.length < 1) {
         System.err.println("error: must specify a zone file");
         usage();
       }
 
-      file = cl_args[0];
+      file = args[0];
     }
   }
 
   private static List<Record> readZoneFile(String filename) throws IOException {
-    Master master = new Master(filename);
+    try (Master master = new Master(filename)) {
+      List<Record> res = new ArrayList<>();
+      Record r = null;
 
-    List<Record> res = new ArrayList<Record>();
-    Record r = null;
+      while ((r = master.nextRecord()) != null) {
+        // Normalize each record by round-tripping it through canonical wire line
+        // format. Mostly this just lowercases names that are subject to it.
+        byte[] wire = r.toWireCanonical();
+        Record canonRec = Record.fromWire(wire, Section.ANSWER);
+        res.add(canonRec);
+      }
 
-    while ((r = master.nextRecord()) != null) {
-      // Normalize each record by round-tripping it through canonical wire line
-      // format. Mostly this just lowercases names that are subject to it.
-      byte[] wire = r.toWireCanonical();
-      Record canon_record = Record.fromWire(wire, Section.ANSWER);
-      res.add(canon_record);
+      return res;
     }
-
-    return res;
   }
 
   private static void formatZone(List<Record> zone) {
-    // Put the zone into a consistent (name and RR type) order.
-    RecordComparator cmp = new RecordComparator();
 
-    Collections.sort(zone, cmp);
 
     for (Record r : zone) {
       System.out.println(r.toString());
@@ -110,13 +108,11 @@ public class ZoneFormat extends CLBase {
 
   private static void determineNSEC3Owners(List<Record> zone)
       throws NoSuchAlgorithmException {
-    // Put the zone into a consistent (name and RR type) order.
-    Collections.sort(zone, new RecordComparator());
 
     // first, find the NSEC3PARAM record -- this is an inefficient linear
     // search, although it should be near the head of the list.
     NSEC3PARAMRecord nsec3param = null;
-    HashMap<String, String> map = new HashMap<String, String>();
+    HashMap<String, String> map = new HashMap<>();
     base32 b32 = new base32(base32.Alphabet.BASE32HEX, false, true);
     Name zonename = null;
 
@@ -133,16 +129,15 @@ public class ZoneFormat extends CLBase {
     }
 
     // If we couldn't determine a zone name, we have an issue.
-    if (zonename == null)
+    if (zonename == null || nsec3param == null) {
+      formatZone(zone);
       return;
-    // If there wasn't one, we have nothing to do.
-    if (nsec3param == null)
-      return;
+    }
 
     // Next pass, calculate a mapping between ownernames and hashnames
-    Name last_name = null;
+    Name lastName = null;
     for (Record r : zone) {
-      if (r.getName().equals(last_name))
+      if (r.getName().equals(lastName))
         continue;
       if (r.getType() == Type.NSEC3)
         continue;
@@ -151,47 +146,43 @@ public class ZoneFormat extends CLBase {
       byte[] hash = nsec3param.hashName(n);
       String hashname = b32.toString(hash);
       map.put(hashname, n.toString().toLowerCase());
-      last_name = n;
+      lastName = n;
 
       // inefficiently create hashes for the possible ancestor ENTs
       for (int i = zonename.labels() + 1; i < n.labels(); ++i) {
         Name parent = new Name(n, n.labels() - i);
-        byte[] parent_hash = nsec3param.hashName(parent);
-        String parent_hashname = b32.toString(parent_hash);
-        if (!map.containsKey(parent_hashname)) {
-          map.put(parent_hashname, parent.toString().toLowerCase());
+        byte[] parentHash = nsec3param.hashName(parent);
+        String parentHashName = b32.toString(parentHash);
+        if (!map.containsKey(parentHashName)) {
+          map.put(parentHashName, parent.toString().toLowerCase());
         }
       }
     }
 
-    // Final pass, assign the names if we can
-    for (ListIterator<Record> i = zone.listIterator(); i.hasNext();) {
-      Record r = i.next();
-      if (r.getType() != Type.NSEC3)
+    // Final pass, output the zone with added comments for the NSEC3 records
+    for (Record r : zone) {
+      if (r.getType() != Type.NSEC3) {
+        System.out.println(r.toString());
         continue;
+      }
+
       NSEC3Record nsec3 = (NSEC3Record) r;
       String hashname = nsec3.getName().getLabelString(0).toLowerCase();
-      String ownername = (String) map.get(hashname);
-
-      // NSEC3Record new_nsec3 = new NSEC3Record(nsec3.getName(), nsec3.getDClass(),
-      // nsec3.getTTL(), nsec3.getHashAlgorithm(),
-      // nsec3.getFlags(), nsec3.getIterations(),
-      // nsec3.getSalt(), nsec3.getNext(),
-      // nsec3.getTypes(), ownername);
-      NSEC3Record new_nsec3 = new NSEC3Record(nsec3.getName(), nsec3.getDClass(),
-          nsec3.getTTL(), nsec3.getHashAlgorithm(),
-          nsec3.getFlags(), nsec3.getIterations(),
-          nsec3.getSalt(), nsec3.getNext(),
-          nsec3.getTypes());
-      i.set(new_nsec3);
+      String ownername = map.get(hashname);
+      System.out.println(r.toString() + " ; " + ownername);
     }
   }
 
   public void execute() throws IOException, NoSuchAlgorithmException {
     List<Record> z = readZoneFile(state.file);
-    if (state.assignNSEC3)
+    // Put the zone into a consistent (name and RR type) order.
+    Collections.sort(z, new RecordComparator());
+
+    if (state.assignNSEC3) {
       determineNSEC3Owners(z);
-    formatZone(z);
+    } else {
+      formatZone(z);
+    }
   }
 
   public static void main(String[] args) {

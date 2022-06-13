@@ -31,11 +31,11 @@ import java.util.logging.Logger;
 import org.apache.commons.cli.AlreadySelectedException;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.PosixParser;
 import org.apache.commons.cli.UnrecognizedOptionException;
 
 import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
@@ -48,7 +48,8 @@ import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
  * subclass variant of the CLIState and call run().
  */
 public abstract class CLBase {
-  protected static Logger log;
+  protected static Logger staticLog = Logger.getLogger(CLBase.class.getName());
+  protected Logger log;
 
   /**
    * This is a very simple log formatter that simply outputs the log level and
@@ -100,18 +101,12 @@ public abstract class CLBase {
       opts.addOption("m", "multiline", false,
           "Output DNS records using 'multiline' format");
 
-      OptionBuilder.hasOptionalArg();
-      OptionBuilder.withLongOpt("verbose");
-      OptionBuilder.withArgName("level");
-      OptionBuilder.withDescription("verbosity level -- 0 is silence, 3 is info, "
-          + "5 is debug information, 6 is trace information. default is level 2 (warning)");
-      opts.addOption(OptionBuilder.create('v'));
+      opts.addOption(Option.builder("v").longOpt("verbose").argName("level").optionalArg(true).desc(
+          "verbosity level -- 0 is silence, 3 is info, 5 is debug information, 6 is trace information. default is level 2 (warning)")
+          .build());
 
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("alias:original:mnemonic");
-      OptionBuilder.withLongOpt("alg-alias");
-      OptionBuilder.withDescription("Define an alias for an algorithm");
-      opts.addOption(OptionBuilder.create('A'));
+      opts.addOption(Option.builder("A").hasArg().argName("alias:original:mnemonic").longOpt("alg-alias")
+          .desc("Define an alias for an algorithm").build());
 
       setupOptions(opts);
     }
@@ -138,9 +133,9 @@ public abstract class CLBase {
      *             The command line arguments.
      * @throws ParseException
      */
-    public void parseCommandLine(String args[]) throws ParseException {
-      CommandLineParser cli_parser = new PosixParser();
-      CommandLine cli = cli_parser.parse(opts, args);
+    public void parseCommandLine(String[] args) throws ParseException {
+      CommandLineParser parser = new DefaultParser();
+      CommandLine cli = parser.parse(opts, args);
 
       if (cli.hasOption('h')) {
         usage();
@@ -246,8 +241,7 @@ public abstract class CLBase {
 
   public static int parseInt(String s, int def) {
     try {
-      int v = Integer.parseInt(s);
-      return v;
+      return Integer.parseInt(s);
     } catch (NumberFormatException e) {
       return def;
     }
@@ -255,8 +249,7 @@ public abstract class CLBase {
 
   public static long parseLong(String s, long def) {
     try {
-      long v = Long.parseLong(s);
-      return v;
+      return Long.parseLong(s);
     } catch (NumberFormatException e) {
       return def;
     }
@@ -285,10 +278,12 @@ public abstract class CLBase {
     }
 
     if (duration.startsWith("+")) {
-      long offset = (long) parseInt(duration.substring(1), 0);
+      long offset = parseLong(duration.substring(1), 0);
       return start.plusSeconds(offset);
     }
 
+    // This is a heuristic to distinguish UNIX epoch times from the zone file
+    // format standard (which is length == 14)
     if (duration.length() <= 10) {
       long epoch = parseLong(duration, 0);
       return Instant.ofEpochSecond(epoch);

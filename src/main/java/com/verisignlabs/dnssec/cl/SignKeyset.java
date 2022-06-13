@@ -22,10 +22,11 @@ import java.io.FileFilter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRSIGRecord;
@@ -69,35 +70,19 @@ public class SignKeyset extends CLBase {
     /**
      * Set up the command line options.
      */
+    @Override
     protected void setupOptions(Options opts) {
       // boolean options
       opts.addOption("a", "verify", false, "verify generated signatures>");
 
       // Argument options
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("dir");
-      OptionBuilder.withLongOpt("key-directory");
-      OptionBuilder.withDescription("directory to find key files (default '.').");
-      opts.addOption(OptionBuilder.create('D'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("time/offset");
-      OptionBuilder.withLongOpt("start-time");
-      OptionBuilder.withDescription("signature starting time (default is now - 1 hour)");
-      opts.addOption(OptionBuilder.create('s'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("time/offset");
-      OptionBuilder.withLongOpt("expire-time");
-      OptionBuilder.withDescription("signature expiration time (default is start-time + 30 days).");
-      opts.addOption(OptionBuilder.create('e'));
-
-      OptionBuilder.hasArg();
-      OptionBuilder.withArgName("outfile");
-      OptionBuilder.withDescription("file the signed keyset is written to.");
-      opts.addOption(OptionBuilder.create('f'));
+      opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory").desc("directory where key files are found (default '.').").build());
+      opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time").desc("signature starting time (default is now - 1 hour)").build());
+      opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time").desc("signature expiration time (default is start-time + 30 days)").build());
+      opts.addOption(Option.builder("f").hasArg().argName("outfile").desc("file the signed keyset is written to").build());
     }
 
+    @Override
     protected void processOptions(CommandLine cli)
         throws org.apache.commons.cli.ParseException {
       String optstr = null;
@@ -146,15 +131,13 @@ public class SignKeyset extends CLBase {
   /**
    * Verify the generated signatures.
    * 
-   * @param zonename
-   *                 the origin name of the zone.
    * @param records
    *                 a list of {@link org.xbill.DNS.Record}s.
    * @param keypairs
    *                 a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
-  private static boolean verifySigs(Name zonename, List<Record> records,
+  private static boolean verifySigs(List<Record> records,
       List<DnsKeyPair> keypairs) {
     boolean secure = true;
 
@@ -176,7 +159,7 @@ public class SignKeyset extends CLBase {
       boolean result = verifier.verify(rrset);
 
       if (!result) {
-        log.fine("Signatures did not verify for RRset: " + rrset);
+        staticLog.fine("Signatures did not verify for RRset: " + rrset);
         secure = false;
       }
     }
@@ -191,25 +174,25 @@ public class SignKeyset extends CLBase {
    *                    a string array containing the base names or paths of the
    *                    keys
    *                    to be loaded.
-   * @param start_index
+   * @param startIndex
    *                    the starting index of keyfiles string array to use. This
    *                    allows us to use the straight command line argument array.
    * @param inDirectory
    *                    the directory to look in (may be null).
    * @return a list of keypair objects.
    */
-  private static List<DnsKeyPair> getKeys(String[] keyfiles, int start_index,
+  private static List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
       File inDirectory) throws IOException {
     if (keyfiles == null)
-      return null;
+      return Collections.emptyList();
 
-    int len = keyfiles.length - start_index;
+    int len = keyfiles.length - startIndex;
     if (len <= 0)
-      return null;
+      return Collections.emptyList();
 
-    ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>(len);
+    ArrayList<DnsKeyPair> keys = new ArrayList<>(len);
 
-    for (int i = start_index; i < keyfiles.length; i++) {
+    for (int i = startIndex; i < keyfiles.length; i++) {
       DnsKeyPair k = BINDKeyUtils.loadKeyPair(keyfiles[i], inDirectory);
       if (k != null)
         keys.add(k);
@@ -229,9 +212,7 @@ public class SignKeyset extends CLBase {
       if (!pathname.isFile())
         return false;
       String name = pathname.getName();
-      if (name.startsWith(prefix) && name.endsWith(".private"))
-        return true;
-      return false;
+      return (name.startsWith(prefix) && name.endsWith(".private"));
     }
   }
 
@@ -246,28 +227,26 @@ public class SignKeyset extends CLBase {
     File[] files = inDirectory.listFiles(filter);
 
     // read in all of the records
-    ArrayList<DnsKeyPair> keys = new ArrayList<DnsKeyPair>();
+    ArrayList<DnsKeyPair> keys = new ArrayList<>();
     for (int i = 0; i < files.length; i++) {
       DnsKeyPair p = BINDKeyUtils.loadKeyPair(files[i].getName(), inDirectory);
       keys.add(p);
     }
 
-    if (keys.size() > 0)
-      return keys;
-    return null;
+    return keys;
   }
 
   public void execute() throws Exception {
     // Read in the zone
     List<Record> records = ZoneUtils.readZoneFile(state.inputfile, null);
-    if (records == null || records.size() == 0) {
+    if (records == null || records.isEmpty()) {
       System.err.println("error: empty keyset file");
       state.usage();
     }
 
     // Make sure that all records are DNSKEYs with the same name.
-    Name keysetName = null;
-    RRset keyset = new RRset();
+    Name  keysetName = null;
+    RRset keyset     = new RRset();
 
     for (Record r : records) {
       if (r.getType() != Type.DNSKEY) {
@@ -300,9 +279,10 @@ public class SignKeyset extends CLBase {
     }
 
     // If there *still* aren't any ZSKs defined, bail.
-    if (keypairs == null || keypairs.size() == 0) {
+    if (keypairs == null || keypairs.isEmpty() || keysetName == null) {
       System.err.println("error: No signing keys could be determined.");
       state.usage();
+      return;
     }
 
     // default the output file, if not set.
@@ -322,27 +302,25 @@ public class SignKeyset extends CLBase {
     }
 
     // write out the signed RRset
-    List<Record> signed_records = new ArrayList<Record>();
+    List<Record> signedRecords = new ArrayList<>();
     for (Record r : keyset.rrs()) {
-      signed_records.add(r);
+      signedRecords.add(r);
     }
     for (RRSIGRecord s : keyset.sigs()) {
-      signed_records.add(s);
+      signedRecords.add(s);
     }
 
     // write out the signed zone
-    ZoneUtils.writeZoneFile(signed_records, state.outputfile);
+    ZoneUtils.writeZoneFile(signedRecords, state.outputfile);
 
     if (state.verifySigs) {
       log.fine("verifying generated signatures");
-      boolean res = verifySigs(keysetName, signed_records, keypairs);
+      boolean res = verifySigs(signedRecords, keypairs);
 
       if (res) {
         System.out.println("Generated signatures verified");
-        // log.info("Generated signatures verified");
       } else {
         System.out.println("Generated signatures did not verify.");
-        // log.warn("Generated signatures did not verify.");
       }
     }
 
