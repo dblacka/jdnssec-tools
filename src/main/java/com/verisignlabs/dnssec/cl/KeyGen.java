@@ -100,6 +100,12 @@ public class KeyGen extends CLBase {
       OptionBuilder.withArgName("dir");
       OptionBuilder.withDescription("place generated key files in this " + "directory");
       opts.addOption(OptionBuilder.create('d'));
+
+      OptionBuilder.hasArg();
+      OptionBuilder.withLongOpt("ttl");
+      OptionBuilder.withArgName("TTL");
+      OptionBuilder.withDescription("use this TTL for the generated DNSKEY records (default: 86400)");
+      opts.addOption(OptionBuilder.create());
     }
 
     protected void processOptions(CommandLine cli)
