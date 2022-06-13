@@ -354,8 +354,9 @@ public class SignZone extends CLBase {
 
     for (int i = start_index; i < keyfiles.length; i++) {
       DnsKeyPair k = BINDKeyUtils.loadKeyPair(keyfiles[i], inDirectory);
-      if (k != null)
+      if (k != null) {
         keys.add(k);
+      }
     }
 
     return keys;

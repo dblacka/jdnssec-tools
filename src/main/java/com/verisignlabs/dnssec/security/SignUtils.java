@@ -774,7 +774,7 @@ public class SignUtils {
     for (Record r : records) {
       if (r.getType() == Type.SOA) {
         SOARecord soa = (SOARecord) r;
-        nsec_ttl = soa.getMinimum();
+        nsec_ttl = Math.min(soa.getMinimum(), soa.getTTL());
         break;
       }
     }
@@ -915,9 +915,9 @@ public class SignUtils {
 
       if (r_type == Type.SOA) {
         SOARecord soa = (SOARecord) r;
-        nsec3_ttl = soa.getMinimum();
+        nsec3_ttl = Math.min(soa.getMinimum(), soa.getTTL());
         if (nsec3param_ttl < 0) {
-          nsec3param_ttl = soa.getTTL();
+          nsec3param_ttl = nsec3_ttl;
         }
       }
 
@@ -1030,9 +1030,9 @@ public class SignUtils {
 
       if (r_type == Type.SOA) {
         SOARecord soa = (SOARecord) r;
-        nsec3_ttl = soa.getMinimum();
+        nsec3_ttl = Math.min(soa.getMinimum(), soa.getTTL());
         if (nsec3param_ttl < 0) {
-          nsec3param_ttl = soa.getTTL();
+          nsec3param_ttl = nsec3_ttl;
         }
       }
 
