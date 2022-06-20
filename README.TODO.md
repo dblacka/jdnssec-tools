@@ -11,3 +11,5 @@ This bit of code has been around since approximately 2005, and has been in "mini
   * allowing for an external sort once the data is shown to be larger than X, and/or
   * allowing for a memory-constrained internal sort that uses disk, and/or,
   * figuring out how to let the JVM use *a lot* of memory.
+* Add support for algorithm 16, perhaps refactor algorithm 15 support using bouncycastle.
+  * Note that our current dnsjava version, 3.5.1 has some support, although it isn't clear if it has sign/verify support.
