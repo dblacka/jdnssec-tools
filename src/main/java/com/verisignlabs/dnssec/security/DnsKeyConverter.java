@@ -172,6 +172,8 @@ public class DnsKeyConverter {
           return mRSAKeyFactory.generatePrivate(spec);
         case DnsKeyAlgorithm.DSA:
           return mDSAKeyFactory.generatePrivate(spec);
+        default:
+          return null;
       }
     } catch (GeneralSecurityException e) {
       e.printStackTrace();

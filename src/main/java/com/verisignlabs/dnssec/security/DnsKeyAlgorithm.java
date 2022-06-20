@@ -73,13 +73,13 @@ public class DnsKeyAlgorithm {
   // Our base algorithm numbers. This is a normalization of the DNSSEC
   // algorithms (which are really signature algorithms). Thus RSASHA1,
   // RSASHA256, etc. all boil down to 'RSA' here.
-  public static final int UNKNOWN = -1;
-  public static final int RSA = 1;
-  public static final int DH = 2;
-  public static final int DSA = 3;
+  public static final int UNKNOWN  = -1;
+  public static final int RSA      = 1;
+  public static final int DH       = 2;
+  public static final int DSA      = 3;
   public static final int ECC_GOST = 4;
-  public static final int ECDSA = 5;
-  public static final int EDDSA = 6;
+  public static final int ECDSA    = 5;
+  public static final int EDDSA    = 6;
 
   private static class AlgEntry {
     public int dnssecAlgorithm;
@@ -94,20 +94,20 @@ public class DnsKeyAlgorithm {
   }
 
   private static class ECAlgEntry extends AlgEntry {
-    public ECParameterSpec ec_spec;
+    public ECParameterSpec ecSpec;
 
     public ECAlgEntry(int algorithm, String sigName, int baseType, ECParameterSpec spec) {
       super(algorithm, sigName, baseType);
-      this.ec_spec = spec;
+      this.ecSpec = spec;
     }
   }
 
   private static class EdAlgEntry extends AlgEntry {
-    public EdDSAParameterSpec ed_spec;
+    public EdDSAParameterSpec edSpec;
 
     public EdAlgEntry(int algorithm, String sigName, int baseType, EdDSAParameterSpec spec) {
       super(algorithm, sigName, baseType);
-      this.ed_spec = spec;
+      this.edSpec = spec;
     }
   }
 
@@ -168,9 +168,9 @@ public class DnsKeyAlgorithm {
   }
 
   private void initialize() {
-    mAlgorithmMap = new HashMap<Integer, AlgEntry>();
-    mMnemonicToIdMap = new HashMap<String, Integer>();
-    mIdToMnemonicMap = new HashMap<Integer, String>();
+    mAlgorithmMap = new HashMap<>();
+    mMnemonicToIdMap = new HashMap<>();
+    mIdToMnemonicMap = new HashMap<>();
 
     // Load the standard DNSSEC algorithms.
     addAlgorithm(DNSSEC.Algorithm.RSAMD5, "MD5withRSA", RSA);
@@ -230,10 +230,10 @@ public class DnsKeyAlgorithm {
 
   private void addAlgorithm(int algorithm, String sigName, int baseType, String curveName) {
     if (baseType == ECDSA) {
-      ECParameterSpec ec_spec = ECSpecFromAlgorithm(algorithm);
-      if (ec_spec == null)
-        ec_spec = ECSpecFromName(curveName);
-      if (ec_spec == null)
+      ECParameterSpec ecSpec = ECSpecFromAlgorithm(algorithm);
+      if (ecSpec == null)
+        ecSpec = ECSpecFromName(curveName);
+      if (ecSpec == null)
         return;
 
       // Check to see if we can get a Signature object for this algorithm.
@@ -245,11 +245,11 @@ public class DnsKeyAlgorithm {
         // If not, do not add the algorithm.
         return;
       }
-      ECAlgEntry entry = new ECAlgEntry(algorithm, sigName, baseType, ec_spec);
+      ECAlgEntry entry = new ECAlgEntry(algorithm, sigName, baseType, ecSpec);
       mAlgorithmMap.put(algorithm, entry);
     } else if (baseType == EDDSA) {
-      EdDSAParameterSpec ed_spec = EdDSASpecFromName(curveName);
-      if (ed_spec == null)
+      EdDSAParameterSpec edSpec = EdDSASpecFromName(curveName);
+      if (edSpec == null)
         return;
 
       // Check to see if we can get a Signature object for this algorithm.
@@ -261,7 +261,7 @@ public class DnsKeyAlgorithm {
         // If not, do not add the algorithm.
         return;
       }
-      EdAlgEntry entry = new EdAlgEntry(algorithm, sigName, baseType, ed_spec);
+      EdAlgEntry entry = new EdAlgEntry(algorithm, sigName, baseType, edSpec);
       mAlgorithmMap.put(algorithm, entry);
     }
 
@@ -274,9 +274,7 @@ public class DnsKeyAlgorithm {
       return;
 
     mMnemonicToIdMap.put(m.toUpperCase(), alg);
-    if (!mIdToMnemonicMap.containsKey(alg)) {
-      mIdToMnemonicMap.put(alg, m);
-    }
+    mIdToMnemonicMap.computeIfAbsent(alg, k -> m);
   }
 
   public void addAlias(int alias, String mnemonic, int original_algorithm) {
@@ -410,7 +408,7 @@ public class DnsKeyAlgorithm {
       return null;
     ECAlgEntry ec_entry = (ECAlgEntry) entry;
 
-    return ec_entry.ec_spec;
+    return ec_entry.ecSpec;
   }
 
   /**
@@ -430,7 +428,7 @@ public class DnsKeyAlgorithm {
       return null;
     EdAlgEntry ed_entry = (EdAlgEntry) entry;
 
-    return ed_entry.ed_spec;
+    return ed_entry.edSpec;
   }
 
   /**
@@ -540,9 +538,9 @@ public class DnsKeyAlgorithm {
           mECGOSTKeyGenerator = KeyPairGenerator.getInstance("ECGOST3410");
         }
 
-        ECParameterSpec ec_spec = getEllipticCurveParams(algorithm);
+        ECParameterSpec ecSpec = getEllipticCurveParams(algorithm);
         try {
-          mECGOSTKeyGenerator.initialize(ec_spec);
+          mECGOSTKeyGenerator.initialize(ecSpec);
         } catch (InvalidAlgorithmParameterException e) {
           // Fold the InvalidAlgorithmParameterException into our existing
           // thrown exception. Ugly, but requires less code change.
@@ -556,9 +554,9 @@ public class DnsKeyAlgorithm {
           mECKeyGenerator = KeyPairGenerator.getInstance("EC");
         }
 
-        ECParameterSpec ec_spec = getEllipticCurveParams(algorithm);
+        ECParameterSpec ecSpec = getEllipticCurveParams(algorithm);
         try {
-          mECKeyGenerator.initialize(ec_spec);
+          mECKeyGenerator.initialize(ecSpec);
         } catch (InvalidAlgorithmParameterException e) {
           // Fold the InvalidAlgorithmParameterException into our existing
           // thrown exception. Ugly, but requires less code change.
@@ -572,9 +570,9 @@ public class DnsKeyAlgorithm {
           mEdKeyGenerator = KeyPairGenerator.getInstance("EdDSA");
         }
 
-        EdDSAParameterSpec ed_spec = getEdwardsCurveParams(algorithm);
+        EdDSAParameterSpec edSpec = getEdwardsCurveParams(algorithm);
         try {
-          mEdKeyGenerator.initialize(ed_spec, new SecureRandom());
+          mEdKeyGenerator.initialize(edSpec, new SecureRandom());
         } catch (InvalidAlgorithmParameterException e) {
           // Fold the InvalidAlgorithmParameterException into our existing
           // thrown exception. Ugly, but requires less code change.

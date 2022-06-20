@@ -206,7 +206,7 @@ public class DnsKeyPair {
     PrivateKey priv = getPrivate();
     if (priv != null)
       return priv.getEncoded();
-    return null;
+    return new byte[0];
   }
 
   /**

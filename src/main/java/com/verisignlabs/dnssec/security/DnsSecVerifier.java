@@ -51,17 +51,12 @@ public class DnsSecVerifier {
     private HashMap<String, List<DnsKeyPair>> mKeyMap;
 
     public TrustedKeyStore() {
-      mKeyMap = new HashMap<String, List<DnsKeyPair>>();
+      mKeyMap = new HashMap<>();
     }
 
     public void add(DnsKeyPair pair) {
       String n = pair.getDNSKEYName().toString().toLowerCase();
-      List<DnsKeyPair> l = mKeyMap.get(n);
-      if (l == null) {
-        l = new ArrayList<DnsKeyPair>();
-        mKeyMap.put(n, l);
-      }
-
+      List<DnsKeyPair> l = mKeyMap.computeIfAbsent(n, k -> new ArrayList<>());
       l.add(pair);
     }
 
@@ -269,7 +264,7 @@ public class DnsSecVerifier {
   public boolean verify(RRset rrset) {
     boolean result = mVerifyAllSigs ? true : false;
 
-    if (rrset.sigs().size() == 0) {
+    if (rrset.sigs().isEmpty()) {
       log.fine("RRset failed to verify due to lack of signatures");
       return false;
     }

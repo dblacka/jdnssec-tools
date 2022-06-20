@@ -126,8 +126,8 @@ public class ZoneVerifier {
         }
       }
     } else {
-      for (Record record : rrset.rrs()) {
-        if (rr.equals(record)) {
+      for (Record rec : rrset.rrs()) {
+        if (rr.equals(rec)) {
           return false;
         }
       }
@@ -143,51 +143,36 @@ public class ZoneVerifier {
    * @return TODO
    */
   private boolean addRR(Record r) {
-    Name r_name = r.getName();
-    int r_type = r.getType();
-    if (r_type == Type.RRSIG)
-      r_type = ((RRSIGRecord) r).getTypeCovered();
+    Name n = r.getName();
+    int t = r.getType();
+    if (t == Type.RRSIG)
+      t = ((RRSIGRecord) r).getTypeCovered();
 
     // Add NSEC and NSEC3 RRs to their respective maps
-    if (r_type == Type.NSEC) {
-      if (mNSECMap == null)
-        mNSECMap = new TreeMap<Name, MarkRRset>();
-      MarkRRset rrset = mNSECMap.get(r_name);
-      if (rrset == null) {
-        rrset = new MarkRRset();
-        mNSECMap.put(r_name, rrset);
+    if (t == Type.NSEC) {
+      if (mNSECMap == null) {
+        mNSECMap = new TreeMap<>();
       }
-
+      MarkRRset rrset = mNSECMap.computeIfAbsent(n, k -> new MarkRRset());
       return addRRtoRRset(rrset, r);
     }
 
-    if (r_type == Type.NSEC3) {
-      if (mNSEC3Map == null)
-        mNSEC3Map = new TreeMap<Name, MarkRRset>();
-      MarkRRset rrset = mNSEC3Map.get(r_name);
-      if (rrset == null) {
-        rrset = new MarkRRset();
-        mNSEC3Map.put(r_name, rrset);
+    if (t == Type.NSEC3) {
+      if (mNSEC3Map == null) {
+        mNSEC3Map = new TreeMap<>();
       }
+      MarkRRset rrset = mNSECMap.computeIfAbsent(n, k -> new MarkRRset());
 
       return addRRtoRRset(rrset, r);
     }
 
     // Add the name and type to the node map
-    Set<Integer> typeset = mNodeMap.get(r_name);
-    if (typeset == null) {
-      typeset = new HashSet<Integer>();
-      mNodeMap.put(r_name, typeset);
-    }
+    Set<Integer> typeset = mNodeMap.computeIfAbsent(n, k -> new HashSet<>());
     typeset.add(r.getType()); // add the original type
 
     // Add the record to the RRset map
-    String k = key(r_name, r_type);
-    RRset rrset = mRRsetMap.get(k);
-    if (rrset == null) {
-      rrset = new RRset();
-      mRRsetMap.put(k, rrset);
-    }
+    String k = key(n, t);
+    RRset rrset = mRRsetMap.computeIfAbsent(k, k2 -> new RRset());
     return addRRtoRRset(rrset, r);
   }
 
@@ -217,16 +202,16 @@ public class ZoneVerifier {
    * @return TODO
    */
   private int calculateNodes(List<Record> records) {
-    mNodeMap = new TreeMap<Name, Set<Integer>>();
-    mRRsetMap = new HashMap<String, RRset>();
+    mNodeMap = new TreeMap<>();
+    mRRsetMap = new HashMap<>();
 
     // The zone is unsigned until we get a clue otherwise.
     mDNSSECType = DNSSECType.UNSIGNED;
 
     int errors = 0;
     for (Record r : records) {
-      Name r_name = r.getName();
-      int r_type = r.getType();
+      Name n = r.getName();
+      int t = r.getType();
 
       // Add the record to the various maps.
       boolean res = addRR(r);
@@ -236,11 +221,11 @@ public class ZoneVerifier {
       }
 
       // Learn some things about the zone as we do this pass.
-      if (r_type == Type.SOA)
-        mZoneName = r_name;
-      if (r_type == Type.NSEC3PARAM)
+      if (t == Type.SOA)
+        mZoneName = n;
+      if (t == Type.NSEC3PARAM)
         mNSEC3params = (NSEC3PARAMRecord) r;
-      if (r_type == Type.DNSKEY) {
+      if (t == Type.DNSKEY) {
         DNSKEYRecord dnskey = (DNSKEYRecord) r;
         mVerifier.addTrustedKey(dnskey);
         log.info("Adding trusted key: " + dnskey + " ; keytag = "
@@ -282,7 +267,7 @@ public class ZoneVerifier {
   }
 
   private Set<Integer> cleanupDelegationTypeset(Set<Integer> typeset) {
-    Set<Integer> t = new HashSet<Integer>();
+    Set<Integer> t = new HashSet<>();
     if (typeset.contains(Type.NS))
       t.add(Type.NS);
     if (typeset.contains(Type.DS))
@@ -366,7 +351,7 @@ public class ZoneVerifier {
   private static String reasonListToString(List<String> reasons) {
     if (reasons == null)
       return "";
-    StringBuffer out = new StringBuffer();
+    StringBuilder out = new StringBuilder();
     for (Iterator<String> i = reasons.iterator(); i.hasNext();) {
       out.append("Reason: ");
       out.append(i.next());
@@ -376,9 +361,8 @@ public class ZoneVerifier {
     return out.toString();
   }
 
-  @SuppressWarnings("unchecked")
   private int processRRset(RRset rrset) {
-    List<String> reasons = new ArrayList<String>();
+    List<String> reasons = new ArrayList<>();
     boolean result = false;
 
     for (RRSIGRecord sigrec : rrset.sigs()) {
@@ -434,7 +418,7 @@ public class ZoneVerifier {
     if (typeset == null)
       return types.length == 0;
 
-    Set<Integer> compareTypeset = new HashSet<Integer>();
+    Set<Integer> compareTypeset = new HashSet<>();
     for (int i = 0; i < types.length; ++i) {
       compareTypeset.add(types[i]);
     }
@@ -485,12 +469,7 @@ public class ZoneVerifier {
 
     // if we are opt-out, and the node is an insecure delegation, don't check
     // ENTs.
-    if (ntype == NodeType.DELEGATION && !typeset.contains(Type.DS)) {
-      return false;
-    }
-
-    // otherwise, check ENTs.
-    return true;
+    return !(ntype == NodeType.DELEGATION && !typeset.contains(Type.DS));
   }
 
   private int processNSEC3(Name n, Set<Integer> typeset, NodeType ntype)
@@ -544,12 +523,10 @@ public class ZoneVerifier {
       // check the internal ordering of the previous NSEC record. This avoids
       // looking at the last one,
       // which is different.
-      if (lastNSEC != null) {
-        if (lastNSEC.getName().compareTo(lastNSEC.getNext()) >= 0) {
-          log.warning("NSEC for " + lastNSEC.getName()
-              + " has next name >= owner but is not the last NSEC in the chain.");
-          errors++;
-        }
+      if (lastNSEC != null && lastNSEC.getName().compareTo(lastNSEC.getNext()) >= 0) {
+        log.warning("NSEC for " + lastNSEC.getName()
+            + " has next name >= owner but is not the last NSEC in the chain.");
+        errors++;
       }
 
       Map.Entry<Name, MarkRRset> entry = i.next();
@@ -582,12 +559,10 @@ public class ZoneVerifier {
       }
 
       // Check that the prior NSEC's next name equals this rows owner name.
-      if (lastNSEC != null) {
-        if (!lastNSEC.getNext().equals(nsec.getName())) {
-          log.warning("NSEC for " + lastNSEC.getName()
-              + " does not point to the next NSEC in the chain: " + n);
-          errors++;
-        }
+      if (lastNSEC != null && !lastNSEC.getNext().equals(nsec.getName())) {
+        log.warning("NSEC for " + lastNSEC.getName()
+            + " does not point to the next NSEC in the chain: " + n);
+        errors++;
       }
 
       lastNSEC = nsec;
@@ -627,12 +602,10 @@ public class ZoneVerifier {
       // check the internal ordering of the previous NSEC3 record. This avoids
       // looking at the last one,
       // which is different.
-      if (lastNSEC3 != null) {
-        if (compareNSEC3Hashes(lastNSEC3.getName(), lastNSEC3.getNext()) >= 0) {
-          log.warning("NSEC3 for " + lastNSEC3.getName()
-              + " has next name >= owner but is not the last NSEC3 in the chain.");
-          errors++;
-        }
+      if (lastNSEC3 != null && compareNSEC3Hashes(lastNSEC3.getName(), lastNSEC3.getNext()) >= 0) {
+        log.warning("NSEC3 for " + lastNSEC3.getName()
+            + " has next name >= owner but is not the last NSEC3 in the chain.");
+        errors++;
       }
 
       Map.Entry<Name, MarkRRset> entry = i.next();

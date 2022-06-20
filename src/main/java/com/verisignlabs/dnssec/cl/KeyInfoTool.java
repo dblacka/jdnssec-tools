@@ -86,21 +86,16 @@ public class KeyInfoTool extends CLBase {
       System.out.println("KeyFileBase: " + BINDKeyUtils.keyFileBase(key));
       int basetype = dnskeyalg.baseType(dnskey.getAlgorithm());
 
-      switch (basetype) {
-        case DnsKeyAlgorithm.RSA: {
-          RSAPublicKey pub = (RSAPublicKey) key.getPublic();
-          System.out.println("RSA Public Exponent: " + pub.getPublicExponent());
-          System.out.println("RSA Modulus: " + pub.getModulus());
-          break;
-        }
-        case DnsKeyAlgorithm.DSA: {
-          DSAPublicKey pub = (DSAPublicKey) key.getPublic();
-          System.out.println("DSA base (G): " + pub.getParams().getG());
-          System.out.println("DSA prime (P): " + pub.getParams().getP());
-          System.out.println("DSA subprime (Q): " + pub.getParams().getQ());
-          System.out.println("DSA public (Y): " + pub.getY());
-          break;
-        }
+      if (basetype == DnsKeyAlgorithm.RSA) {
+        RSAPublicKey pub = (RSAPublicKey) key.getPublic();
+        System.out.println("RSA Public Exponent: " + pub.getPublicExponent());
+        System.out.println("RSA Modulus: " + pub.getModulus());
+      } else if (basetype == DnsKeyAlgorithm.DSA) {
+        DSAPublicKey pub = (DSAPublicKey) key.getPublic();
+        System.out.println("DSA base (G): " + pub.getParams().getG());
+        System.out.println("DSA prime (P): " + pub.getParams().getP());
+        System.out.println("DSA subprime (Q): " + pub.getParams().getQ());
+        System.out.println("DSA public (Y): " + pub.getY());
       }
       if (state.keynames.length - i > 1) {
         System.out.println();

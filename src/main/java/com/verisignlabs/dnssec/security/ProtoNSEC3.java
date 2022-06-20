@@ -176,8 +176,8 @@ public class ProtoNSEC3 {
     return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt, next, getTypes());
   }
 
-  public void mergeTypes(TypeMap new_types) {
-    int[] nt = new_types.getTypes();
+  public void mergeTypes(TypeMap newTypes) {
+    int[] nt = newTypes.getTypes();
     for (int i = 0; i < nt.length; i++) {
       if (!typemap.get(nt[i]))
         typemap.set(nt[i]);
@@ -187,14 +187,14 @@ public class ProtoNSEC3 {
   public int compareTo(ProtoNSEC3 o) {
     if (o == null)
       return 1;
-    byte[] o_owner = o.getOwner();
-    int len = owner.length < o_owner.length ? o_owner.length : owner.length;
+    byte[] origOwner = o.getOwner();
+    int len = owner.length < origOwner.length ? origOwner.length : owner.length;
     for (int i = 0; i < len; i++) {
-      int d = ((owner[i] & 0xFF) - (o_owner[i] & 0xFF));
+      int d = ((owner[i] & 0xFF) - (origOwner[i] & 0xFF));
       if (d != 0)
         return d;
     }
-    return owner.length - o_owner.length;
+    return owner.length - origOwner.length;
   }
 
   public String toString() {

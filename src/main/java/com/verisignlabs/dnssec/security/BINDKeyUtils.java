@@ -26,7 +26,6 @@ import java.io.PrintWriter;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.text.NumberFormat;
 
 import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.Master;
@@ -39,41 +38,23 @@ import org.xbill.DNS.utils.base64;
 /**
  * This class contains a series of static methods used for manipulating BIND
  * 9.x.x-style DNSSEC key files.
- * 
+ *
  * In this class, the "base" key path or name is the file name without the
  * trailing ".key" or ".private".
- * 
+ *
  * @author David Blacka
  */
 public class BINDKeyUtils {
-  // formatters used to generated the BIND key file names
-  private static NumberFormat mAlgNumberFormatter;
-  private static NumberFormat mKeyIdNumberFormatter;
+
+  private BINDKeyUtils() { }
 
   /**
    * Calculate the BIND9 key file base name (i.e., without the ".key" or
    * ".private" extensions)
    */
   private static String getKeyFileBase(Name signer, int algorithm, int keyid) {
-    if (mAlgNumberFormatter == null) {
-      mAlgNumberFormatter = NumberFormat.getNumberInstance();
-      mAlgNumberFormatter.setMaximumIntegerDigits(3);
-      mAlgNumberFormatter.setMinimumIntegerDigits(3);
-    }
-    if (mKeyIdNumberFormatter == null) {
-      mKeyIdNumberFormatter = NumberFormat.getNumberInstance();
-      mKeyIdNumberFormatter.setMaximumIntegerDigits(5);
-      mKeyIdNumberFormatter.setMinimumIntegerDigits(5);
-      mKeyIdNumberFormatter.setGroupingUsed(false);
-
-    }
-
     keyid &= 0xFFFF;
-
-    String fn = "K" + signer + "+" + mAlgNumberFormatter.format(algorithm)
-        + "+" + mKeyIdNumberFormatter.format(keyid);
-
-    return fn;
+    return String.format("K%1$s+%2$03d+%3$05d", signer, algorithm, keyid);
   }
 
   /** Reads in the DNSKEYRecord from the public key file */
@@ -96,18 +77,16 @@ public class BINDKeyUtils {
   /** Reads in the private key verbatim from the private key file */
   private static String loadPrivateKeyFile(File privateKeyFile)
       throws IOException {
-    BufferedReader in = new BufferedReader(new FileReader(privateKeyFile));
-    StringBuffer key_buf = new StringBuffer();
+    try (BufferedReader in = new BufferedReader(new FileReader(privateKeyFile))) {
+      StringBuilder keybuf = new StringBuilder();
+      String line;
 
-    String line;
-
-    while ((line = in.readLine()) != null) {
-      key_buf.append(line);
-      key_buf.append('\n');
+      while ((line = in.readLine()) != null) {
+        keybuf.append(line);
+        keybuf.append('\n');
+      }
+      return keybuf.toString().trim();
     }
-    in.close();
-
-    return key_buf.toString().trim();
   }
 
   /**
@@ -126,7 +105,7 @@ public class BINDKeyUtils {
   /**
    * Given the information necessary to construct the path to a BIND9 generated
    * key pair, load the key pair.
-   * 
+   *
    * @param signer
    *                    the DNS name of the key.
    * @param algorithm
@@ -148,7 +127,7 @@ public class BINDKeyUtils {
 
   /**
    * Given a base path to a BIND9 key pair, load the key pair.
-   * 
+   *
    * @param keyFileBasePath
    *                        the base filename (or real filename for either the
    *                        public or
@@ -182,7 +161,7 @@ public class BINDKeyUtils {
   /**
    * Given a base path to a BIND9 key pair, load the public part (only) of the
    * key pair
-   * 
+   *
    * @param keyFileBasePath
    *                        the base or real path to the public part of a key
    *                        pair.
@@ -210,7 +189,7 @@ public class BINDKeyUtils {
    * Load a BIND keyset file. The BIND 9 dnssec tools typically call these files
    * "keyset-[signer]." where [signer] is the DNS owner name of the key. The
    * keyset may be signed, but doesn't have to be.
-   * 
+   *
    * @param keysetFileName
    *                       the name of the keyset file.
    * @param inDirectory
@@ -225,20 +204,20 @@ public class BINDKeyUtils {
       throws IOException {
     File keysetFile = new File(inDirectory, keysetFileName);
 
-    Master m = new Master(keysetFile.getAbsolutePath());
+    try (Master m = new Master(keysetFile.getAbsolutePath())) {
+      Record r;
+      RRset keyset = new RRset();
+      while ((r = m.nextRecord()) != null) {
+        keyset.addRR(r);
+      }
 
-    Record r;
-    RRset keyset = new RRset();
-    while ((r = m.nextRecord()) != null) {
-      keyset.addRR(r);
+      return keyset;
     }
-
-    return keyset;
   }
 
   /**
    * Calculate the key file base for this key pair.
-   * 
+   *
    * @param pair
    *             the {@link DnsKeyPair} to work from. It only needs a public key.
    * @return the base name of the key files.
@@ -279,7 +258,7 @@ public class BINDKeyUtils {
   /**
    * Given a the contents of a BIND9 private key file, convert it into a native
    * {@link java.security.PrivateKey} object.
-   * 
+   *
    * @param privateKeyString
    *                         the contents of a BIND9 key file in string form.
    * @return a {@link java.security.PrivateKey}
@@ -293,9 +272,7 @@ public class BINDKeyUtils {
     try {
       DnsKeyConverter conv = new DnsKeyConverter();
       return conv.parsePrivateKeyString(privateKeyString);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } catch (NoSuchAlgorithmException e) {
+    } catch (IOException|NoSuchAlgorithmException e) {
       e.printStackTrace();
     }
 
@@ -305,7 +282,7 @@ public class BINDKeyUtils {
   /**
    * Given a native private key, convert it into a BIND9 private key file
    * format.
-   * 
+   *
    * @param priv
    *             the private key to convert.
    * @param pub
@@ -316,9 +293,7 @@ public class BINDKeyUtils {
   public static String convertPrivateKey(PrivateKey priv, PublicKey pub, int alg) {
     if (priv != null) {
       DnsKeyConverter keyconv = new DnsKeyConverter();
-      String priv_string = keyconv.generatePrivateKeyString(priv, pub, alg);
-
-      return priv_string;
+      return keyconv.generatePrivateKeyString(priv, pub, alg);
     }
 
     return null;
@@ -330,11 +305,13 @@ public class BINDKeyUtils {
    * record formatting. The BIND9 tools require everything on a single line.
    */
   private static String DNSKEYtoString(DNSKEYRecord rec) {
-    StringBuffer buf = new StringBuffer();
+    StringBuilder buf = new StringBuilder();
 
     buf.append(rec.getName());
-    buf.append(" ");
-    buf.append(rec.getTTL());
+    if (rec.getTTL() > 0) {
+      buf.append(" ");
+      buf.append(rec.getTTL());
+    }
     buf.append(" IN DNSKEY ");
     buf.append(rec.getFlags() & 0xFFFF);
     buf.append(" ");
@@ -349,7 +326,7 @@ public class BINDKeyUtils {
 
   /**
    * This routine will write out the BIND9 dnssec-* tool compatible files.
-   * 
+   *
    * @param baseFileName
    *                     use this base file name. If null, the standard BIND9 base
    *                     file
@@ -391,7 +368,7 @@ public class BINDKeyUtils {
   /**
    * This routine will write out the BIND9 dnssec-* tool compatible files to the
    * standard file names.
-   * 
+   *
    * @param pair
    *                    the key pair in question.
    * @param inDirectory

@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * @author David Blacka
  */
 public class ByteArrayComparator implements Comparator<byte[]> {
-  private int mOffset = 0;
+  private int mOffset    = 0;
   private boolean mDebug = false;
   private Logger log;
 
