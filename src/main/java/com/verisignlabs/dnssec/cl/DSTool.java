@@ -23,6 +23,7 @@ import java.io.PrintWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.xbill.DNS.CDSRecord;
 import org.xbill.DNS.DLVRecord;
 import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.DNSSEC;
@@ -41,12 +42,18 @@ import com.verisignlabs.dnssec.security.SignUtils;
 public class DSTool extends CLBase {
   private CLIState state;
 
+  /** There are several records that are based on DS. */
+  protected enum dsType {
+    DS, CDS, DLV;
+  }
+
   /**
    * This is a small inner class used to hold all of the command line option
    * state.
    */
+
   protected static class CLIState extends CLIStateBase {
-    public boolean createDLV = false;
+    public dsType createType = dsType.DS;
     public String outputfile = null;
     public String keyname = null;
     public int digestId = DNSSEC.Digest.SHA1;
@@ -62,17 +69,21 @@ public class DSTool extends CLBase {
      */
     @Override
     protected void setupOptions(Options opts) {
-      opts.addOption(Option.builder().longOpt("dlv").desc("Generate a DLV record instead.").build());
-      opts.addOption(Option.builder("C").desc("Generate a CDS record instead").build());
-      opts.addOption(Option.builder("d").longOpt("digest").argName("id").desc("The digest algorithm to use").build());
-      opts.addOption(Option.builder("f").hasArg().argName("file").desc("output to file").build());
+      opts.addOption(Option.builder("D").longOpt("dlv").desc("Generate a DLV record instead.").build());
+      opts.addOption(Option.builder("C").longOpt("cds").desc("Generate a CDS record instead").build());
+      opts.addOption(Option.builder("d").hasArg().argName("id").longOpt("digest").desc("The digest algorithm to use").build());
+      opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output").desc("output to file").build());
     }
 
     @Override
     protected void processOptions(CommandLine cli)
         throws org.apache.commons.cli.ParseException {
       outputfile = cli.getOptionValue('f');
-      createDLV = cli.hasOption("dlv");
+      if (cli.hasOption("dlv")) {
+        createType = dsType.DLV;
+      } else if (cli.hasOption("cds")) {
+        createType = dsType.CDS;
+      }
       String optstr = cli.getOptionValue('d');
       if (optstr != null)
         digestId = DNSSEC.Digest.value(optstr);
@@ -100,18 +111,22 @@ public class DSTool extends CLBase {
     DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digestId, dnskey.getTTL());
     Record res = ds;
 
-    if (state.createDLV) {
+    if (state.createType == dsType.DLV) {
       log.fine("creating DLV.");
-      DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(), ds.getTTL(),
-          ds.getFootprint(), ds.getAlgorithm(),
+      DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
           ds.getDigestID(), ds.getDigest());
       res = dlv;
+    } else if (state.createType == dsType.CDS) {
+      log.fine("creating CDS.");
+      CDSRecord cds = new CDSRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
+          ds.getDClass(), ds.getDigest());
+          res = cds;
     }
-
+  
     if (state.outputfile != null && !state.outputfile.equals("-")) {
-      PrintWriter out = new PrintWriter(new FileWriter(state.outputfile));
-      out.println(res);
-      out.close();
+      try (PrintWriter out = new PrintWriter(new FileWriter(state.outputfile))) {
+        out.println(res);
+      }
     } else {
       System.out.println(res);
     }
