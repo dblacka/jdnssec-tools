@@ -1,11 +1,9 @@
 /*
- * $Id$
- * 
- * Copyright (c) 2005 VeriSign. All rights reserved.
- * 
+ * Copyright (c) 2005, 2022 Verisign. All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer. 2. Redistributions in
  * binary form must reproduce the above copyright notice, this list of
@@ -13,7 +11,7 @@
  * materials provided with the distribution. 3. The name of the author may not
  * be used to endorse or promote products derived from this software without
  * specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
@@ -24,12 +22,15 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *  
+ *
  */
 
 package com.verisignlabs.dnssec.security;
 
-import org.xbill.DNS.*;
+import org.xbill.DNS.DClass;
+import org.xbill.DNS.NSEC3Record;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.TextParseException;
 import org.xbill.DNS.utils.base16;
 import org.xbill.DNS.utils.base32;
 
@@ -37,25 +38,22 @@ import org.xbill.DNS.utils.base32;
  * This is a class representing a "prototype NSEC3" resource record. These are
  * used as an intermediate stage (in zone signing) between determining the list
  * of NSEC3 records and forming them into a viable chain.
- * 
- * @author David Blacka (original)
- * @author $Author: davidb $
- * @version $Revision: 183 $
+ *
+ * @author David Blacka
  */
-public class ProtoNSEC3
-{
-  private Name                originalOwner;
-  private int                 hashAlg;
-  private byte                flags;
-  private int                 iterations;
-  private byte[]              salt;
-  private byte[]              next;
-  private byte[]              owner;       // cached numerical owner value.
-  private TypeMap             typemap;
-  private Name                zone;
-  private Name                name;
-  private int                 dclass;
-  private long                ttl;
+public class ProtoNSEC3 {
+  private Name originalOwner;
+  private int hashAlg;
+  private byte flags;
+  private int iterations;
+  private byte[] salt;
+  private byte[] next;
+  private byte[] owner; // cached numerical owner value.
+  private TypeMap typemap;
+  private Name zone;
+  private Name name;
+  private int dclass;
+  private long ttl;
 
   private static final base32 b32 = new base32(base32.Alphabet.BASE32HEX, false, false);
 
@@ -63,9 +61,8 @@ public class ProtoNSEC3
    * Creates an NSEC3 Record from the given data.
    */
   public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass, long ttl,
-                    int hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
-                    TypeMap typemap)
-  {
+      int hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
+      TypeMap typemap) {
     this.zone = zone;
     this.owner = owner;
     this.dclass = dclass;
@@ -80,29 +77,23 @@ public class ProtoNSEC3
   }
 
   public ProtoNSEC3(byte[] owner, Name originalOwner, Name zone, int dclass, long ttl,
-                    int hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
-                    int[] types)
-  {
+      int hashAlg, byte flags, int iterations, byte[] salt, byte[] next,
+      int[] types) {
     this(owner, originalOwner, zone, dclass, ttl, hashAlg, flags, iterations, salt, next,
-         TypeMap.fromTypes(types));
+        TypeMap.fromTypes(types));
   }
 
-  private String hashToString(byte[] hash)
-  {
-    if (hash == null) return null;
+  private String hashToString(byte[] hash) {
+    if (hash == null)
+      return null;
     return b32.toString(hash);
   }
 
-  public Name getName()
-  {
-    if (name == null)
-    {
-      try
-      {
+  public Name getName() {
+    if (name == null) {
+      try {
         name = new Name(hashToString(owner), zone);
-      }
-      catch (TextParseException e)
-      {
+      } catch (TextParseException e) {
         // This isn't going to happen.
       }
     }
@@ -110,122 +101,104 @@ public class ProtoNSEC3
     return name;
   }
 
-  public byte[] getNext()
-  {
+  public Name getOriginalOwnerName() {
+    return this.originalOwner;
+  }
+
+  public byte[] getNext() {
     return next;
   }
 
-  public void setNext(byte[] next)
-  {
+  public void setNext(byte[] next) {
     this.next = next;
   }
 
-  public byte getFlags()
-  {
+  public byte getFlags() {
     return flags;
   }
 
-  public boolean getOptOutFlag()
-  {
+  public boolean getOptOutFlag() {
     return (flags & NSEC3Record.Flags.OPT_OUT) != 0;
   }
 
-  public void setOptOutFlag(boolean optOutFlag)
-  {
+  public void setOptOutFlag(boolean optOutFlag) {
     if (optOutFlag)
       this.flags |= NSEC3Record.Flags.OPT_OUT;
     else
       this.flags &= ~NSEC3Record.Flags.OPT_OUT;
   }
 
-  public long getTTL()
-  {
+  public long getTTL() {
     return ttl;
   }
 
-  public void setTTL(long ttl)
-  {
+  public void setTTL(long ttl) {
     this.ttl = ttl;
   }
 
-  public TypeMap getTypemap()
-  {
+  public TypeMap getTypemap() {
     return typemap;
   }
 
-  public int[] getTypes()
-  {
+  public int[] getTypes() {
     return typemap.getTypes();
   }
 
-  public void setTypemap(TypeMap typemap)
-  {
+  public void setTypemap(TypeMap typemap) {
     this.typemap = typemap;
   }
 
-  public int getDClass()
-  {
+  public int getDClass() {
     return dclass;
   }
 
-  public int getHashAlgorithm()
-  {
+  public int getHashAlgorithm() {
     return hashAlg;
   }
 
-  public int getIterations()
-  {
+  public int getIterations() {
     return iterations;
   }
 
-  public byte[] getOwner()
-  {
+  public byte[] getOwner() {
     return owner;
   }
 
-  public byte[] getSalt()
-  {
+  public byte[] getSalt() {
     return salt;
   }
 
-  public Name getZone()
-  {
+  public Name getZone() {
     return zone;
   }
 
-  public NSEC3Record getNSEC3Record()
-  {
-    String comment = (originalOwner == null) ? "(unknown original ownername)"
-                                            : originalOwner.toString();
-    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt,
-                           next, getTypes(), comment);
+  public NSEC3Record getNSEC3Record() {
+    return new NSEC3Record(getName(), dclass, ttl, hashAlg, flags, iterations, salt, next, getTypes());
   }
 
-  public void mergeTypes(TypeMap new_types)
-  {
-    int[] nt = new_types.getTypes();
-    for (int i = 0; i < nt.length; i++)
-    {
-      if (!typemap.get(nt[i])) typemap.set(nt[i]);
+  public void mergeTypes(TypeMap newTypes) {
+    int[] nt = newTypes.getTypes();
+    for (int i = 0; i < nt.length; i++) {
+      if (!typemap.get(nt[i]))
+        typemap.set(nt[i]);
     }
   }
 
-  public int compareTo(ProtoNSEC3 o)
-  {
-    if (o == null) return 1;
-    byte[] o_owner = o.getOwner();
-    int len = owner.length < o_owner.length ? o_owner.length : owner.length;
-    for (int i = 0; i < len; i++)
-    {
-      int d = ((owner[i] & 0xFF) - (o_owner[i] & 0xFF));
-      if (d != 0) return d;
+  public int compareTo(ProtoNSEC3 o) {
+    if (o == null)
+      return 1;
+    byte[] origOwner = o.getOwner();
+    int len = owner.length < origOwner.length ? origOwner.length : owner.length;
+    for (int i = 0; i < len; i++) {
+      int d = ((owner[i] & 0xFF) - (origOwner[i] & 0xFF));
+      if (d != 0)
+        return d;
     }
-    return owner.length - o_owner.length;
+    return owner.length - origOwner.length;
   }
 
-  public String toString()
-  {
-    StringBuffer sb = new StringBuffer();
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
     sb.append(getName());
     sb.append(' ');
     sb.append(ttl);
@@ -248,10 +221,8 @@ public class ProtoNSEC3
     return sb.toString();
   }
 
-  public static class Comparator implements java.util.Comparator<ProtoNSEC3>
-  {
-    public int compare(ProtoNSEC3 a, ProtoNSEC3 b)
-    {
+  public static class Comparator implements java.util.Comparator<ProtoNSEC3> {
+    public int compare(ProtoNSEC3 a, ProtoNSEC3 b) {
       return a.compareTo(b);
     }
 
