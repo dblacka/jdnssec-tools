@@ -262,7 +262,7 @@ public class DnsSecVerifier {
    * @return true if the set verified, false if it did not.
    */
   public boolean verify(RRset rrset) {
-    boolean result = mVerifyAllSigs ? true : false;
+    boolean result = mVerifyAllSigs;
 
     if (rrset.sigs().isEmpty()) {
       log.fine("RRset failed to verify due to lack of signatures");

@@ -455,9 +455,7 @@ public class DnsKeyAlgorithm {
    *         alias.
    */
   public boolean supportedAlgorithm(int algorithm) {
-    if (mAlgorithmMap.containsKey(algorithm))
-      return true;
-    return false;
+    return mAlgorithmMap.containsKey(algorithm);
   }
 
   /**

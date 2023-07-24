@@ -84,6 +84,14 @@ public class ZoneVerifier {
     private static final long serialVersionUID = 1L;
     private boolean mIsMarked = false;
 
+    @Override
+    public boolean equals(Object o) {
+      return super.equals(o);
+    }
+    @Override
+    public int hashCode() {
+      return super.hashCode();
+    }
     boolean getMark() {
       return mIsMarked;
     }
@@ -161,7 +169,7 @@ public class ZoneVerifier {
       if (mNSEC3Map == null) {
         mNSEC3Map = new TreeMap<>();
       }
-      MarkRRset rrset = mNSECMap.computeIfAbsent(n, k -> new MarkRRset());
+      MarkRRset rrset = mNSEC3Map.computeIfAbsent(n, k -> new MarkRRset());
 
       return addRRtoRRset(rrset, r);
     }
@@ -326,6 +334,8 @@ public class ZoneVerifier {
       }
 
       switch (mDNSSECType) {
+        case UNSIGNED:
+          throw new IllegalArgumentException("Cannot process Unsigned zone");
         case NSEC:
           // all nodes with NSEC records have NSEC and RRSIG types
           typeset.add(Type.NSEC);
