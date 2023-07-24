@@ -10,7 +10,7 @@ apply plugin: 'idea'
 
 jar {
     baseName = 'jdnssec-tools'
-    version =  '0.17'
+    version =  '0.17.1'
 }
 
 repositories {
