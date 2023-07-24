@@ -17,11 +17,13 @@
 
 package com.verisignlabs.dnssec.cl;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.Option;
+import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.Record;
 
 import com.verisignlabs.dnssec.security.ZoneUtils;
@@ -47,6 +49,7 @@ public class VerifyZone extends CLBase {
     public int expirefudge = 0;
     public boolean ignoreTime = false;
     public boolean ignoreDups = false;
+    public Instant currentTime = null;
 
     public CLIState() {
       super("jdnssec-verifyzone [..options..] zonefile");
@@ -54,10 +57,13 @@ public class VerifyZone extends CLBase {
 
     @Override
     protected void setupOptions(Options opts) {
-      opts.addOption(Option.builder("S").optionalArg(true).argName("seconds").longOpt("sig-start-fudge")
+      opts.addOption(Option.builder("S").hasArg().argName("seconds").longOpt("sig-start-fudge")
           .desc("'fudge' RRSIG inception ties by 'seconds'").build());
-      opts.addOption(Option.builder("E").optionalArg(true).argName("seconds").longOpt("sig-expire-fudge")
+      opts.addOption(Option.builder("E").hasArg().argName("seconds").longOpt("sig-expire-fudge")
           .desc("'fudge' RRSIG expiration times by 'seconds'").build());
+      opts.addOption(Option.builder("t").hasArg().argName("time").longOpt("use-time")
+          .desc("Use 'time' as the time for verification purposes.").build());
+
       opts.addOption(
           Option.builder().longOpt("ignore-time").desc("Ignore RRSIG inception and expiration time errors.").build());
       opts.addOption(Option.builder().longOpt("ignore-duplicate-rrs").desc("Ignore duplicate record errors.").build());
@@ -80,6 +86,15 @@ public class VerifyZone extends CLBase {
 
       if ((optstr = cli.getOptionValue('E')) != null) {
         expirefudge = parseInt(optstr, 0);
+      }
+
+      if ((optstr = cli.getOptionValue('t')) != null) {
+        try {
+          currentTime = convertDuration(null, optstr);
+        } catch (ParseException e) {
+          System.err.println("error: could not parse timespec");
+          usage();
+        }
       }
 
       String[] optstrs = null;
@@ -110,6 +125,7 @@ public class VerifyZone extends CLBase {
     zoneverifier.getVerifier().setStartFudge(state.startfudge);
     zoneverifier.getVerifier().setExpireFudge(state.expirefudge);
     zoneverifier.getVerifier().setIgnoreTime(state.ignoreTime);
+    zoneverifier.getVerifier().setCurrentTime(state.currentTime);
     zoneverifier.setIgnoreDuplicateRRs(state.ignoreDups);
 
     List<Record> records = ZoneUtils.readZoneFile(state.zonefile, null);

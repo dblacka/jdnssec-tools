@@ -92,6 +92,7 @@ public class DnsSecVerifier {
   private int mExpireFudge = 0;
   private boolean mVerifyAllSigs = false;
   private boolean mIgnoreTime = false;
+  private Instant mCurrentTime = null;
 
   private Logger log;
 
@@ -133,6 +134,10 @@ public class DnsSecVerifier {
     mIgnoreTime = v;
   }
 
+  public void setCurrentTime(Instant time) {
+    mCurrentTime = time;
+  }
+
   private DnsKeyPair findKey(Name name, int algorithm, int footprint) {
     return mKeyStore.find(name, algorithm, footprint);
   }
@@ -155,7 +160,13 @@ public class DnsSecVerifier {
     if (mIgnoreTime)
       return true;
 
-    Instant now = Instant.now();
+    Instant now;
+    if (mCurrentTime != null) {
+      now = mCurrentTime;
+    } else {
+      now = Instant.now();
+    }
+
     Instant start = sigrec.getTimeSigned();
     Instant expire = sigrec.getExpire();
 
