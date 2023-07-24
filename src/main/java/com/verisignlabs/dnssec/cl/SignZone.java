@@ -331,11 +331,11 @@ public class SignZone extends CLBase {
   private static List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
       File inDirectory) throws IOException {
     if (keyfiles == null)
-      return Collections.emptyList();
+      return new ArrayList<>();
 
     int len = keyfiles.length - startIndex;
     if (len <= 0)
-      return Collections.emptyList();
+      return new ArrayList<>();
 
     ArrayList<DnsKeyPair> keys = new ArrayList<>(len);
 
