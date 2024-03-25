@@ -2,7 +2,7 @@
 
 * <https://github.com/dblacka/jdnssec-tools/wiki>
 
-Author: David Blacka (davidb@verisign.com)
+Author: David Blacka (<davidb@verisign.com>)
 
 This is a collection of DNSSEC tools written in Java.  They are intended to be an addition or replacement for the DNSSEC tools that are part of BIND 9.
 
@@ -45,4 +45,4 @@ The source for this project is available in git on github: <https://github.com/d
 
 ---
 
-Questions or comments may be directed to the author (mailto:davidb@verisign.com), or by creating issues in the [github issue tracker](https://github.com/dblacka/jdnssec-tools/issues).
+Questions or comments may be directed to the author (<mailto:davidb@verisign.com>), or by creating issues in the [github issue tracker](https://github.com/dblacka/jdnssec-tools/issues).

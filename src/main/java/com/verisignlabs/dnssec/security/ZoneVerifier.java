@@ -148,7 +148,7 @@ public class ZoneVerifier {
   /**
    * Add a record to the various maps.
    *
-   * @return TODO
+   * @return true if the RR was added, false if it wasn't (because it was a duplicate)
    */
   private boolean addRR(Record r) {
     Name n = r.getName();
@@ -207,7 +207,7 @@ public class ZoneVerifier {
    * determine the NSEC3 parameters and signing type.
    *
    * @param records
-   * @return TODO
+   * @return the number of errors encountered.
    */
   private int calculateNodes(List<Record> records) {
     mNodeMap = new TreeMap<>();

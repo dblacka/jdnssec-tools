@@ -147,19 +147,18 @@ public class DnsKeyAlgorithm {
     // This is so we can use this provider if it is available, but not require
     // the user to add it as one of the java.security providers.
     try {
-      Class<?> bc_provider_class = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
-      // Provider bc_provider = (Provider) bc_provider_class.newInstance();
-      Provider bc_provider = (Provider) bc_provider_class.getDeclaredConstructor().newInstance();
-      Security.addProvider(bc_provider);
+      Class<?> bcProviderClass = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
+      Provider bcProvider = (Provider) bcProviderClass.getDeclaredConstructor().newInstance();
+      Security.addProvider(bcProvider);
     } catch (ReflectiveOperationException e) {
+      log.info("Unable to load BC provider");
     }
 
     // Attempt to add the EdDSA-Java provider.
     try {
-      Class<?> eddsa_provider_class = Class.forName("net.i2p.crypto.eddsa.EdDSASecurityProvider");
-      // Provider eddsa_provider = (Provider) eddsa_provider_class.newInstance();
-      Provider eddsa_provider = (Provider) eddsa_provider_class.getDeclaredConstructor().newInstance();
-      Security.addProvider(eddsa_provider);
+      Class<?> eddsaProviderClass = Class.forName("net.i2p.crypto.eddsa.EdDSASecurityProvider");
+      Provider eddsaProvider = (Provider) eddsaProviderClass.getDeclaredConstructor().newInstance();
+      Security.addProvider(eddsaProvider);
     } catch (ReflectiveOperationException e) {
       log.warning("Unable to load EdDSA provider");
     }
@@ -304,8 +303,7 @@ public class DnsKeyAlgorithm {
   // name, we can construct the parameters here. For now, we only do this for
   // the ECC-GOST curve.
   private ECParameterSpec ECSpecFromAlgorithm(int algorithm) {
-    switch (algorithm) {
-      case DNSSEC.Algorithm.ECC_GOST: {
+    if (algorithm == DNSSEC.Algorithm.ECC_GOST) {
         // From RFC 4357 Section 11.4
         BigInteger p = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97", 16);
         BigInteger a = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD94", 16);
@@ -316,10 +314,8 @@ public class DnsKeyAlgorithm {
 
         EllipticCurve curve = new EllipticCurve(new ECFieldFp(p), a, b);
         return new ECParameterSpec(curve, new ECPoint(gx, gy), n, 1);
-      }
-      default:
-        return null;
     }
+    return null;
   }
 
   // Fetch the curve parameters from a named ECDSA curve.

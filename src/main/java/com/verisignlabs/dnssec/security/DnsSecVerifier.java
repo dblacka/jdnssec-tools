@@ -70,20 +70,19 @@ public class DnsSecVerifier {
       add(pair);
     }
 
-    public DnsKeyPair find(Name name, int algorithm, int keyid) {
+    public List<DnsKeyPair> find(Name name, int algorithm, int keyid) {
       String n = name.toString().toLowerCase();
       List<DnsKeyPair> l = mKeyMap.get(n);
+      List<DnsKeyPair> result = new ArrayList<>();
       if (l == null)
-        return null;
+        return result;
 
-      // FIXME: this algorithm assumes that name+alg+footprint is
-      // unique, which isn't necessarily true.
       for (DnsKeyPair p : l) {
         if (p.getDNSKEYAlgorithm() == algorithm && p.getDNSKEYFootprint() == keyid) {
-          return p;
+          result.add(p);
         }
       }
-      return null;
+      return result;
     }
   }
 
@@ -138,7 +137,7 @@ public class DnsSecVerifier {
     mCurrentTime = time;
   }
 
-  private DnsKeyPair findKey(Name name, int algorithm, int footprint) {
+  private List<DnsKeyPair> findKey(Name name, int algorithm, int footprint) {
     return mKeyStore.find(name, algorithm, footprint);
   }
 
@@ -219,43 +218,51 @@ public class DnsSecVerifier {
     if (!result)
       return result;
 
-    DnsKeyPair keypair = findKey(sigrec.getSigner(), sigrec.getAlgorithm(),
+    List<DnsKeyPair> keypairs = findKey(sigrec.getSigner(), sigrec.getAlgorithm(),
         sigrec.getFootprint());
 
-    if (keypair == null) {
+    if (keypairs.isEmpty()) {
       if (reasons != null)
         reasons.add("Could not find matching trusted key");
       log.fine("could not find matching trusted key");
       return false;
     }
-
     try {
       byte[] data = SignUtils.generateSigData(rrset, sigrec);
 
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
 
-      Signature signer = keypair.getVerifier();
-      signer.update(data);
-
-      byte[] sig = sigrec.getSignature();
-
-      if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.DSA) {
-        sig = SignUtils.convertDSASignature(sig);
+      // Tolerate duplicate keytags, so we can have more than one DnsKeyPair
+      List<String> localReasons = new ArrayList<>();
+      boolean validated = false;
+      for (DnsKeyPair keypair : keypairs) {
+        Signature signer = keypair.getVerifier();
+        signer.update(data);
+  
+        byte[] sig = sigrec.getSignature();
+  
+        if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.DSA) {
+          sig = SignUtils.convertDSASignature(sig);
+        }
+  
+        if (sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP256SHA256 ||
+            sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP384SHA384) {
+          sig = SignUtils.convertECDSASignature(sig);
+        }
+        if (signer.verify(sig)) {
+          validated = true;
+          break;
+        }
+        log.fine("Signature failed to validate cryptographically with " + keypair);
+        if (localReasons != null) {
+          localReasons.add("Signature failed to verify cryptographically with " + keypair);
+        }
       }
 
-      if (sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP256SHA256 ||
-          sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP384SHA384) {
-        sig = SignUtils.convertECDSASignature(sig);
+      if (!validated) {
+        reasons.addAll(localReasons);
       }
-
-      if (!signer.verify(sig)) {
-        if (reasons != null)
-          reasons.add("Signature failed to verify cryptographically");
-        log.fine("Signature failed to verify cryptographically");
-        return false;
-      }
-
-      return true;
+      return validated;
     } catch (IOException e) {
       log.severe("I/O error: " + e);
     } catch (GeneralSecurityException e) {

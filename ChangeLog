@@ -1,3 +1,22 @@
+2024-03-25  David Blacka <davidb@verisign.com>
+
+        * Released version 0.19
+        * Handle duplicate key tags
+        * jdnssec-keygen can now attempt to generate keys with specified key tags
+
+2023-07-24  David Blacka  <davidb@verisign.com>
+
+        * Released version 0.17.1
+        * Add a `-t` option to jdnssec-verifyzone: verify using specified time.
+
+2022-09-21  David Blacka  <davidb@verisign.com>
+
+        * Released version 0.17
+        * Updated to dnsjava 3.5.1
+        * Formatting and linter suggestions
+        * Use slf4j instead of log4j.
+        * jdnssec-dstool can now generate CDS records
+
 2019-07-23  David Blacka  <davidb@verisign.com>
 
         * Released version 0.16

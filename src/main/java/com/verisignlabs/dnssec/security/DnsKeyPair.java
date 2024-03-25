@@ -16,6 +16,7 @@
 
 package com.verisignlabs.dnssec.security;
 
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -125,6 +126,12 @@ public class DnsKeyPair {
     setDNSKEYRecord(pair.getDNSKEYRecord());
     setPrivate(pair.getPrivate());
     setPrivateKeyString(pair.getPrivateKeyString());
+  }
+
+  public String toString() {
+
+    return this.getDNSKEYName() + "/" + this.getDNSKEYAlgorithm() + "/" + this.getDNSKEYFootprint() + "/"
+        + this.getDNSKEYPublicPrefix(6);
   }
 
   /** @return cached DnsKeyConverter object. */
@@ -318,5 +325,27 @@ public class DnsKeyPair {
     if (kr != null)
       return kr.getFootprint();
     return -1;
+  }
+
+  // This is from a StackOverflow answer.  There are number of bytes-to-hex
+  // converters in the ecosystem, but this avoid extra dependencies
+  private static final byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
+  public static String toHex(byte[] bytes) {
+    byte[] hexChars = new byte[bytes.length * 2];
+    for (int j = 0; j < bytes.length; j++) {
+        int v = bytes[j] & 0xFF;
+        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+    }
+    return new String(hexChars, StandardCharsets.UTF_8);
+  }
+
+  public String getDNSKEYPublicPrefix(int length) {
+    DNSKEYRecord kr = getDNSKEYRecord();
+    if (kr == null) {
+      return "";
+    }
+    String hexKey = toHex(kr.getKey());
+    return hexKey.substring(0, length);
   }
 }
