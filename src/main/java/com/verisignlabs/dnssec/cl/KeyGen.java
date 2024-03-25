@@ -53,6 +53,7 @@ public class KeyGen extends CLBase {
     public boolean kskFlag = false;
     public String owner = null;
     public long ttl = 86400;
+    public int givenKeyTag = -1;
 
     public CLIState() {
       super("jdnssec-keygen [..options..] name");
@@ -87,6 +88,8 @@ public class KeyGen extends CLBase {
           .desc("generated keyfiles are written to this directory").build());
       opts.addOption(Option.builder("T").hasArg().argName("ttl").longOpt("ttl")
           .desc("use this TTL for the generated DNSKEY records (default: 86400").build());
+      opts.addOption(Option.builder().hasArg().argName("tag").longOpt("with-tag")
+          .desc("Generate keys until tag is the given value.").build());
 
     }
 
@@ -133,6 +136,10 @@ public class KeyGen extends CLBase {
         ttl = parseInt(optstr, 86400);
       }
 
+      if ((optstr = cli.getOptionValue("with-tag")) != null) {
+        givenKeyTag = parseInt(optstr, -1);
+      }
+
       String[] args = cli.getArgs();
 
       if (args.length < 1) {
@@ -169,11 +176,12 @@ public class KeyGen extends CLBase {
 
     // Calculate our flags
     int flags = 0;
-    if (state.zoneKey)
+    if (state.zoneKey) {
       flags |= DNSKEYRecord.Flags.ZONE_KEY;
-    if (state.kskFlag)
+    }
+    if (state.kskFlag) {
       flags |= DNSKEYRecord.Flags.SEP_KEY;
-
+    }
     log.fine("create key pair with (name = " + ownerName + ", ttl = " + state.ttl
         + ", alg = " + state.algorithm + ", flags = " + flags + ", length = "
         + state.keylength + ")");
@@ -181,6 +189,12 @@ public class KeyGen extends CLBase {
     DnsKeyPair pair = signer.generateKey(ownerName, state.ttl, DClass.IN,
         state.algorithm, flags, state.keylength,
         state.useLargeE);
+
+    // If we were asked to generate a duplicate keytag, keep trying until we get one
+    while (state.givenKeyTag >= 0 && pair.getDNSKEYFootprint() != state.givenKeyTag) {
+      pair = signer.generateKey(ownerName, state.ttl, DClass.IN, state.algorithm, flags, state.keylength,
+          state.useLargeE);
+    }
 
     if (state.outputfile != null) {
       BINDKeyUtils.writeKeyFiles(state.outputfile, pair, state.keydir);

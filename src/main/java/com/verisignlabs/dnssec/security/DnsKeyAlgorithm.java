@@ -151,7 +151,7 @@ public class DnsKeyAlgorithm {
       Provider bcProvider = (Provider) bcProviderClass.getDeclaredConstructor().newInstance();
       Security.addProvider(bcProvider);
     } catch (ReflectiveOperationException e) {
-      log.warning("Unable to load BC provider");
+      log.info("Unable to load BC provider");
     }
 
     // Attempt to add the EdDSA-Java provider.
@@ -303,8 +303,7 @@ public class DnsKeyAlgorithm {
   // name, we can construct the parameters here. For now, we only do this for
   // the ECC-GOST curve.
   private ECParameterSpec ECSpecFromAlgorithm(int algorithm) {
-    switch (algorithm) {
-      case DNSSEC.Algorithm.ECC_GOST: {
+    if (algorithm == DNSSEC.Algorithm.ECC_GOST) {
         // From RFC 4357 Section 11.4
         BigInteger p = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97", 16);
         BigInteger a = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD94", 16);
@@ -315,10 +314,8 @@ public class DnsKeyAlgorithm {
 
         EllipticCurve curve = new EllipticCurve(new ECFieldFp(p), a, b);
         return new ECParameterSpec(curve, new ECPoint(gx, gy), n, 1);
-      }
-      default:
-        return null;
     }
+    return null;
   }
 
   // Fetch the curve parameters from a named ECDSA curve.

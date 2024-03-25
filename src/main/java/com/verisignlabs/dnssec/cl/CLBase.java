@@ -101,8 +101,8 @@ public abstract class CLBase {
       opts.addOption("m", "multiline", false,
           "Output DNS records using 'multiline' format");
 
-      opts.addOption(Option.builder("v").longOpt("verbose").argName("level").optionalArg(true).desc(
-          "verbosity level -- 0 is silence, 3 is info, 5 is debug information, 6 is trace information. default is level 2 (warning)")
+      opts.addOption(Option.builder("v").longOpt("verbose").argName("level").hasArg().desc(
+          "verbosity level -- 0: silence, 1: error, 2: warning, 3: info, 4/5: fine, 6: finest; default: 2 (warning)")
           .build());
 
       opts.addOption(Option.builder("A").hasArg().argName("alias:original:mnemonic").longOpt("alg-alias")

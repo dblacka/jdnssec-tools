@@ -227,7 +227,6 @@ public class DnsSecVerifier {
       log.fine("could not find matching trusted key");
       return false;
     }
-
     try {
       byte[] data = SignUtils.generateSigData(rrset, sigrec);
 
@@ -256,10 +255,13 @@ public class DnsSecVerifier {
         }
         log.fine("Signature failed to validate cryptographically with " + keypair);
         if (localReasons != null) {
-          localReasons.add("Signature failed to verify cryptographically");
+          localReasons.add("Signature failed to verify cryptographically with " + keypair);
         }
       }
 
+      if (!validated) {
+        reasons.addAll(localReasons);
+      }
       return validated;
     } catch (IOException e) {
       log.severe("I/O error: " + e);
