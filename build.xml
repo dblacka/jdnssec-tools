@@ -47,8 +47,8 @@
            deprecation="true"
            includeantruntime="false"
            includes="com/verisignlabs/dnssec/"
-           source="11"
-           target="11" />
+           source="17"
+           target="17" />
   </target>
 
   <target name="sectools-jar" depends="usage,sectools">
