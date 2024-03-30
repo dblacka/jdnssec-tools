@@ -264,18 +264,21 @@ public class DnsKeyPair {
    * @throws NoSuchAlgorithmException
    */
   public Signature getVerifier() {
-    if (mVerifier == null) {
-      mVerifier = getSignature();
-      PublicKey pk = getPublic();
-      if (mVerifier != null && pk != null) {
-        try {
-          mVerifier.initVerify(pk);
-        } catch (InvalidKeyException e) {
-        }
-      } else {
-        // do not return an uninitialized verifier
-        return null;
-      }
+    if (mVerifier != null) return mVerifier;
+    
+    mVerifier = getSignature();
+    PublicKey pk = getPublic();
+    
+    if (mVerifier == null || pk == null) {
+      log.warning("Could not get a Signature object for this key pair" + this);
+      return null;
+    }
+
+    try {
+      mVerifier.initVerify(pk);
+    } catch (InvalidKeyException e) {
+      log.warning("Key pair cannot initialize with public key: " + this);
+      return null;
     }
 
     return mVerifier;
