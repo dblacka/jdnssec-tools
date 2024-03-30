@@ -102,7 +102,7 @@ public class DnsKeyConverter {
     }
 
     // do not rely on DNSJava's method for EdDSA for now.
-    if (mAlgorithms.baseType(originalAlgorithm) == DnsKeyAlgorithm.EDDSA) {
+    if (mAlgorithms.baseType(originalAlgorithm) == DnsKeyAlgorithm.BaseAlgorithm.EDDSA) {
       try {
         return parseEdDSADNSKEYRecord(pKeyRecord);
       } catch (InvalidKeySpecException e) {
@@ -140,7 +140,7 @@ public class DnsKeyConverter {
   public DNSKEYRecord generateDNSKEYRecord(Name name, int dclass, long ttl,
       int flags, int alg, PublicKey key) {
     try {
-      if (mAlgorithms.baseType(alg) == DnsKeyAlgorithm.EDDSA) {
+      if (mAlgorithms.baseType(alg) == DnsKeyAlgorithm.BaseAlgorithm.EDDSA) {
         return generateEdDSADNSKEYRecord(name, dclass, ttl, flags, alg, key);
       }
       return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
@@ -168,9 +168,9 @@ public class DnsKeyConverter {
     PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(key);
     try {
       switch (mAlgorithms.baseType(algorithm)) {
-        case DnsKeyAlgorithm.RSA:
+        case RSA:
           return mRSAKeyFactory.generatePrivate(spec);
-        case DnsKeyAlgorithm.DSA:
+        case DSA:
           return mDSAKeyFactory.generatePrivate(spec);
         default:
           return null;
@@ -225,17 +225,17 @@ public class DnsKeyConverter {
         int alg = parseInt(val, -1);
 
         switch (mAlgorithms.baseType(alg)) {
-          case DnsKeyAlgorithm.RSA:
+          case RSA:
             return parsePrivateRSA(lines);
-          case DnsKeyAlgorithm.DSA:
+          case DSA:
             return parsePrivateDSA(lines);
-          case DnsKeyAlgorithm.DH:
+          case DH:
             return parsePrivateDH(lines);
-          case DnsKeyAlgorithm.ECC_GOST:
+          case ECC_GOST:
             return parsePrivateECDSA(lines, alg);
-          case DnsKeyAlgorithm.ECDSA:
+          case ECDSA:
             return parsePrivateECDSA(lines, alg);
-          case DnsKeyAlgorithm.EDDSA:
+          case EDDSA:
             return parsePrivateEdDSA(lines, alg);
           default:
             throw new IOException("unsupported private key algorithm: " + val);

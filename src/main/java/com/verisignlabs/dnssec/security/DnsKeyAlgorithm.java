@@ -72,21 +72,24 @@ public class DnsKeyAlgorithm {
 
   // Our base algorithm numbers. This is a normalization of the DNSSEC
   // algorithms (which are really signature algorithms). Thus RSASHA1,
-  // RSASHA256, etc. all boil down to 'RSA' here.
-  public static final int UNKNOWN  = -1;
-  public static final int RSA      = 1;
-  public static final int DH       = 2;
-  public static final int DSA      = 3;
-  public static final int ECC_GOST = 4;
-  public static final int ECDSA    = 5;
-  public static final int EDDSA    = 6;
+  // RSASHA256, etc. all boil down to 'RSA' here. Similary, ECDSAP256SHA256 and
+  // ECDSAP384SHA384 both become 'ECDSA'.
+  public enum BaseAlgorithm {
+    UNKNOWN,
+    RSA,
+    DH,
+    DSA,
+    ECC_GOST,
+    ECDSA,
+    EDDSA;
+  }
 
   private static class AlgEntry {
     public int dnssecAlgorithm;
     public String sigName;
-    public int baseType;
+    public BaseAlgorithm baseType;
 
-    public AlgEntry(int algorithm, String sigName, int baseType) {
+    public AlgEntry(int algorithm, String sigName, BaseAlgorithm baseType) {
       this.dnssecAlgorithm = algorithm;
       this.sigName = sigName;
       this.baseType = baseType;
@@ -96,7 +99,7 @@ public class DnsKeyAlgorithm {
   private static class ECAlgEntry extends AlgEntry {
     public ECParameterSpec ecSpec;
 
-    public ECAlgEntry(int algorithm, String sigName, int baseType, ECParameterSpec spec) {
+    public ECAlgEntry(int algorithm, String sigName, BaseAlgorithm baseType, ECParameterSpec spec) {
       super(algorithm, sigName, baseType);
       this.ecSpec = spec;
     }
@@ -105,7 +108,7 @@ public class DnsKeyAlgorithm {
   private static class EdAlgEntry extends AlgEntry {
     public EdDSAParameterSpec edSpec;
 
-    public EdAlgEntry(int algorithm, String sigName, int baseType, EdDSAParameterSpec spec) {
+    public EdAlgEntry(int algorithm, String sigName, BaseAlgorithm baseType, EdDSAParameterSpec spec) {
       super(algorithm, sigName, baseType);
       this.edSpec = spec;
     }
@@ -172,16 +175,16 @@ public class DnsKeyAlgorithm {
     mIdToMnemonicMap = new HashMap<>();
 
     // Load the standard DNSSEC algorithms.
-    addAlgorithm(DNSSEC.Algorithm.RSAMD5, "MD5withRSA", RSA);
+    addAlgorithm(DNSSEC.Algorithm.RSAMD5, "MD5withRSA", BaseAlgorithm.RSA);
     addMnemonic("RSAMD5", DNSSEC.Algorithm.RSAMD5);
 
-    addAlgorithm(DNSSEC.Algorithm.DH, "", DH);
+    addAlgorithm(DNSSEC.Algorithm.DH, "", BaseAlgorithm.DH);
     addMnemonic("DH", DNSSEC.Algorithm.DH);
 
-    addAlgorithm(DNSSEC.Algorithm.DSA, "SHA1withDSA", DSA);
+    addAlgorithm(DNSSEC.Algorithm.DSA, "SHA1withDSA", BaseAlgorithm.DSA);
     addMnemonic("DSA", DNSSEC.Algorithm.DSA);
 
-    addAlgorithm(DNSSEC.Algorithm.RSASHA1, "SHA1withRSA", RSA);
+    addAlgorithm(DNSSEC.Algorithm.RSASHA1, "SHA1withRSA", BaseAlgorithm.RSA);
     addMnemonic("RSASHA1", DNSSEC.Algorithm.RSASHA1);
     addMnemonic("RSA", DNSSEC.Algorithm.RSASHA1);
 
@@ -193,25 +196,25 @@ public class DnsKeyAlgorithm {
     addMnemonic("NSEC3RSASHA1", DNSSEC.Algorithm.RSA_NSEC3_SHA1);
 
     // Algorithms added by RFC 5702.
-    addAlgorithm(DNSSEC.Algorithm.RSASHA256, "SHA256withRSA", RSA);
+    addAlgorithm(DNSSEC.Algorithm.RSASHA256, "SHA256withRSA", BaseAlgorithm.RSA);
     addMnemonic("RSASHA256", DNSSEC.Algorithm.RSASHA256);
 
-    addAlgorithm(DNSSEC.Algorithm.RSASHA512, "SHA512withRSA", RSA);
+    addAlgorithm(DNSSEC.Algorithm.RSASHA512, "SHA512withRSA", BaseAlgorithm.RSA);
     addMnemonic("RSASHA512", DNSSEC.Algorithm.RSASHA512);
 
     // ECC-GOST is not supported by Java 1.8's Sun crypto provider. The
     // bouncycastle.org provider, however, does support it.
     // GostR3410-2001-CryptoPro-A is the named curve in the BC provider, but we
     // will get the parameters directly.
-    addAlgorithm(DNSSEC.Algorithm.ECC_GOST, "GOST3411withECGOST3410", ECC_GOST, null);
+    addAlgorithm(DNSSEC.Algorithm.ECC_GOST, "GOST3411withECGOST3410", BaseAlgorithm.ECC_GOST, null);
     addMnemonic("ECCGOST", DNSSEC.Algorithm.ECC_GOST);
     addMnemonic("ECC-GOST", DNSSEC.Algorithm.ECC_GOST);
 
-    addAlgorithm(DNSSEC.Algorithm.ECDSAP256SHA256, "SHA256withECDSA", ECDSA, "secp256r1");
+    addAlgorithm(DNSSEC.Algorithm.ECDSAP256SHA256, "SHA256withECDSA", BaseAlgorithm.ECDSA, "secp256r1");
     addMnemonic("ECDSAP256SHA256", DNSSEC.Algorithm.ECDSAP256SHA256);
     addMnemonic("ECDSA-P256", DNSSEC.Algorithm.ECDSAP256SHA256);
 
-    addAlgorithm(DNSSEC.Algorithm.ECDSAP384SHA384, "SHA384withECDSA", ECDSA, "secp384r1");
+    addAlgorithm(DNSSEC.Algorithm.ECDSAP384SHA384, "SHA384withECDSA", BaseAlgorithm.ECDSA, "secp384r1");
     addMnemonic("ECDSAP384SHA384", DNSSEC.Algorithm.ECDSAP384SHA384);
     addMnemonic("ECDSA-P384", DNSSEC.Algorithm.ECDSAP384SHA384);
 
@@ -219,16 +222,16 @@ public class DnsKeyAlgorithm {
     // provider or bouncycastle. It is added by the Ed25519-Java
     // library. We don't have a corresponding constant in
     // org.xbill.DNS.DNSSEC yet, though.
-    addAlgorithm(15, "NONEwithEdDSA", EDDSA, "Ed25519");
+    addAlgorithm(15, "NONEwithEdDSA", BaseAlgorithm.EDDSA, "Ed25519");
     addMnemonic("ED25519", 15);
   }
 
-  private void addAlgorithm(int algorithm, String sigName, int baseType) {
+  private void addAlgorithm(int algorithm, String sigName, BaseAlgorithm baseType) {
     mAlgorithmMap.put(algorithm, new AlgEntry(algorithm, sigName, baseType));
   }
 
-  private void addAlgorithm(int algorithm, String sigName, int baseType, String curveName) {
-    if (baseType == ECDSA) {
+  private void addAlgorithm(int algorithm, String sigName, BaseAlgorithm baseType, String curveName) {
+    if (baseType == BaseAlgorithm.ECDSA) {
       ECParameterSpec ecSpec = ECSpecFromAlgorithm(algorithm);
       if (ecSpec == null)
         ecSpec = ECSpecFromName(curveName);
@@ -246,7 +249,7 @@ public class DnsKeyAlgorithm {
       }
       ECAlgEntry entry = new ECAlgEntry(algorithm, sigName, baseType, ecSpec);
       mAlgorithmMap.put(algorithm, entry);
-    } else if (baseType == EDDSA) {
+    } else if (baseType == BaseAlgorithm.EDDSA) {
       EdDSAParameterSpec edSpec = EdDSASpecFromName(curveName);
       if (edSpec == null)
         return;
@@ -304,16 +307,16 @@ public class DnsKeyAlgorithm {
   // the ECC-GOST curve.
   private ECParameterSpec ECSpecFromAlgorithm(int algorithm) {
     if (algorithm == DNSSEC.Algorithm.ECC_GOST) {
-        // From RFC 4357 Section 11.4
-        BigInteger p = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97", 16);
-        BigInteger a = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD94", 16);
-        BigInteger b = new BigInteger("A6", 16);
-        BigInteger gx = new BigInteger("1", 16);
-        BigInteger gy = new BigInteger("8D91E471E0989CDA27DF505A453F2B7635294F2DDF23E3B122ACC99C9E9F1E14", 16);
-        BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6C611070995AD10045841B09B761B893", 16);
+      // From RFC 4357 Section 11.4
+      BigInteger p = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97", 16);
+      BigInteger a = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD94", 16);
+      BigInteger b = new BigInteger("A6", 16);
+      BigInteger gx = new BigInteger("1", 16);
+      BigInteger gy = new BigInteger("8D91E471E0989CDA27DF505A453F2B7635294F2DDF23E3B122ACC99C9E9F1E14", 16);
+      BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6C611070995AD10045841B09B761B893", 16);
 
-        EllipticCurve curve = new EllipticCurve(new ECFieldFp(p), a, b);
-        return new ECParameterSpec(curve, new ECPoint(gx, gy), n, 1);
+      EllipticCurve curve = new EllipticCurve(new ECFieldFp(p), a, b);
+      return new ECParameterSpec(curve, new ECPoint(gx, gy), n, 1);
     }
     return null;
   }
@@ -482,15 +485,15 @@ public class DnsKeyAlgorithm {
     return mIdToMnemonicMap.get(algorithm);
   }
 
-  public int baseType(int algorithm) {
+  public BaseAlgorithm baseType(int algorithm) {
     AlgEntry entry = getEntry(algorithm);
     if (entry != null)
       return entry.baseType;
-    return UNKNOWN;
+    return BaseAlgorithm.UNKNOWN;
   }
 
   public boolean isDSA(int algorithm) {
-    return (baseType(algorithm) == DSA);
+    return (baseType(algorithm) == BaseAlgorithm.DSA);
   }
 
   public KeyPair generateKeyPair(int algorithm, int keysize, boolean useLargeExp)

@@ -241,7 +241,7 @@ public class DnsSecVerifier {
   
         byte[] sig = sigrec.getSignature();
   
-        if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.DSA) {
+        if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.BaseAlgorithm.DSA) {
           sig = SignUtils.convertDSASignature(sig);
         }
   

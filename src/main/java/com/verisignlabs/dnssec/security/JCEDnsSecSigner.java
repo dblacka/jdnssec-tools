@@ -184,7 +184,7 @@ public class JCEDnsSecSigner {
 
       DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
       // Convert to RFC 2536 format, if necessary.
-      if (algs.baseType(pair.getDNSKEYAlgorithm()) == DnsKeyAlgorithm.DSA) {
+      if (algs.baseType(pair.getDNSKEYAlgorithm()) == DnsKeyAlgorithm.BaseAlgorithm.DSA) {
         DSAPublicKey pk = (DSAPublicKey) pair.getPublic();
         sig = SignUtils.convertDSASignature(pk.getParams(), sig);
       }
