@@ -56,7 +56,7 @@ public class DSTool extends CLBase {
     public dsType createType = dsType.DS;
     public String outputfile = null;
     public String keyname = null;
-    public int digestId = DNSSEC.Digest.SHA1;
+    public int digestId = DNSSEC.Digest.SHA256;
 
     public CLIState() {
       super("jdnssec-dstool [..options..] keyfile");
