@@ -33,6 +33,7 @@ import org.xbill.DNS.Type;
 
 public class RecordComparator implements Comparator<Record> {
   public RecordComparator() {
+    // nothing to initialize
   }
 
   /**
@@ -65,15 +66,15 @@ public class RecordComparator implements Comparator<Record> {
   }
 
   private int compareRDATA(Record a, Record b) {
-    byte[] a_rdata = a.rdataToWireCanonical();
-    byte[] b_rdata = b.rdataToWireCanonical();
+    byte[] aRdata = a.rdataToWireCanonical();
+    byte[] bRdata = b.rdataToWireCanonical();
 
-    for (int i = 0; i < a_rdata.length && i < b_rdata.length; i++) {
-      int n = (a_rdata[i] & 0xFF) - (b_rdata[i] & 0xFF);
+    for (int i = 0; i < aRdata.length && i < bRdata.length; i++) {
+      int n = (aRdata[i] & 0xFF) - (bRdata[i] & 0xFF);
       if (n != 0)
         return n;
     }
-    return (a_rdata.length - b_rdata.length);
+    return (aRdata.length - bRdata.length);
   }
 
   public int compare(Record a, Record b) {
@@ -88,27 +89,27 @@ public class RecordComparator implements Comparator<Record> {
     if (res != 0)
       return res;
 
-    int a_type = a.getType();
-    int b_type = b.getType();
-    int sig_type = 0;
+    int aType = a.getType();
+    int bType = b.getType();
+    int sigType = 0;
 
-    if (a_type == Type.RRSIG) {
-      a_type = ((RRSIGRecord) a).getTypeCovered();
-      if (b_type != Type.RRSIG)
-        sig_type = 1;
+    if (aType == Type.RRSIG) {
+      aType = ((RRSIGRecord) a).getTypeCovered();
+      if (bType != Type.RRSIG)
+        sigType = 1;
     }
-    if (b_type == Type.RRSIG) {
-      b_type = ((RRSIGRecord) b).getTypeCovered();
+    if (bType == Type.RRSIG) {
+      bType = ((RRSIGRecord) b).getTypeCovered();
       if (a.getType() != Type.RRSIG)
-        sig_type = -1;
+        sigType = -1;
     }
 
-    res = compareTypes(a_type, b_type);
+    res = compareTypes(aType, bType);
     if (res != 0)
       return res;
 
-    if (sig_type != 0)
-      return sig_type;
+    if (sigType != 0)
+      return sigType;
 
     return compareRDATA(a, b);
   }
