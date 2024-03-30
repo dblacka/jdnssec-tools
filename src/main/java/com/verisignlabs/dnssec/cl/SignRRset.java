@@ -55,14 +55,14 @@ public class SignRRset extends CLBase {
    * This is an inner class used to hold all of the command line option state.
    */
   protected static class CLIState extends CLIStateBase {
-    private File keyDirectory      = null;
-    public  String[] keyFiles      = null;
-    public  Instant start          = null;
-    public  Instant expire         = null;
-    public  String inputfile       = null;
-    public  String outputfile      = null;
-    public  boolean verifySigs     = false;
-    public  boolean verboseSigning = false;
+    private File keyDirectory = null;
+    public String[] keyFiles = null;
+    public Instant start = null;
+    public Instant expire = null;
+    public String inputfile = null;
+    public String outputfile = null;
+    public boolean verifySigs = false;
+    public boolean verboseSigning = false;
 
     public CLIState() {
       super("jdnssec-signrrset [..options..] rrset_file key_file [key_file ...]");
@@ -137,10 +137,8 @@ public class SignRRset extends CLBase {
   /**
    * Verify the generated signatures.
    *
-   * @param records
-   *                 a list of {@link org.xbill.DNS.Record}s.
-   * @param keypairs
-   *                 a list of keypairs used the sign the zone.
+   * @param records  a list of {@link org.xbill.DNS.Record}s.
+   * @param keypairs a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
   private static boolean verifySigs(List<Record> records, List<DnsKeyPair> keypairs) {
@@ -176,15 +174,12 @@ public class SignRRset extends CLBase {
   /**
    * Load the key pairs from the key files.
    *
-   * @param keyfiles
-   *                    a string array containing the base names or paths of the
-   *                    keys
-   *                    to be loaded.
-   * @param startIndex
-   *                    the starting index of keyfiles string array to use. This
-   *                    allows us to use the straight command line argument array.
-   * @param inDirectory
-   *                    the directory to look in (may be null).
+   * @param keyfiles    a string array containing the base names or paths of the
+   *                    keys to be loaded.
+   * @param startIndex  the starting index of keyfiles string array to use. This
+   *                    allows us to use the straight command line argument
+   *                    array.
+   * @param inDirectory the directory to look in (may be null).
    * @return a list of keypair objects.
    */
   private static List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,

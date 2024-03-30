@@ -75,10 +75,14 @@ public class SignKeyset extends CLBase {
       opts.addOption("a", "verify", false, "verify generated signatures>");
 
       // Argument options
-      opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory").desc("directory where key files are found (default '.').").build());
-      opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time").desc("signature starting time (default is now - 1 hour)").build());
-      opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time").desc("signature expiration time (default is start-time + 30 days)").build());
-      opts.addOption(Option.builder("f").hasArg().argName("outfile").desc("file the signed keyset is written to").build());
+      opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
+          .desc("directory where key files are found (default '.').").build());
+      opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
+          .desc("signature starting time (default is now - 1 hour)").build());
+      opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
+          .desc("signature expiration time (default is start-time + 30 days)").build());
+      opts.addOption(
+          Option.builder("f").hasArg().argName("outfile").desc("file the signed keyset is written to").build());
     }
 
     @Override
@@ -129,11 +133,9 @@ public class SignKeyset extends CLBase {
 
   /**
    * Verify the generated signatures.
-   * 
-   * @param records
-   *                 a list of {@link org.xbill.DNS.Record}s.
-   * @param keypairs
-   *                 a list of keypairs used the sign the zone.
+   *
+   * @param records  a list of {@link org.xbill.DNS.Record}s.
+   * @param keypairs a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
   private static boolean verifySigs(List<Record> records,
@@ -168,16 +170,13 @@ public class SignKeyset extends CLBase {
 
   /**
    * Load the key pairs from the key files.
-   * 
-   * @param keyfiles
-   *                    a string array containing the base names or paths of the
-   *                    keys
-   *                    to be loaded.
-   * @param startIndex
-   *                    the starting index of keyfiles string array to use. This
-   *                    allows us to use the straight command line argument array.
-   * @param inDirectory
-   *                    the directory to look in (may be null).
+   *
+   * @param keyfiles    a string array containing the base names or paths of the
+   *                    keys to be loaded.
+   * @param startIndex  the starting index of keyfiles string array to use. This
+   *                    allows us to use the straight command line argument
+   *                    array.
+   * @param inDirectory the directory to look in (may be null).
    * @return a list of keypair objects.
    */
   private static List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
@@ -244,8 +243,8 @@ public class SignKeyset extends CLBase {
     }
 
     // Make sure that all records are DNSKEYs with the same name.
-    Name  keysetName = null;
-    RRset keyset     = new RRset();
+    Name keysetName = null;
+    RRset keyset = new RRset();
 
     for (Record r : records) {
       if (r.getType() != Type.DNSKEY) {

@@ -71,7 +71,8 @@ public class DSTool extends CLBase {
     protected void setupOptions(Options opts) {
       opts.addOption(Option.builder("D").longOpt("dlv").desc("Generate a DLV record instead.").build());
       opts.addOption(Option.builder("C").longOpt("cds").desc("Generate a CDS record instead").build());
-      opts.addOption(Option.builder("d").hasArg().argName("id").longOpt("digest").desc("The digest algorithm to use").build());
+      opts.addOption(
+          Option.builder("d").hasArg().argName("id").longOpt("digest").desc("The digest algorithm to use").build());
       opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output").desc("output to file").build());
     }
 
@@ -120,9 +121,9 @@ public class DSTool extends CLBase {
       log.fine("creating CDS.");
       CDSRecord cds = new CDSRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
           ds.getDClass(), ds.getDigest());
-          res = cds;
+      res = cds;
     }
-  
+
     if (state.outputfile != null && !state.outputfile.equals("-")) {
       try (PrintWriter out = new PrintWriter(new FileWriter(state.outputfile))) {
         out.println(res);

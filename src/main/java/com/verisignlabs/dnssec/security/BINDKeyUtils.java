@@ -107,17 +107,12 @@ public class BINDKeyUtils {
    * Given the information necessary to construct the path to a BIND9 generated
    * key pair, load the key pair.
    *
-   * @param signer
-   *                    the DNS name of the key.
-   * @param algorithm
-   *                    the DNSSEC algorithm of the key.
-   * @param keyid
-   *                    the DNSSEC key footprint.
-   * @param inDirectory
-   *                    the directory to look for the files (may be null).
+   * @param signer      the DNS name of the key.
+   * @param algorithm   the DNSSEC algorithm of the key.
+   * @param keyid       the DNSSEC key footprint.
+   * @param inDirectory the directory to look for the files (may be null).
    * @return the loaded key pair.
-   * @throws IOException
-   *                     if there was a problem reading the BIND9 files.
+   * @throws IOException if there was a problem reading the BIND9 files.
    */
   public static DnsKeyPair loadKeyPair(Name signer, int algorithm, int keyid,
       File inDirectory) throws IOException {
@@ -129,16 +124,12 @@ public class BINDKeyUtils {
   /**
    * Given a base path to a BIND9 key pair, load the key pair.
    *
-   * @param keyFileBasePath
-   *                        the base filename (or real filename for either the
-   *                        public or
-   *                        private key) of the key.
-   * @param inDirectory
-   *                        the directory to look in, if the keyFileBasePath is
+   * @param keyFileBasePath the base filename (or real filename for either the
+   *                        public or private key) of the key.
+   * @param inDirectory     the directory to look in, if the keyFileBasePath is
    *                        relative.
    * @return the loaded key pair.
-   * @throws IOException
-   *                     if there was a problem reading the files
+   * @throws IOException if there was a problem reading the files
    */
   public static DnsKeyPair loadKeyPair(String keyFileBasePath, File inDirectory)
       throws IOException {
@@ -163,15 +154,12 @@ public class BINDKeyUtils {
    * Given a base path to a BIND9 key pair, load the public part (only) of the
    * key pair
    *
-   * @param keyFileBasePath
-   *                        the base or real path to the public part of a key
+   * @param keyFileBasePath the base or real path to the public part of a key
    *                        pair.
-   * @param inDirectory
-   *                        the directory to look in if the path is relative (may
-   *                        be null).
+   * @param inDirectory     the directory to look in if the path is relative
+   *                        (may be null).
    * @return a {@link DnsKeyPair} containing just the public key information.
-   * @throws IOException
-   *                     if there was a problem reading the public key file.
+   * @throws IOException if there was a problem reading the public key file.
    */
   public static DnsKeyPair loadKey(String keyFileBasePath, File inDirectory)
       throws IOException {
@@ -191,15 +179,11 @@ public class BINDKeyUtils {
    * "keyset-[signer]." where [signer] is the DNS owner name of the key. The
    * keyset may be signed, but doesn't have to be.
    *
-   * @param keysetFileName
-   *                       the name of the keyset file.
-   * @param inDirectory
-   *                       the directory to look in if the path is relative (may
-   *                       be null,
-   *                       defaults to the current working directory).
+   * @param keysetFileName the name of the keyset file.
+   * @param inDirectory    the directory to look in if the path is relative (may
+   *                       be null, defaults to the current working directory).
    * @return a RRset contain the KEY records and any associated SIG records.
-   * @throws IOException
-   *                     if there was a problem reading the keyset file.
+   * @throws IOException if there was a problem reading the keyset file.
    */
   public static RRset loadKeySet(String keysetFileName, File inDirectory)
       throws IOException {
@@ -219,8 +203,8 @@ public class BINDKeyUtils {
   /**
    * Calculate the key file base for this key pair.
    *
-   * @param pair
-   *             the {@link DnsKeyPair} to work from. It only needs a public key.
+   * @param pair the {@link DnsKeyPair} to work from. It only needs a public
+   *             key.
    * @return the base name of the key files.
    */
   public static String keyFileBase(DnsKeyPair pair) {
@@ -260,8 +244,7 @@ public class BINDKeyUtils {
    * Given a the contents of a BIND9 private key file, convert it into a native
    * {@link java.security.PrivateKey} object.
    *
-   * @param privateKeyString
-   *                         the contents of a BIND9 key file in string form.
+   * @param privateKeyString the contents of a BIND9 key file in string form.
    * @return a {@link java.security.PrivateKey}
    */
   public static PrivateKey convertPrivateKeyString(String privateKeyString) {
@@ -284,10 +267,8 @@ public class BINDKeyUtils {
    * Given a native private key, convert it into a BIND9 private key file
    * format.
    *
-   * @param priv
-   *             the private key to convert.
-   * @param pub
-   *             the private key's corresponding public key. Some algorithms
+   * @param priv the private key to convert.
+   * @param pub  the private key's corresponding public key. Some algorithms
    *             require information from both.
    * @return a string containing the contents of a BIND9 private key file.
    */
@@ -328,16 +309,11 @@ public class BINDKeyUtils {
   /**
    * This routine will write out the BIND9 dnssec-* tool compatible files.
    *
-   * @param baseFileName
-   *                     use this base file name. If null, the standard BIND9 base
-   *                     file
-   *                     name will be computed.
-   * @param pair
-   *                     the keypair in question.
-   * @param inDirectory
-   *                     the directory to write to (may be null).
-   * @throws IOException
-   *                     if there is a problem writing the files.
+   * @param baseFileName use this base file name. If null, the standard BIND9
+   *                     base file name will be computed.
+   * @param pair         the keypair in question.
+   * @param inDirectory  the directory to write to (may be null).
+   * @throws IOException if there is a problem writing the files.
    */
   public static void writeKeyFiles(String baseFileName, DnsKeyPair pair,
       File inDirectory) throws IOException {
@@ -370,10 +346,8 @@ public class BINDKeyUtils {
    * This routine will write out the BIND9 dnssec-* tool compatible files to the
    * standard file names.
    *
-   * @param pair
-   *                    the key pair in question.
-   * @param inDirectory
-   *                    the directory to write to (may be null).
+   * @param pair the key pair in question.
+   * @param inDirectory the directory to write to (may be null).
    */
   public static void writeKeyFiles(DnsKeyPair pair, File inDirectory)
       throws IOException {

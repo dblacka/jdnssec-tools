@@ -154,10 +154,10 @@ public class DnsKeyConverter {
 
   private DNSKEYRecord generateEdDSADNSKEYRecord(Name name, int dclass, long ttl,
       int flags, int alg, PublicKey key) {
-    EdDSAPublicKey ed_key = (EdDSAPublicKey) key;
-    byte[] key_data = ed_key.getAbyte();
+    EdDSAPublicKey edKey = (EdDSAPublicKey) key;
+    byte[] keyData = edKey.getAbyte();
     return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
-        key_data);
+        keyData);
   }
   // Private Key Specific Parsing routines
 
@@ -272,12 +272,12 @@ public class DnsKeyConverter {
   private PrivateKey parsePrivateRSA(StringTokenizer lines)
       throws NoSuchAlgorithmException {
     BigInteger modulus = null;
-    BigInteger public_exponent = null;
-    BigInteger private_exponent = null;
-    BigInteger prime_p = null;
-    BigInteger prime_q = null;
-    BigInteger prime_p_exponent = null;
-    BigInteger prime_q_exponent = null;
+    BigInteger publicExponent = null;
+    BigInteger privateExponent = null;
+    BigInteger primeP = null;
+    BigInteger primeQ = null;
+    BigInteger primePExponent = null;
+    BigInteger primeQExponent = null;
     BigInteger coefficient = null;
 
     while (lines.hasMoreTokens()) {
@@ -296,33 +296,28 @@ public class DnsKeyConverter {
 
       if (line.startsWith("Modulus: ")) {
         modulus = new BigInteger(1, data);
-        // printBigIntCompare(data, modulus);
       } else if (line.startsWith("PublicExponent: ")) {
-        public_exponent = new BigInteger(1, data);
-        // printBigIntCompare(data, public_exponent);
+        publicExponent = new BigInteger(1, data);
       } else if (line.startsWith("PrivateExponent: ")) {
-        private_exponent = new BigInteger(1, data);
-        // printBigIntCompare(data, private_exponent);
+        privateExponent = new BigInteger(1, data);
       } else if (line.startsWith("Prime1: ")) {
-        prime_p = new BigInteger(1, data);
-        // printBigIntCompare(data, prime_p);
+        primeP = new BigInteger(1, data);
       } else if (line.startsWith("Prime2: ")) {
-        prime_q = new BigInteger(1, data);
-        // printBigIntCompare(data, prime_q);
+        primeQ = new BigInteger(1, data);
       } else if (line.startsWith("Exponent1: ")) {
-        prime_p_exponent = new BigInteger(1, data);
+        primePExponent = new BigInteger(1, data);
       } else if (line.startsWith("Exponent2: ")) {
-        prime_q_exponent = new BigInteger(1, data);
+        primeQExponent = new BigInteger(1, data);
       } else if (line.startsWith("Coefficient: ")) {
         coefficient = new BigInteger(1, data);
       }
     }
 
     try {
-      KeySpec spec = new RSAPrivateCrtKeySpec(modulus, public_exponent,
-          private_exponent, prime_p,
-          prime_q, prime_p_exponent,
-          prime_q_exponent, coefficient);
+      KeySpec spec = new RSAPrivateCrtKeySpec(modulus, publicExponent,
+          privateExponent, primeP,
+          primeQ, primePExponent,
+          primeQExponent, coefficient);
       if (mRSAKeyFactory == null) {
         mRSAKeyFactory = KeyFactory.getInstance("RSA");
       }
@@ -466,13 +461,13 @@ public class DnsKeyConverter {
     if (mECKeyFactory == null) {
       mECKeyFactory = KeyFactory.getInstance("EC");
     }
-    ECParameterSpec ec_spec = mAlgorithms.getEllipticCurveParams(algorithm);
-    if (ec_spec == null) {
+    ECParameterSpec ecSpec = mAlgorithms.getEllipticCurveParams(algorithm);
+    if (ecSpec == null) {
       throw new NoSuchAlgorithmException("DNSSEC algorithm " + algorithm +
           " is not a recognized Elliptic Curve algorithm");
     }
 
-    KeySpec spec = new ECPrivateKeySpec(s, ec_spec);
+    KeySpec spec = new ECPrivateKeySpec(s, ecSpec);
 
     try {
       return mECKeyFactory.generatePrivate(spec);
@@ -516,13 +511,13 @@ public class DnsKeyConverter {
     if (mEdKeyFactory == null) {
       mEdKeyFactory = KeyFactory.getInstance("EdDSA");
     }
-    EdDSAParameterSpec ed_spec = mAlgorithms.getEdwardsCurveParams(algorithm);
-    if (ed_spec == null) {
+    EdDSAParameterSpec edSpec = mAlgorithms.getEdwardsCurveParams(algorithm);
+    if (edSpec == null) {
       throw new NoSuchAlgorithmException("DNSSEC algorithm " + algorithm +
           " is not a recognized Edwards Curve algorithm");
     }
 
-    KeySpec spec = new EdDSAPrivateKeySpec(seed, ed_spec);
+    KeySpec spec = new EdDSAPrivateKeySpec(seed, edSpec);
 
     try {
       return mEdKeyFactory.generatePrivate(spec);
@@ -556,16 +551,16 @@ public class DnsKeyConverter {
    * Convert from 'unsigned' big integer to original 'signed format' in Base64
    */
   private static String b64BigInt(BigInteger i) {
-    byte[] orig_bytes = i.toByteArray();
+    byte[] origBytes = i.toByteArray();
 
-    if (orig_bytes[0] != 0 || orig_bytes.length == 1) {
-      return base64.toString(orig_bytes);
+    if (origBytes[0] != 0 || origBytes.length == 1) {
+      return base64.toString(origBytes);
     }
 
-    byte[] signed_bytes = new byte[orig_bytes.length - 1];
-    System.arraycopy(orig_bytes, 1, signed_bytes, 0, signed_bytes.length);
+    byte[] signedBytes = new byte[origBytes.length - 1];
+    System.arraycopy(origBytes, 1, signedBytes, 0, signedBytes.length);
 
-    return base64.toString(signed_bytes);
+    return base64.toString(signedBytes);
   }
 
   /**

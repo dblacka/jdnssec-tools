@@ -264,11 +264,12 @@ public class DnsKeyPair {
    * @throws NoSuchAlgorithmException
    */
   public Signature getVerifier() {
-    if (mVerifier != null) return mVerifier;
-    
+    if (mVerifier != null)
+      return mVerifier;
+
     mVerifier = getSignature();
     PublicKey pk = getPublic();
-    
+
     if (mVerifier == null || pk == null) {
       log.warning("Could not get a Signature object for this key pair" + this);
       return null;
@@ -330,15 +331,16 @@ public class DnsKeyPair {
     return -1;
   }
 
-  // This is from a StackOverflow answer.  There are number of bytes-to-hex
+  // This is from a StackOverflow answer. There are number of bytes-to-hex
   // converters in the ecosystem, but this avoid extra dependencies
   private static final byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
+
   public static String toHex(byte[] bytes) {
     byte[] hexChars = new byte[bytes.length * 2];
     for (int j = 0; j < bytes.length; j++) {
-        int v = bytes[j] & 0xFF;
-        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+      int v = bytes[j] & 0xFF;
+      hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+      hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
     }
     return new String(hexChars, StandardCharsets.UTF_8);
   }

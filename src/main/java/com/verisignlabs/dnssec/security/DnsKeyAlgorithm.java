@@ -279,19 +279,19 @@ public class DnsKeyAlgorithm {
     mIdToMnemonicMap.computeIfAbsent(alg, k -> m);
   }
 
-  public void addAlias(int alias, String mnemonic, int original_algorithm) {
+  public void addAlias(int alias, String mnemonic, int origAlgorithm) {
     if (mAlgorithmMap.containsKey(alias)) {
       log.warning("Unable to alias algorithm " + alias + " because it already exists.");
       return;
     }
 
-    if (!mAlgorithmMap.containsKey(original_algorithm)) {
+    if (!mAlgorithmMap.containsKey(origAlgorithm)) {
       log.warning("Unable to alias algorithm " + alias
-          + " to unknown algorithm identifier " + original_algorithm);
+          + " to unknown algorithm identifier " + origAlgorithm);
       return;
     }
 
-    mAlgorithmMap.put(alias, mAlgorithmMap.get(original_algorithm));
+    mAlgorithmMap.put(alias, mAlgorithmMap.get(origAlgorithm));
 
     if (mnemonic != null) {
       addMnemonic(mnemonic, alias);
@@ -325,8 +325,8 @@ public class DnsKeyAlgorithm {
   private ECParameterSpec ECSpecFromName(String stdName) {
     try {
       AlgorithmParameters ap = AlgorithmParameters.getInstance("EC");
-      ECGenParameterSpec ecg_spec = new ECGenParameterSpec(stdName);
-      ap.init(ecg_spec);
+      ECGenParameterSpec ecgSpec = new ECGenParameterSpec(stdName);
+      ap.init(ecgSpec);
       return ap.getParameterSpec(ECParameterSpec.class);
     } catch (NoSuchAlgorithmException e) {
       log.info("Elliptic Curve not supported by any crypto provider: " + e.getMessage());
@@ -343,12 +343,7 @@ public class DnsKeyAlgorithm {
       if (spec != null)
         return spec;
       throw new InvalidParameterSpecException("Edwards Curve " + stdName + " not found.");
-    }
-    // catch (NoSuchAlgorithmException e) {
-    // log.info("Edwards Curve not supported by any crypto provider: " +
-    // e.getMessage());
-    // }
-    catch (InvalidParameterSpecException e) {
+    } catch (InvalidParameterSpecException e) {
       log.info("Edwards Curve " + stdName + " not supported");
     }
     return null;
@@ -391,11 +386,10 @@ public class DnsKeyAlgorithm {
   }
 
   /**
-   * Given one of the ECDSA algorithms (ECDSAP256SHA256, etc.) return
-   * the elliptic curve parameters.
+   * Given one of the ECDSA algorithms (ECDSAP256SHA256, etc.) return the
+   * elliptic curve parameters.
    *
-   * @param algorithm
-   *                  The DNSSEC algorithm number.
+   * @param algorithm The DNSSEC algorithm number.
    * @return The calculated JCA ECParameterSpec for that DNSSEC algorithm, or
    *         null if not a recognized/supported EC algorithm.
    */
@@ -405,19 +399,18 @@ public class DnsKeyAlgorithm {
       return null;
     if (!(entry instanceof ECAlgEntry))
       return null;
-    ECAlgEntry ec_entry = (ECAlgEntry) entry;
+    ECAlgEntry ecEntry = (ECAlgEntry) entry;
 
-    return ec_entry.ecSpec;
+    return ecEntry.ecSpec;
   }
 
   /**
-   * Given one of the EdDSA algorithms (Ed25519, Ed448) return the
-   * elliptic curve parameters.
+   * Given one of the EdDSA algorithms (Ed25519, Ed448) return the elliptic
+   * curve parameters.
    *
-   * @param algorithm
-   *                  The DNSSEC algorithm number.
-   * @return The stored EdDSAParameterSpec for that algorithm, or
-   *         null if not a recognized/supported EdDSA algorithm.
+   * @param algorithm The DNSSEC algorithm number.
+   * @return The stored EdDSAParameterSpec for that algorithm, or null if not a
+   *         recognized/supported EdDSA algorithm.
    */
   public EdDSAParameterSpec getEdwardsCurveParams(int algorithm) {
     AlgEntry entry = getEntry(algorithm);
@@ -425,17 +418,16 @@ public class DnsKeyAlgorithm {
       return null;
     if (!(entry instanceof EdAlgEntry))
       return null;
-    EdAlgEntry ed_entry = (EdAlgEntry) entry;
+    EdAlgEntry edEntry = (EdAlgEntry) entry;
 
-    return ed_entry.edSpec;
+    return edEntry.edSpec;
   }
 
   /**
    * Translate a possible algorithm alias back to the original DNSSEC algorithm
    * number
    *
-   * @param algorithm
-   *                  a DNSSEC algorithm that may be an alias.
+   * @param algorithm a DNSSEC algorithm that may be an alias.
    * @return -1 if the algorithm isn't recognised, the orignal algorithm number
    *         if it is.
    */
@@ -461,8 +453,7 @@ public class DnsKeyAlgorithm {
    * Given an algorithm mnemonic, convert the mnemonic to a DNSSEC algorithm
    * number.
    *
-   * @param s
-   *          The mnemonic string. This is case-insensitive.
+   * @param s The mnemonic string. This is case-insensitive.
    * @return -1 if the mnemonic isn't recognized or supported, the algorithm
    *         number if it is.
    */
@@ -476,8 +467,7 @@ public class DnsKeyAlgorithm {
   /**
    * Given a DNSSEC algorithm number, return the "preferred" mnemonic.
    *
-   * @param algorithm
-   *                  A DNSSEC algorithm number.
+   * @param algorithm A DNSSEC algorithm number.
    * @return The preferred mnemonic string, or null if not supported or
    *         recognized.
    */
@@ -505,14 +495,14 @@ public class DnsKeyAlgorithm {
           mRSAKeyGenerator = KeyPairGenerator.getInstance("RSA");
         }
 
-        RSAKeyGenParameterSpec rsa_spec;
+        RSAKeyGenParameterSpec rsaSpec;
         if (useLargeExp) {
-          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F4);
+          rsaSpec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F4);
         } else {
-          rsa_spec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F0);
+          rsaSpec = new RSAKeyGenParameterSpec(keysize, RSAKeyGenParameterSpec.F0);
         }
         try {
-          mRSAKeyGenerator.initialize(rsa_spec);
+          mRSAKeyGenerator.initialize(rsaSpec);
         } catch (InvalidAlgorithmParameterException e) {
           // Fold the InvalidAlgorithmParameterException into our existing
           // thrown exception. Ugly, but requires less code change.
