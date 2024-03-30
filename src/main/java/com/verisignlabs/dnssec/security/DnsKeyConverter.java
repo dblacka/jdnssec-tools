@@ -30,12 +30,16 @@ import java.security.interfaces.DSAPrivateKey;
 import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.security.interfaces.EdECPrivateKey;
+import java.security.interfaces.EdECPublicKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.DSAPrivateKeySpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPrivateKeySpec;
+import java.security.spec.EdECPrivateKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+import java.security.spec.NamedParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.util.StringTokenizer;
@@ -49,13 +53,6 @@ import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.DNSSEC.DNSSECException;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.utils.base64;
-
-import net.i2p.crypto.eddsa.EdDSAPrivateKey;
-// For now, just import the native EdDSA classes
-import net.i2p.crypto.eddsa.EdDSAPublicKey;
-import net.i2p.crypto.eddsa.spec.EdDSAParameterSpec;
-import net.i2p.crypto.eddsa.spec.EdDSAPrivateKeySpec;
-import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 
 /**
  * This class handles conversions between JCA key formats and DNSSEC and BIND9
@@ -87,7 +84,6 @@ public class DnsKeyConverter {
 
     // Because we have arbitrarily aliased algorithms, we need to possibly
     // translate the aliased algorithm back to the actual algorithm.
-
     int originalAlgorithm = mAlgorithms.originalAlgorithm(pKeyRecord.getAlgorithm());
 
     if (originalAlgorithm <= 0)
@@ -101,16 +97,6 @@ public class DnsKeyConverter {
           pKeyRecord.getKey());
     }
 
-    // do not rely on DNSJava's method for EdDSA for now.
-    if (mAlgorithms.baseType(originalAlgorithm) == DnsKeyAlgorithm.BaseAlgorithm.EDDSA) {
-      try {
-        return parseEdDSADNSKEYRecord(pKeyRecord);
-      } catch (InvalidKeySpecException e) {
-        // just to be expedient, recast this as a NoSuchAlgorithmException.
-        throw new NoSuchAlgorithmException(e.getMessage());
-      }
-    }
-
     try {
       // This uses DNSJava's DNSSEC.toPublicKey() method.
       return pKeyRecord.getPublicKey();
@@ -120,29 +106,11 @@ public class DnsKeyConverter {
   }
 
   /**
-   * Since we don't (yet) have support in DNSJava for parsing the
-   * newer EdDSA algorithms, here is a local version.
-   */
-  private PublicKey parseEdDSADNSKEYRecord(DNSKEYRecord pKeyRecord)
-      throws IllegalArgumentException, NoSuchAlgorithmException, InvalidKeySpecException {
-    byte[] seed = pKeyRecord.getKey();
-
-    EdDSAPublicKeySpec spec = new EdDSAPublicKeySpec(seed,
-        mAlgorithms.getEdwardsCurveParams(pKeyRecord.getAlgorithm()));
-
-    KeyFactory factory = KeyFactory.getInstance("EdDSA");
-    return factory.generatePublic(spec);
-  }
-
-  /**
    * Given a JCA public key and the ancillary data, generate a DNSKEY record.
    */
   public DNSKEYRecord generateDNSKEYRecord(Name name, int dclass, long ttl,
       int flags, int alg, PublicKey key) {
     try {
-      if (mAlgorithms.baseType(alg) == DnsKeyAlgorithm.BaseAlgorithm.EDDSA) {
-        return generateEdDSADNSKEYRecord(name, dclass, ttl, flags, alg, key);
-      }
       return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
           key);
     } catch (DNSSECException e) {
@@ -152,13 +120,6 @@ public class DnsKeyConverter {
     }
   }
 
-  private DNSKEYRecord generateEdDSADNSKEYRecord(Name name, int dclass, long ttl,
-      int flags, int alg, PublicKey key) {
-    EdDSAPublicKey edKey = (EdDSAPublicKey) key;
-    byte[] keyData = edKey.getAbyte();
-    return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
-        keyData);
-  }
   // Private Key Specific Parsing routines
 
   /**
@@ -511,13 +472,13 @@ public class DnsKeyConverter {
     if (mEdKeyFactory == null) {
       mEdKeyFactory = KeyFactory.getInstance("EdDSA");
     }
-    EdDSAParameterSpec edSpec = mAlgorithms.getEdwardsCurveParams(algorithm);
-    if (edSpec == null) {
+    NamedParameterSpec namedSpec = mAlgorithms.getEdwardsCurveSpec(algorithm);
+    if (namedSpec == null) {
       throw new NoSuchAlgorithmException("DNSSEC algorithm " + algorithm +
           " is not a recognized Edwards Curve algorithm");
     }
 
-    KeySpec spec = new EdDSAPrivateKeySpec(seed, edSpec);
+    EdECPrivateKeySpec spec = new EdECPrivateKeySpec(namedSpec, seed);
 
     try {
       return mEdKeyFactory.generatePrivate(spec);
@@ -540,8 +501,8 @@ public class DnsKeyConverter {
       return generatePrivateDH((DHPrivateKey) priv, (DHPublicKey) pub, alg);
     } else if (priv instanceof ECPrivateKey && pub instanceof ECPublicKey) {
       return generatePrivateEC((ECPrivateKey) priv, (ECPublicKey) pub, alg);
-    } else if (priv instanceof EdDSAPrivateKey && pub instanceof EdDSAPublicKey) {
-      return generatePrivateED((EdDSAPrivateKey) priv, (EdDSAPublicKey) pub, alg);
+    } else if (priv instanceof EdECPrivateKey && pub instanceof EdECPublicKey) {
+      return generatePrivateED((EdECPrivateKey) priv, (EdECPublicKey) pub, alg);
     }
 
     return null;
@@ -663,7 +624,7 @@ public class DnsKeyConverter {
    * Given an edwards curve key pair, and the actual algorithm (which will
    * describe the curve used), return the BIND9-style text encoding.
    */
-  private String generatePrivateED(EdDSAPrivateKey priv, EdDSAPublicKey pub, int alg) {
+  private String generatePrivateED(EdECPrivateKey priv, EdECPublicKey pub, int alg) {
     StringWriter sw = new StringWriter();
     PrintWriter out = new PrintWriter(sw);
 
@@ -671,7 +632,8 @@ public class DnsKeyConverter {
     out.println("Algorithm: " + alg + " (" + mAlgorithms.algToString(alg)
         + ")");
     out.print("PrivateKey: ");
-    out.println(base64.toString(priv.getSeed()));
+    byte[] keyBytes = priv.getBytes().orElse("null".getBytes());
+    out.println(base64.toString(keyBytes));
 
     return sw.toString();
   }
