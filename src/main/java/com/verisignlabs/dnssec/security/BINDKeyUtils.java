@@ -46,7 +46,8 @@ import org.xbill.DNS.utils.base64;
  */
 public class BINDKeyUtils {
 
-  private BINDKeyUtils() { }
+  private BINDKeyUtils() {
+  }
 
   /**
    * Calculate the BIND9 key file base name (i.e., without the ".key" or
@@ -60,18 +61,18 @@ public class BINDKeyUtils {
   /** Reads in the DNSKEYRecord from the public key file */
   private static DNSKEYRecord loadPublicKeyFile(File publicKeyFile)
       throws IOException {
-    Master m = new Master(publicKeyFile.getAbsolutePath(), null, 600);
+    try (Master m = new Master(publicKeyFile.getAbsolutePath(), null, 600)) {
+      Record r;
+      DNSKEYRecord result = null;
 
-    Record r;
-    DNSKEYRecord result = null;
-
-    while ((r = m.nextRecord()) != null) {
-      if (r.getType() == Type.DNSKEY) {
-        result = (DNSKEYRecord) r;
+      while ((r = m.nextRecord()) != null) {
+        if (r.getType() == Type.DNSKEY) {
+          result = (DNSKEYRecord) r;
+        }
       }
-    }
 
-    return result;
+      return result;
+    }
   }
 
   /** Reads in the private key verbatim from the private key file */
@@ -272,7 +273,7 @@ public class BINDKeyUtils {
     try {
       DnsKeyConverter conv = new DnsKeyConverter();
       return conv.parsePrivateKeyString(privateKeyString);
-    } catch (IOException|NoSuchAlgorithmException e) {
+    } catch (IOException | NoSuchAlgorithmException e) {
       e.printStackTrace();
     }
 

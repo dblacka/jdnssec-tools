@@ -37,7 +37,7 @@ public class TypeMap {
   private Set<Integer> typeSet;
 
   public TypeMap() {
-    this.typeSet = new HashSet<Integer>();
+    this.typeSet = new HashSet<>();
   }
 
   /** Add the given type to the typemap. */
@@ -78,20 +78,20 @@ public class TypeMap {
     TypeMap typemap = new TypeMap();
 
     int page;
-    int byte_length;
+    int byteLength;
 
     while (m < map.length) {
       page = map[m++];
-      byte_length = map[m++];
+      byteLength = map[m++];
 
-      for (int i = 0; i < byte_length; i++) {
+      for (int i = 0; i < byteLength; i++) {
         for (int j = 0; j < 8; j++) {
-          if ((map[m + i] & (1 << (7 - j))) != 0) {
+          if (((map[m + i] & 0xFF) & (1 << (7 - j))) != 0) {
             typemap.set((page << 8) + (i * 8) + j);
           }
         }
       }
-      m += byte_length;
+      m += byteLength;
     }
 
     return typemap;
@@ -115,7 +115,7 @@ public class TypeMap {
     int[] types = getTypes();
     Arrays.sort(types);
 
-    StringBuffer sb = new StringBuffer();
+    StringBuilder sb = new StringBuilder();
 
     for (int i = 0; i < types.length; i++) {
       if (i > 0)
@@ -129,16 +129,16 @@ public class TypeMap {
   protected static void mapToWire(DNSOutput out, int[] types, int base, int start, int end) {
     // calculate the length of this map by looking at the largest
     // typecode in this section.
-    int max_type = types[end - 1] & 0xFF;
-    int map_length = (max_type / 8) + 1;
+    int maxType = types[end - 1] & 0xFF;
+    int mapLength = (maxType / 8) + 1;
 
     // write the map "header" -- the base and the length of the map.
     out.writeU8(base & 0xFF);
-    out.writeU8(map_length & 0xFF);
+    out.writeU8(mapLength & 0xFF);
 
     // allocate a temporary scratch space for caculating the actual
     // bitmap.
-    byte[] map = new byte[map_length];
+    byte[] map = new byte[mapLength];
 
     // for each type in our sub-array, set its corresponding bit in the map.
     for (int i = start; i < end; i++) {
@@ -179,7 +179,7 @@ public class TypeMap {
   }
 
   public int[] getTypes() {
-    Integer[] a = (Integer[]) typeSet.toArray(integerArray);
+    Integer[] a = typeSet.toArray(integerArray);
 
     int[] res = new int[a.length];
     for (int i = 0; i < res.length; i++) {
@@ -189,8 +189,8 @@ public class TypeMap {
     return res;
   }
 
-  public static int[] fromWireToTypes(byte[] wire_fmt) {
-    return TypeMap.fromBytes(wire_fmt).getTypes();
+  public static int[] fromWireToTypes(byte[] wireFmt) {
+    return TypeMap.fromBytes(wireFmt).getTypes();
   }
 
   public static byte[] fromTypesToWire(int[] types) {
