@@ -238,13 +238,13 @@ public class DnsSecVerifier {
       for (DnsKeyPair keypair : keypairs) {
         Signature signer = keypair.getVerifier();
         signer.update(data);
-  
+
         byte[] sig = sigrec.getSignature();
-  
-        if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.DSA) {
+
+        if (algs.baseType(sigrec.getAlgorithm()) == DnsKeyAlgorithm.BaseAlgorithm.DSA) {
           sig = SignUtils.convertDSASignature(sig);
         }
-  
+
         if (sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP256SHA256 ||
             sigrec.getAlgorithm() == DNSSEC.Algorithm.ECDSAP384SHA384) {
           sig = SignUtils.convertECDSASignature(sig);

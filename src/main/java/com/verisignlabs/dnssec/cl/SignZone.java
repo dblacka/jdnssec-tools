@@ -79,6 +79,8 @@ public class SignZone extends CLBase {
     public long nsec3paramttl = -1;
     public boolean verboseSigning = false;
 
+    private static final Random rand = new Random();
+
     public CLIState() {
       super("jdnssec-signzone [..options..] zone_file [key_file ...]");
     }
@@ -198,9 +200,8 @@ public class SignZone extends CLBase {
       if ((optstr = cli.getOptionValue('R')) != null) {
         int length = parseInt(optstr, 0);
         if (length > 0 && length <= 255) {
-          Random random = new Random();
           salt = new byte[length];
-          random.nextBytes(salt);
+          rand.nextBytes(salt);
         }
       }
 
@@ -241,8 +242,8 @@ public class SignZone extends CLBase {
     /**
      * Load a list of DNS names from a file.
      *
-     * @param nameListFile
-     *                     the path of a file containing a bare list of DNS names.
+     * @param nameListFile the path of a file containing a bare list of DNS
+     *                     names.
      * @return a list of {@link org.xbill.DNS.Name} objects.
      */
     private static List<Name> getNameList(File nameListFile) throws IOException {
@@ -254,9 +255,6 @@ public class SignZone extends CLBase {
           try {
             Name n = Name.fromString(line);
             // force the name to be absolute.
-            // FIXME: we should probably get some fancy logic here to
-            // detect if the name needs the origin appended, or just the
-            // root.
             if (!n.isAbsolute())
               n = Name.concatenate(n, Name.root);
 
@@ -274,14 +272,12 @@ public class SignZone extends CLBase {
   /**
    * Verify the generated signatures.
    *
-   * @param records
-   *                 a list of {@link org.xbill.DNS.Record}s.
-   * @param keypairs
-   *                 a list of keypairs used the sign the zone.
+   * @param records  a list of {@link org.xbill.DNS.Record}s.
+   * @param keypairs a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
   private static boolean verifyZoneSigs(List<Record> records,
-      List<DnsKeyPair> keypairs) {
+      List<DnsKeyPair> keypairs, List<DnsKeyPair> kskpairs) {
     boolean secure = true;
 
     DnsSecVerifier verifier = new DnsSecVerifier();
@@ -289,7 +285,9 @@ public class SignZone extends CLBase {
     for (DnsKeyPair pair : keypairs) {
       verifier.addTrustedKey(pair);
     }
-
+    for (DnsKeyPair pair : kskpairs) {
+      verifier.addTrustedKey(pair);
+    }
     verifier.setVerifyAllSigs(true);
 
     List<RRset> rrsets = SignUtils.assembleIntoRRsets(records);
@@ -303,6 +301,7 @@ public class SignZone extends CLBase {
       boolean result = verifier.verify(rrset);
 
       if (!result) {
+        System.err.println("Signatures did not verify for RRset: " + rrset);
         staticLog.fine("Signatures did not verify for RRset: " + rrset);
         secure = false;
       }
@@ -314,17 +313,12 @@ public class SignZone extends CLBase {
   /**
    * Load the key pairs from the key files.
    *
-   * @param keyfiles
-   *                    a string array containing the base names or paths of the
-   *                    keys to
-   *                    be loaded.
-   * @param startIndex
-   *                    the starting index of keyfiles string array to use. This
-   *                    allows
-   *                    us
-   *                    to use the straight command line argument array.
-   * @param inDirectory
-   *                    the directory to look in (may be null).
+   * @param keyfiles    a string array containing the base names or paths of the
+   *                    keys to be loaded.
+   * @param startIndex  the starting index of keyfiles string array to use. This
+   *                    allows us to use the straight command line argument
+   *                    array.
+   * @param inDirectory the directory to look in (may be null).
    * @return a list of keypair objects.
    */
   private static List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
@@ -418,19 +412,12 @@ public class SignZone extends CLBase {
   /**
    * Load keysets (which contain delegation point security info).
    *
-   * @param inDirectory
-   *                    the directory to look for the keyset files (may be null,
-   *                    in
-   *                    which
-   *                    case it defaults to looking in the current working
-   *                    directory).
-   * @param zonename
-   *                    the name of the zone we are signing, so we can ignore
-   *                    keysets
-   *                    that
-   *                    do not belong in the zone.
-   * @return a list of {@link org.xbill.DNS.Record}s found in the keyset
-   *         files.
+   * @param inDirectory the directory to look for the keyset files (may be null,
+   *                    in which case it defaults to looking in the current
+   *                    working directory).
+   * @param zonename    the name of the zone we are signing, so we can ignore
+   *                    keysets that do not belong in the zone.
+   * @return a list of {@link org.xbill.DNS.Record}s found in the keyset files.
    */
   private static List<Record> getKeysets(File inDirectory, Name zonename)
       throws IOException {
@@ -463,13 +450,9 @@ public class SignZone extends CLBase {
   /**
    * Determine if the given keypairs can be used to sign the zone.
    *
-   * @param zonename
-   *                 the zone origin.
-   * @param keypairs
-   *                 a list of {@link DnsKeyPair} objects that will be used to
-   *                 sign
-   *                 the
-   *                 zone.
+   * @param zonename the zone origin.
+   * @param keypairs a list of {@link DnsKeyPair} objects that will be used to
+   *                 sign the zone.
    * @return true if the keypairs valid.
    */
   private static boolean keyPairsValidForZone(Name zonename, List<DnsKeyPair> keypairs) {
@@ -503,53 +486,69 @@ public class SignZone extends CLBase {
       return;
     }
 
-    // Load the key pairs.
-
+    // Load the key pairs. Note that getKeys() always returns an ArrayList,
+    // which may be empty.
     List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
     List<DnsKeyPair> kskpairs = getKeys(state.kskFiles, 0, state.keyDirectory);
 
     // If we didn't get any keys on the command line, look at the zone apex for
     // any public keys.
-    if (keypairs == null && kskpairs == null) {
+    if (keypairs.isEmpty()) {
       List<Record> dnskeys = ZoneUtils.findRRs(records, zonename, Type.DNSKEY);
       keypairs = getKeys(dnskeys, state.keyDirectory);
     }
 
     // If we *still* don't have any key pairs, look for keys the key directory
     // that match
-    if (keypairs == null && kskpairs == null) {
+    if (keypairs.isEmpty()) {
       keypairs = findZoneKeys(state.keyDirectory, zonename);
     }
 
     // If we don't have any KSKs, but we do have more than one zone
     // signing key (presumably), presume that the zone signing keys
     // are just not differentiated and try to figure out which keys
-    // are actually ksks by looking at the SEP flag.
-    if ((kskpairs == null || kskpairs.isEmpty()) && keypairs != null
-        && keypairs.size() > 1) {
+    // are actually KSKs by looking at the SEP flag.
+    if (kskpairs.isEmpty() && !keypairs.isEmpty()) {
       for (Iterator<DnsKeyPair> i = keypairs.iterator(); i.hasNext();) {
         DnsKeyPair pair = i.next();
         DNSKEYRecord kr = pair.getDNSKEYRecord();
         if ((kr.getFlags() & DNSKEYRecord.Flags.SEP_KEY) != 0) {
-          if (kskpairs == null)
-            kskpairs = new ArrayList<>();
           kskpairs.add(pair);
           i.remove();
         }
       }
     }
 
-    // If there are no ZSKs defined at this point (yet there are KSKs
-    // provided), all KSKs will be treated as ZSKs, as well.
-    if (keypairs == null || keypairs.isEmpty()) {
-      keypairs = kskpairs;
-    }
-
-    // If there *still* aren't any ZSKs defined, bail.
-    if (keypairs == null || keypairs.isEmpty()) {
+    // If we have zero keypairs at all, we are stuck.
+    if (keypairs.isEmpty() && kskpairs.isEmpty()) {
       System.err.println("No zone signing keys could be determined.");
       state.usage();
       return;
+    }
+
+    // If we only have one type of key (all ZSKs or all KSKs), then these are
+    // "CSKs" -- Combined signing keys, so assign one set to the other.
+    if (keypairs.isEmpty()) {
+      keypairs = kskpairs;
+    } else if (kskpairs.isEmpty()) {
+      kskpairs = keypairs;
+    }
+
+    // Output what keys we are using for what
+    if (keypairs == kskpairs) {
+      System.out.println("CSKs: ");
+      for (DnsKeyPair kp : keypairs) {
+        System.out.println("  - " + kp);
+      }
+    } else {
+      System.out.println("KSKs: ");
+      for (DnsKeyPair kp : kskpairs) {
+        System.out.println("  - " + kp);
+      }
+      System.out.println("ZSKs: ");
+      for (DnsKeyPair kp : keypairs) {
+        System.out.println("  - " + kp);
+      }
     }
 
     // default the output file, if not set.
@@ -571,12 +570,12 @@ public class SignZone extends CLBase {
     // We force the signing keys to be in the zone by just appending
     // them to the zone here. Currently JCEDnsSecSigner.signZone
     // removes duplicate records.
-    if (kskpairs != null) {
+    if (!kskpairs.isEmpty()) {
       for (DnsKeyPair pair : kskpairs) {
         records.add(pair.getDNSKEYRecord());
       }
     }
-    if (keypairs != null) {
+    if (!keypairs.isEmpty()) {
       for (DnsKeyPair pair : keypairs) {
         records.add(pair.getDNSKEYRecord());
       }
@@ -608,15 +607,11 @@ public class SignZone extends CLBase {
 
     // write out the signed zone
     ZoneUtils.writeZoneFile(signedRecords, state.outputfile);
+    System.out.println("zone signing complete");
 
     if (state.verifySigs) {
-      // FIXME: ugh.
-      if (kskpairs != null) {
-        keypairs.addAll(kskpairs);
-      }
-
       log.fine("verifying generated signatures");
-      boolean res = verifyZoneSigs(signedRecords, keypairs);
+      boolean res = verifyZoneSigs(signedRecords, keypairs, kskpairs);
 
       if (res) {
         System.out.println("Generated signatures verified");
@@ -624,7 +619,6 @@ public class SignZone extends CLBase {
         System.out.println("Generated signatures did not verify.");
       }
     }
-
   }
 
   public static void main(String[] args) {

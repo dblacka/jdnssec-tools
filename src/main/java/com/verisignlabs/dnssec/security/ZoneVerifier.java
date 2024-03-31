@@ -88,10 +88,12 @@ public class ZoneVerifier {
     public boolean equals(Object o) {
       return super.equals(o);
     }
+
     @Override
     public int hashCode() {
       return super.hashCode();
     }
+
     boolean getMark() {
       return mIsMarked;
     }
@@ -148,7 +150,8 @@ public class ZoneVerifier {
   /**
    * Add a record to the various maps.
    *
-   * @return true if the RR was added, false if it wasn't (because it was a duplicate)
+   * @return true if the RR was added, false if it wasn't (because it was a
+   *         duplicate)
    */
   private boolean addRR(Record r) {
     Name n = r.getName();
@@ -206,7 +209,7 @@ public class ZoneVerifier {
    * Given an unsorted list of records, load the node and rrset maps, as well as
    * determine the NSEC3 parameters and signing type.
    *
-   * @param records
+   * @param records an unsorted list of {@link org.xbill.DNS.Record} objects.
    * @return the number of errors encountered.
    */
   private int calculateNodes(List<Record> records) {
@@ -251,7 +254,7 @@ public class ZoneVerifier {
    * Given a name, typeset, and name of the last zone cut, determine the node
    * type.
    */
-  private NodeType determineNodeType(Name n, Set<Integer> typeset, Name last_cut) {
+  private NodeType determineNodeType(Name n, Set<Integer> typeset, Name lastCut) {
     // All RRs at the zone apex are normal
     if (n.equals(mZoneName))
       return NodeType.NORMAL;
@@ -263,7 +266,7 @@ public class ZoneVerifier {
     }
     // If the node is below a zone cut (either a delegation or DNAME), it is
     // glue.
-    if (last_cut != null && n.subdomain(last_cut) && !n.equals(last_cut)) {
+    if (lastCut != null && n.subdomain(lastCut) && !n.equals(lastCut)) {
       return NodeType.GLUE;
     }
 
@@ -294,13 +297,13 @@ public class ZoneVerifier {
    */
   private int processNodes() throws NoSuchAlgorithmException, TextParseException {
     int errors = 0;
-    Name last_cut = null;
+    Name lastCut = null;
 
     for (Map.Entry<Name, Set<Integer>> entry : mNodeMap.entrySet()) {
       Name n = entry.getKey();
       Set<Integer> typeset = entry.getValue();
 
-      NodeType ntype = determineNodeType(n, typeset, last_cut);
+      NodeType ntype = determineNodeType(n, typeset, lastCut);
       log.finest("Node " + n + " is type " + ntype);
 
       // we can ignore glue/invalid RRs.
@@ -309,7 +312,7 @@ public class ZoneVerifier {
 
       // record the last zone cut if this node is a zone cut.
       if (ntype == NodeType.DELEGATION || typeset.contains(Type.DNAME)) {
-        last_cut = n;
+        lastCut = n;
       }
 
       // check all of the RRsets that should be signed

@@ -100,7 +100,6 @@ public class ZoneFormat extends CLBase {
 
   private static void formatZone(List<Record> zone) {
 
-
     for (Record r : zone) {
       System.out.println(r.toString());
     }

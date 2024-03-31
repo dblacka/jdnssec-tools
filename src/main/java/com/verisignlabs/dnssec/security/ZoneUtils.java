@@ -39,6 +39,10 @@ import org.xbill.DNS.Type;
  */
 
 public class ZoneUtils {
+
+  private ZoneUtils() {
+  }
+
   /**
    * Load a zone file.
    *
@@ -53,19 +57,10 @@ public class ZoneUtils {
    *                     if something goes wrong reading the zone file.
    */
   public static List<Record> readZoneFile(String zonefile, Name origin) throws IOException {
-    ArrayList<Record> records = new ArrayList<Record>();
-    Master m;
-    try {
-      if (zonefile.equals("-")) {
-        m = new Master(System.in);
-      } else {
-        m = new Master(zonefile, origin);
-      }
-
+    ArrayList<Record> records = new ArrayList<>();
+    try (Master m = zonefile.equals("-") ? new Master(System.in) : new Master(zonefile, origin)) {
       Record r = null;
-
       while ((r = m.nextRecord()) != null) {
-
         records.add(r);
       }
     } catch (IOException e) {
@@ -120,7 +115,7 @@ public class ZoneUtils {
   }
 
   public static List<Record> findRRs(List<Record> records, Name name, int type) {
-    List<Record> res = new ArrayList<Record>();
+    List<Record> res = new ArrayList<>();
     for (Record r : records) {
       if (r.getName().equals(name) && r.getType() == type) {
         res.add(r);

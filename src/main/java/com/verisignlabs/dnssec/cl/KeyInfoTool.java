@@ -84,13 +84,13 @@ public class KeyInfoTool extends CLBase {
           + " (" + dnskey.getAlgorithm() + ")");
       System.out.println("ID: " + dnskey.getFootprint());
       System.out.println("KeyFileBase: " + BINDKeyUtils.keyFileBase(key));
-      int basetype = dnskeyalg.baseType(dnskey.getAlgorithm());
+      DnsKeyAlgorithm.BaseAlgorithm basetype = dnskeyalg.baseType(dnskey.getAlgorithm());
 
-      if (basetype == DnsKeyAlgorithm.RSA) {
+      if (basetype == DnsKeyAlgorithm.BaseAlgorithm.RSA) {
         RSAPublicKey pub = (RSAPublicKey) key.getPublic();
         System.out.println("RSA Public Exponent: " + pub.getPublicExponent());
         System.out.println("RSA Modulus: " + pub.getModulus());
-      } else if (basetype == DnsKeyAlgorithm.DSA) {
+      } else if (basetype == DnsKeyAlgorithm.BaseAlgorithm.DSA) {
         DSAPublicKey pub = (DSAPublicKey) key.getPublic();
         System.out.println("DSA base (G): " + pub.getParams().getG());
         System.out.println("DSA prime (P): " + pub.getParams().getP());

@@ -44,8 +44,8 @@ public class KeyGen extends CLBase {
    * state.
    */
   protected static class CLIState extends CLIStateBase {
-    public int algorithm = 8;
-    public int keylength = 1024;
+    public int algorithm = 13;
+    public int keylength = 2048;
     public boolean useLargeE = true;
     public String outputfile = null;
     public File keydir = null;
@@ -77,10 +77,10 @@ public class KeyGen extends CLBase {
       String[] algStrings = DnsKeyAlgorithm.getInstance().supportedAlgMnemonics();
       String algStringSet = String.join(" | ", algStrings);
       opts.addOption(Option.builder("a").hasArg().argName("algorithm")
-          .desc(algStringSet + " | alias, RSASHA256 is default.").build());
+          .desc(algStringSet + " | alias, ECDSAP256SHA256 is default.").build());
 
       opts.addOption(Option.builder("b").hasArg().argName("size").desc(
-          "key size, in bits (default 1024). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored")
+          "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored")
           .build());
       opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output-file")
           .desc("base filename from the public/private key files").build());

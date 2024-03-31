@@ -44,11 +44,11 @@
     <javac srcdir="${build.src}"
            destdir="${build.dest}"
            classpathref="project.classpath"
-           deprecation="true"
+           deprecation="${build.deprecation}"
            includeantruntime="false"
            includes="com/verisignlabs/dnssec/"
-           source="17"
-           target="17" />
+           debug="${build.debug}"
+           release="${build.java_version}" />
   </target>
 
   <target name="sectools-jar" depends="usage,sectools">
@@ -154,13 +154,11 @@
 
 
   <target name="dist" depends="sectools-dist">
-   <echo message="do not forget to tag the release:" />
-   <echo message="  svn-tag ${version}" />
   </target>
 
   <target name="usage">
     <echo message=" " />
-    <echo message="SECTOOLS v. ${version} Build System" />
+    <echo message="jdnssec-tools v. ${version} Build System" />
     <echo message="--------------------------------" />
     <echo message="Available Targets:" />
     <echo message="  compile (default) - compiles the source code, creates jar" />
