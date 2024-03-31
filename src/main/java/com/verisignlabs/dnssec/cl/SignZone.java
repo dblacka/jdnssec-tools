@@ -486,7 +486,8 @@ public class SignZone extends CLBase {
       return;
     }
 
-    // Load the key pairs. Note that getKeys() always returns array.
+    // Load the key pairs. Note that getKeys() always returns an ArrayList,
+    // which may be empty.
     List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
     List<DnsKeyPair> kskpairs = getKeys(state.kskFiles, 0, state.keyDirectory);
 

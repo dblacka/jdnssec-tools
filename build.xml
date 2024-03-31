@@ -48,7 +48,7 @@
            includeantruntime="false"
            includes="com/verisignlabs/dnssec/"
            debug="${build.debug}"
-           release="17" />
+           release="${build.java_version}" />
   </target>
 
   <target name="sectools-jar" depends="usage,sectools">

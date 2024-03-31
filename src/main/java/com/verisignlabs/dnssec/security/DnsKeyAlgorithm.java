@@ -66,7 +66,7 @@ public class DnsKeyAlgorithm {
 
   // Our base algorithm numbers. This is a normalization of the DNSSEC
   // algorithms (which are really signature algorithms). Thus RSASHA1,
-  // RSASHA256, etc. all boil down to 'RSA' here. Similary, ECDSAP256SHA256 and
+  // RSASHA256, etc. all boil down to 'RSA' here. Similarly, ECDSAP256SHA256 and
   // ECDSAP384SHA384 both become 'ECDSA'.
   public enum BaseAlgorithm {
     UNKNOWN,

@@ -72,8 +72,7 @@ public class JCEDnsSecSigner {
    * @param ttl              the KEY RR's TTL.
    * @param dclass           the KEY RR's DNS class.
    * @param algorithm        the DNSSEC algorithm (RSASHA258, RSASHA512,
-   *                         ECDSAP256,
-   *                         etc.)
+   *                         ECDSAP256, etc.)
    * @param flags            any flags for the KEY RR.
    * @param keysize          the size of the key to generate.
    * @param useLargeExponent if generating an RSA key, use the large exponent.
