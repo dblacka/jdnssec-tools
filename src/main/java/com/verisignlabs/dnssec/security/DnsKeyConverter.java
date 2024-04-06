@@ -43,6 +43,7 @@ import java.security.spec.NamedParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.util.StringTokenizer;
+import java.util.logging.Logger;
 
 import javax.crypto.interfaces.DHPrivateKey;
 import javax.crypto.interfaces.DHPublicKey;
@@ -67,6 +68,8 @@ public class DnsKeyConverter {
   private KeyFactory mECKeyFactory;
   private KeyFactory mEdKeyFactory;
   private DnsKeyAlgorithm mAlgorithms;
+  
+  private Logger log = Logger.getLogger(this.getClass().toString());
 
   public DnsKeyConverter() {
     mAlgorithms = DnsKeyAlgorithm.getInstance();
@@ -111,10 +114,16 @@ public class DnsKeyConverter {
   public DNSKEYRecord generateDNSKEYRecord(Name name, int dclass, long ttl,
       int flags, int alg, PublicKey key) {
     try {
-      return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg,
+      int origAlgorithm = mAlgorithms.originalAlgorithm(alg);
+      DNSKEYRecord keyrec = new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, origAlgorithm,
           key);
+      if (origAlgorithm == alg) {
+        return keyrec;
+      }
+      return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg, keyrec.getKey());
     } catch (DNSSECException e) {
-      // FIXME: this mimics the behavior of KEYConverter.buildRecord(), which would
+      log.severe("Unable to generated a DNSKEYRecord: " + e);
+      // This mimics the behavior of KEYConverter.buildRecord(), which would
       // return null if the algorithm was unknown.
       return null;
     }
