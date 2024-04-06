@@ -18,9 +18,9 @@
 package com.verisignlabs.dnssec.cl;
 
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.xbill.DNS.CDSRecord;
@@ -55,11 +55,11 @@ public class DSTool extends CLBase {
   protected static class CLIState extends CLIStateBase {
     public dsType createType = dsType.DS;
     public String outputfile = null;
-    public String keyname = null;
+    public String[] keynames = null;
     public int digestId = DNSSEC.Digest.SHA256;
 
     public CLIState() {
-      super("jdnssec-dstool [..options..] keyfile");
+      super("dstool", "jdnssec-dstool [..options..] keyfile [keyfile...]");
     }
 
     /**
@@ -77,17 +77,18 @@ public class DSTool extends CLBase {
     }
 
     @Override
-    protected void processOptions(CommandLine cli)
+    protected void processOptions()
         throws org.apache.commons.cli.ParseException {
+      String[] digestAlgOptionKeys = { "digest_algorithm", "digest_id" };
+
       outputfile = cli.getOptionValue('f');
       if (cli.hasOption("dlv")) {
         createType = dsType.DLV;
       } else if (cli.hasOption("cds")) {
         createType = dsType.CDS;
       }
-      String optstr = cli.getOptionValue('d');
-      if (optstr != null)
-        digestId = DNSSEC.Digest.value(optstr);
+      String digestValue = cliOption("d", digestAlgOptionKeys, Integer.toString(digestId));
+      digestId = DNSSEC.Digest.value(digestValue);
 
       String[] args = cli.getArgs();
 
@@ -96,32 +97,38 @@ public class DSTool extends CLBase {
         usage();
       }
 
-      keyname = args[0];
+      keynames = args;
     }
 
   }
 
-  public void execute() throws Exception {
-    DnsKeyPair key = BINDKeyUtils.loadKey(state.keyname, null);
+  public void createDS(String keyname) throws IOException {
+    DnsKeyPair key = BINDKeyUtils.loadKey(keyname, null);
     DNSKEYRecord dnskey = key.getDNSKEYRecord();
 
     if ((dnskey.getFlags() & DNSKEYRecord.Flags.SEP_KEY) == 0) {
-      log.warning("DNSKEY is not an SEP-flagged key.");
+      log.warning("DNSKEY " + keyname + " is not an SEP-flagged key.");
     }
 
     DSRecord ds = SignUtils.calculateDSRecord(dnskey, state.digestId, dnskey.getTTL());
-    Record res = ds;
+    Record res;
 
-    if (state.createType == dsType.DLV) {
-      log.fine("creating DLV.");
-      DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
-          ds.getDigestID(), ds.getDigest());
-      res = dlv;
-    } else if (state.createType == dsType.CDS) {
-      log.fine("creating CDS.");
-      CDSRecord cds = new CDSRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
-          ds.getDClass(), ds.getDigest());
-      res = cds;
+    switch (state.createType) {
+      case DLV:
+        log.fine("creating DLV.");
+        DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
+            ds.getDigestID(), ds.getDigest());
+        res = dlv;
+        break;
+      case CDS:
+        log.fine("creating CDS.");
+        CDSRecord cds = new CDSRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
+            ds.getDClass(), ds.getDigest());
+        res = cds;
+        break;
+      default:
+        res = ds;
+        break;
     }
 
     if (state.outputfile != null && !state.outputfile.equals("-")) {
@@ -130,6 +137,12 @@ public class DSTool extends CLBase {
       }
     } else {
       System.out.println(res);
+    }
+  }
+
+  public void execute() throws Exception {
+    for (String keyname : state.keynames){
+      createDS(keyname);
     }
   }
 

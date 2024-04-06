@@ -19,7 +19,6 @@ package com.verisignlabs.dnssec.cl;
 
 import java.io.File;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.xbill.DNS.DClass;
@@ -56,7 +55,7 @@ public class KeyGen extends CLBase {
     public int givenKeyTag = -1;
 
     public CLIState() {
-      super("jdnssec-keygen [..options..] name");
+      super("keygen", "jdnssec-keygen [..options..] name");
     }
 
     /**
@@ -94,51 +93,38 @@ public class KeyGen extends CLBase {
     }
 
     @Override
-    protected void processOptions(CommandLine cli)
-        throws org.apache.commons.cli.ParseException {
-      String optstr = null;
-      String[] optstrs = null;
+    protected void processOptions() throws org.apache.commons.cli.ParseException {
+      String[] useLargeEOptionKeys = { "use_large_exponent", "use_large_e" };
+      String[] keyDirectoryOptionKeys = { "key_directory", "keydir" };
+      String[] algorithmOptionKeys = { "algorithm", "alg "};
+      String[] keyLengthOptionKeys = { "key_length", "keylen" };
+      String[] ttlOptionKeys = { "ttl" };
 
-      if (cli.hasOption('k'))
+      if (cli.hasOption('k')) {
         kskFlag = true;
-      if (cli.hasOption('e'))
-        useLargeE = true;
+      }
+      String optstr = cliOption("E", useLargeEOptionKeys, null);
+      if (optstr != null) {
+        useLargeE = Boolean.parseBoolean(optstr);
+      }
 
       outputfile = cli.getOptionValue('f');
 
-      if ((optstr = cli.getOptionValue('d')) != null) {
-        keydir = new File(optstr);
+      String keydirName = cliOption("d", keyDirectoryOptionKeys, null);
+      if (keydirName != null) {
+        keydir = new File(keydirName);
       }
 
-      if ((optstr = cli.getOptionValue('n')) != null && !optstr.equalsIgnoreCase("ZONE")) {
-        zoneKey = false;
+      String algString = cliOption("a", algorithmOptionKeys, Integer.toString(algorithm));
+      algorithm = CLIState.parseAlg(algString);
+      if (algorithm < 0) {
+        System.err.println("DNSSEC algorithm " + algString + " is not supported");
+        usage();
       }
 
-      if ((optstrs = cli.getOptionValues('A')) != null) {
-        for (int i = 0; i < optstrs.length; i++) {
-          addArgAlias(optstrs[i]);
-        }
-      }
-
-      if ((optstr = cli.getOptionValue('a')) != null) {
-        algorithm = CLIState.parseAlg(optstr);
-        if (algorithm < 0) {
-          System.err.println("DNSSEC algorithm " + optstr + " is not supported");
-          usage();
-        }
-      }
-
-      if ((optstr = cli.getOptionValue('b')) != null) {
-        keylength = parseInt(optstr, 1024);
-      }
-
-      if ((optstr = cli.getOptionValue("ttl")) != null) {
-        ttl = parseInt(optstr, 86400);
-      }
-
-      if ((optstr = cli.getOptionValue("with-tag")) != null) {
-        givenKeyTag = parseInt(optstr, -1);
-      }
+      keylength = cliIntOption("b", keyLengthOptionKeys, keylength);
+      ttl = cliLongOption("ttl", ttlOptionKeys, ttl);
+      givenKeyTag = parseInt(cli.getOptionValue("with-tag"), -1);
 
       String[] args = cli.getArgs();
 
@@ -148,6 +134,9 @@ public class KeyGen extends CLBase {
       }
 
       owner = args[0];
+
+      staticLog.fine("keygen options => algorithm: " + algorithm + " keylength: " + keylength +
+          " useLargeE: " + useLargeE + " kskFlag: " + kskFlag + " ttl: " + ttl + " givenKeyTag: " + givenKeyTag);
     }
 
     private static int parseAlg(String s) {
@@ -191,6 +180,7 @@ public class KeyGen extends CLBase {
         state.useLargeE);
 
     // If we were asked to generate a duplicate keytag, keep trying until we get one
+    // This can take a long time, depending on our key generation speed
     while (state.givenKeyTag >= 0 && pair.getDNSKEYFootprint() != state.givenKeyTag) {
       pair = signer.generateKey(ownerName, state.ttl, DClass.IN, state.algorithm, flags, state.keylength,
           state.useLargeE);

@@ -1,0 +1,93 @@
+# An example properties file for jdnssec-tools
+# Properties may be be scoped by the tool name, which is the name minus "jdnssec-"
+# If unscoped, the same named property will be used by multiple tools
+
+# Common properties
+
+# log_level = warning
+# verbose = warning   # same thing
+# multiline = false
+
+# algorithm aliasing is <scope>.alias.<new-mnemonic> = <orig-alg-id>:<alias-alg-id>
+# alias.NEWALG = 8:100
+
+# jdnssec-dstool properties
+
+## These are all equivalent.  Unscoped properties might apply to other tools
+# dstool.digest_algorithm = 4
+# digest_algorithm = 4   # applies to jdnssec-signzone, too
+# dstool.digest_id = 4
+
+# jdnssec-keygen properties
+
+# keygen.use_large_exponent = true
+# keygen.key_directory = .
+# key_directory = /path/to/dnskey_files  # applies to jdnssec-sign*
+# keygen.algorithm = ED448
+# keygen.keylength = 2048
+# keygen.keylen = 2048 # same thing
+# keygen.ttl = 3600
+
+# jdnssec-keyinfotool
+
+# no additional keys
+
+# jdnssec-signkeyset
+
+# signkeyset.verify = false
+# signkeyset.key_directory = .
+# signkeyset.start = -300
+# signkeyset.inception = 1712424863
+# signkeyset.expire = +604800
+
+# jdnssec-signrrset
+
+# signrrset.verify_signatures = false
+# signrrset.verify = false  # same thing
+# signrrset.key_directory = .
+# signrrset.start = now
+# signrrset.inception = now  # same thing
+# signrrset.expire = now+3600
+
+# jdnssec-signzone
+
+# signzone.verify_signatures = false
+# signzone.verify = false  # same thing
+# signzone.use_nsec3 = false
+# signzone.nsec3 = false  # same thing
+# signzone.use_opt_out = false
+# signzone.opt_out = false  # same thing
+# signzone.verbose_signing = false
+# signzone.fully_sign_keyset = false
+# signzone.fully_sign = false # same thing
+# signzone.key_directory = .
+# signzone.keydir = .   # same thing
+# signzone.start = now
+# signzone.inception = now
+# signzone.expire = now+3600
+# signzone.nsec3_salt = DEADBEEF
+# signzone.salt = DEADBEEF   # same thing
+# signzone.nsec3_random_salt_length = 6
+# signzone.nsec3_salt_length = 6   # same thing
+# signzone.random_salt_length = 6  # same thing
+# signzone.nsec3_iterations = 0
+# signzone.iterations = 0   # same thing
+# signzone.digest_algorithm = 4
+# signzone.digest_id = 4 # same thing
+# signzone.nsec3param_ttl = 86400
+# signzone.include_names_file = /path/to/include-names
+# signzone.include_names = /path/to/include-names   # same thing
+
+# jdnssec-verifyzone
+
+# verifyzone.ignore_time = false
+# verifyzone.ignore_duplicate_rrs = false
+# verifyzone.ignore_duplicates = false  # same thing
+# verifyzone.start_fudge = 0
+# verifyzone.expire_fudge = 0
+# verifyzone.current_time = now
+
+# jdnssec-zoneformat
+
+# zoneformat.assign_nsec3_owners = false
+# zoneformat.assign_owners = false  # same thing

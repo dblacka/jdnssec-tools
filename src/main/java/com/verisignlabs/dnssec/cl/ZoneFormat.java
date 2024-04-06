@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.Master;
@@ -56,7 +55,7 @@ public class ZoneFormat extends CLBase {
     public boolean assignNSEC3;
 
     public CLIState() {
-      super("jdnssec-zoneformat [..options..] zonefile");
+      super("zoneformat", "jdnssec-zoneformat [..options..] zonefile");
     }
 
     @Override
@@ -66,9 +65,10 @@ public class ZoneFormat extends CLBase {
     }
 
     @Override
-    protected void processOptions(CommandLine cli) throws ParseException {
-      if (cli.hasOption('N'))
-        assignNSEC3 = true;
+    protected void processOptions() throws ParseException {
+      String[] assignNsec3OwnersOptionKeys = { "assign_nsec3_owners", "assign_owners" };
+
+      assignNSEC3 = cliBooleanOption("N", assignNsec3OwnersOptionKeys, false);
 
       String[] args = cli.getArgs();
 

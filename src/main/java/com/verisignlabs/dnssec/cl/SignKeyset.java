@@ -24,7 +24,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.xbill.DNS.Name;
@@ -63,7 +62,7 @@ public class SignKeyset extends CLBase {
     public boolean verifySigs = false;
 
     public CLIState() {
-      super("jdnssec-signkeyset [..options..] dnskeyset_file [key_file ...]");
+      super("signkeyset", "jdnssec-signkeyset [..options..] dnskeyset_file [key_file ...]");
     }
 
     /**
@@ -86,29 +85,35 @@ public class SignKeyset extends CLBase {
     }
 
     @Override
-    protected void processOptions(CommandLine cli)
-        throws org.apache.commons.cli.ParseException {
+    protected void processOptions() throws org.apache.commons.cli.ParseException {
+      String[] verifyOptionKeys = { "verify_signatures", "verify" };
+      String[] keyDirectoryOptionKeys = { "key_directory", "keydir" };
+      String[] inceptionOptionKeys = { "inception", "start" };
+      String[] expireOptionKeys = { "expire" };
+
       String optstr = null;
 
-      if (cli.hasOption('a'))
-        verifySigs = true;
-
-      if ((optstr = cli.getOptionValue('D')) != null) {
+      verifySigs = cliBooleanOption("a", verifyOptionKeys, false);
+      
+      String keyDirectoryName = cliOption("D", keyDirectoryOptionKeys, null);
+      if (keyDirectoryName != null) {
         keyDirectory = new File(optstr);
         if (!keyDirectory.isDirectory()) {
-          System.err.println("error: " + optstr + " is not a directory");
+          staticLog.severe("key directory " + optstr + " is not a directory");
           usage();
         }
       }
 
-      if ((optstr = cli.getOptionValue('s')) != null) {
+      optstr = cliOption("s", inceptionOptionKeys, null);
+      if (optstr != null) {
         start = convertDuration(null, optstr);
       } else {
         // default is now - 1 hour.
         start = Instant.now().minusSeconds(3600);
       }
 
-      if ((optstr = cli.getOptionValue('e')) != null) {
+      optstr = cliOption("e", expireOptionKeys, null);
+      if (optstr != null) {
         expire = convertDuration(start, optstr);
       } else {
         expire = convertDuration(start, "+2592000"); // 30 days

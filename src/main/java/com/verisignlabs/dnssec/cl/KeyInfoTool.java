@@ -20,7 +20,6 @@ package com.verisignlabs.dnssec.cl;
 import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.RSAPublicKey;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.DNSKEYRecord;
@@ -45,7 +44,7 @@ public class KeyInfoTool extends CLBase {
     public String[] keynames = null;
 
     public CLIState() {
-      super("jdnssec-keyinfo [..options..] keyfile");
+      super("keytoolinfo", "jdnssec-keyinfo [..options..] keyfile");
     }
 
     /**
@@ -57,7 +56,7 @@ public class KeyInfoTool extends CLBase {
     }
 
     @Override
-    protected void processOptions(CommandLine cli) throws ParseException {
+    protected void processOptions() throws ParseException {
       keynames = cli.getArgs();
 
       if (keynames.length < 1) {

@@ -28,7 +28,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
@@ -82,7 +81,7 @@ public class SignZone extends CLBase {
     private static final Random rand = new Random();
 
     public CLIState() {
-      super("jdnssec-signzone [..options..] zone_file [key_file ...]");
+      super("signzone", "jdnssec-signzone [..options..] zone_file [key_file ...]");
     }
 
     @Override
@@ -126,70 +125,66 @@ public class SignZone extends CLBase {
     }
 
     @Override
-    protected void processOptions(CommandLine cli) throws ParseException {
+    protected void processOptions() throws ParseException {
+      String[] verifyOptionKeys = { "verify_signatures", "verify" };
+      String[] nsec3OptionKeys = { "use_nsec3", "nsec3" };
+      String[] optOutOptionKeys = { "use_opt_out", "opt_out" };
+      String[] verboseSigningOptionKeys = { "verbose_signing" };
+      String[] fullySignKeysetOptionKeys = { "fully_sign_keyset", "fully_sign" };
+      String[] keyDirectoryOptionKeys = { "key_directory", "keydir" };
+      String[] inceptionOptionKeys = { "inception", "start" };
+      String[] expireOptionKeys = { "expire" };
+      String[] nsec3SaltOptionKeys = { "nsec3_salt", "salt" };
+      String[] randomSaltOptionKeys = { "nsec3_random_salt_length", "nsec3_salt_length", "random_salt_length" };
+      String[] nsec3IterationsOptionKeys = { "nsec3_iterations", "iterations" };
+      String[] digestAlgOptionKeys = { "digest_algorithm", "digest_id" };
+      String[] nsec3paramTTLOptionKeys = { "nsec3param_ttl" };
+      String[] incudeNamesOptionKeys = { "include_names_file", "include_names" };
+
       String optstr = null;
 
-      if (cli.hasOption('a'))
-        verifySigs = true;
-      if (cli.hasOption('3'))
-        useNsec3 = true;
-      if (cli.hasOption('O'))
-        useOptOut = true;
-      if (cli.hasOption('V'))
-        verboseSigning = true;
+      verifySigs = cliBooleanOption("a", verifyOptionKeys, false);
+      useNsec3 = cliBooleanOption("3", nsec3OptionKeys, false);
+      useOptOut = cliBooleanOption("O", optOutOptionKeys, false);
+      verboseSigning = cliBooleanOption("V", verboseSigningOptionKeys, false);
 
       if (useOptOut && !useNsec3) {
         System.err.println("Opt-Out not supported without NSEC3 -- ignored.");
         useOptOut = false;
       }
 
-      if (cli.hasOption('F'))
-        fullySignKeyset = true;
+      fullySignKeyset = cliBooleanOption("F", fullySignKeysetOptionKeys, false);
 
-      if ((optstr = cli.getOptionValue('d')) != null) {
-        keysetDirectory = new File(optstr);
-        if (!keysetDirectory.isDirectory()) {
-          System.err.println("error: " + optstr + " is not a directory");
-          usage();
-
-        }
-      }
-
-      if ((optstr = cli.getOptionValue('D')) != null) {
+      optstr = cliOption("D", keyDirectoryOptionKeys, null);
+      if (optstr != null) {
         keyDirectory = new File(optstr);
         if (!keyDirectory.isDirectory()) {
-          System.err.println("error: " + optstr + " is not a directory");
+          staticLog.severe("key directory " + optstr + " is not a directory");
           usage();
         }
       }
 
-      if ((optstr = cli.getOptionValue('s')) != null) {
-        start = CLBase.convertDuration(null, optstr);
+      optstr = cliOption("s", inceptionOptionKeys, null);
+      if (optstr != null) {
+        start = convertDuration(null, optstr);
       } else {
         // default is now - 1 hour.
         start = Instant.now().minusSeconds(3600);
       }
 
-      if ((optstr = cli.getOptionValue('e')) != null) {
-        expire = CLBase.convertDuration(start, optstr);
+      optstr = cliOption("e", expireOptionKeys, null);
+      if (optstr != null) {
+        expire = convertDuration(start, optstr);
       } else {
-        expire = CLBase.convertDuration(start, "+2592000"); // 30 days
+        expire = convertDuration(start, "+2592000"); // 30 days
       }
 
       outputfile = cli.getOptionValue('f');
 
       kskFiles = cli.getOptionValues('k');
 
-      if ((optstr = cli.getOptionValue('I')) != null) {
-        File includeNamesFile = new File(optstr);
-        try {
-          includeNames = CLIState.getNameList(includeNamesFile);
-        } catch (IOException e) {
-          throw new ParseException(e.getMessage());
-        }
-      }
-
-      if ((optstr = cli.getOptionValue('S')) != null) {
+      optstr = cliOption("S", nsec3SaltOptionKeys, null);
+      if (optstr != null) {
         salt = base16.fromString(optstr);
         if (salt == null && !optstr.equals("-")) {
           System.err.println("error: salt is not valid hexidecimal.");
@@ -197,7 +192,8 @@ public class SignZone extends CLBase {
         }
       }
 
-      if ((optstr = cli.getOptionValue('R')) != null) {
+      optstr = cliOption("R", randomSaltOptionKeys, null);
+      if (optstr != null) {
         int length = parseInt(optstr, 0);
         if (length > 0 && length <= 255) {
           salt = new byte[length];
@@ -205,24 +201,25 @@ public class SignZone extends CLBase {
         }
       }
 
-      if ((optstr = cli.getOptionValue("iterations")) != null) {
-        iterations = parseInt(optstr, iterations);
-        if (iterations < 0 || iterations > 8388607) {
-          System.err.println("error: iterations value is invalid");
-          usage();
-        }
+      iterations = cliIntOption("iterations", nsec3IterationsOptionKeys, 0);
+      if (iterations > 150) {
+        staticLog.warning("NSEC3 iterations value is too high for normal use: " + iterations
+            + " is greater than current accepted threshold of 150");
       }
 
-      if ((optstr = cli.getOptionValue("ds-digest")) != null) {
-        digestId = parseInt(optstr, -1);
-        if (digestId < 0) {
-          System.err.println("error: DS digest ID is not a valid identifier");
-          usage();
-        }
-      }
+      optstr = cliOption("ds-digest", digestAlgOptionKeys, Integer.toString(digestId));
+      digestId = DNSSEC.Digest.value(optstr);
 
-      if ((optstr = cli.getOptionValue("nsec3paramttl")) != null) {
-        nsec3paramttl = parseInt(optstr, -1);
+      nsec3paramttl = cliIntOption("nsec3paramttl", nsec3paramTTLOptionKeys, -1);
+
+      optstr = cliOption("I", incudeNamesOptionKeys, null);
+      if (optstr != null) {
+        File includeNamesFile = new File(optstr);
+        try {
+          includeNames = CLIState.getNameList(includeNamesFile);
+        } catch (IOException e) {
+          throw new ParseException(e.getMessage());
+        }
       }
 
       String[] files = cli.getArgs();

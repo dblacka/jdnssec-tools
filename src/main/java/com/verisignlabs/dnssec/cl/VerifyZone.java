@@ -20,7 +20,6 @@ package com.verisignlabs.dnssec.cl;
 import java.time.Instant;
 import java.util.List;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.ParseException;
@@ -52,7 +51,7 @@ public class VerifyZone extends CLBase {
     public Instant currentTime = null;
 
     public CLIState() {
-      super("jdnssec-verifyzone [..options..] zonefile");
+      super("verifyzone", "jdnssec-verifyzone [..options..] zonefile");
     }
 
     @Override
@@ -70,37 +69,25 @@ public class VerifyZone extends CLBase {
     }
 
     @Override
-    protected void processOptions(CommandLine cli) {
-      if (cli.hasOption("ignore-time")) {
-        ignoreTime = true;
-      }
+    protected void processOptions() {
+      String[] ignoreTimeOptionKeys = { "ignore_time" };
+      String[] ignoreDuplicateOptionKeys = { "ingore_duplicate_rrs", "ignore_duplicates" };
+      String[] startFudgeOptionKeys = { "start_fudge" };
+      String[] expireFudgeOptionKeys = { "expire_fudge" };
+      String[] currentTimeOptionKeys = { "current_time" };
 
-      if (cli.hasOption("ignore-duplicate-rrs")) {
-        ignoreDups = true;
-      }
-
-      String optstr = null;
-      if ((optstr = cli.getOptionValue('S')) != null) {
-        startfudge = parseInt(optstr, 0);
-      }
-
-      if ((optstr = cli.getOptionValue('E')) != null) {
-        expirefudge = parseInt(optstr, 0);
-      }
-
-      if ((optstr = cli.getOptionValue('t')) != null) {
+      ignoreTime = cliBooleanOption("ignore-time", ignoreTimeOptionKeys, false);
+      ignoreDups = cliBooleanOption("ignore-duplicate-rrs", ignoreDuplicateOptionKeys, false);
+      startfudge = cliIntOption("S", startFudgeOptionKeys, 0);
+      expirefudge = cliIntOption("E", expireFudgeOptionKeys, 0);
+      
+      String optstr = cliOption("t", currentTimeOptionKeys, null);
+      if (optstr != null) {
         try {
           currentTime = convertDuration(null, optstr);
         } catch (ParseException e) {
           System.err.println("error: could not parse timespec");
           usage();
-        }
-      }
-
-      String[] optstrs = null;
-      if ((optstrs = cli.getOptionValues('A')) != null) {
-        for (int i = 0; i < optstrs.length; i++) {
-          addArgAlias(optstrs[i]);
         }
       }
 
