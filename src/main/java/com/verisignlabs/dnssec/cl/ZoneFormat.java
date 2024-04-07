@@ -62,8 +62,7 @@ public class ZoneFormat extends CLBase {
     String[] args = cli.getArgs();
 
     if (args.length < 1) {
-      System.err.println("error: must specify a zone file");
-      usage(true);
+      fail("must specify a zone file");
     }
 
     file = args[0];

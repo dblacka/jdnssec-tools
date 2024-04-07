@@ -92,8 +92,7 @@ public class DSTool extends CLBase {
     String[] args = cli.getArgs();
 
     if (args.length < 1) {
-      System.err.println("error: missing key file ");
-      usage(true);
+      fail("missing key file");
     }
 
     keynames = args;

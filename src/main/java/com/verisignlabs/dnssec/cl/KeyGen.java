@@ -108,8 +108,7 @@ public class KeyGen extends CLBase {
     String algString = cliOption("a", algorithmOptionKeys, Integer.toString(algorithm));
     algorithm = Utils.parseAlg(algString);
     if (algorithm < 0) {
-      System.err.println("DNSSEC algorithm " + algString + " is not supported");
-      usage(true);
+      fail("DNSSEC algorithm " + algString + " is not supported");
     }
 
     keylength = cliIntOption("b", keyLengthOptionKeys, keylength);
@@ -119,8 +118,7 @@ public class KeyGen extends CLBase {
     String[] args = cli.getArgs();
 
     if (args.length < 1) {
-      System.err.println("error: missing key owner name");
-      usage(true);
+      fail("missing key owner name");
     }
 
     owner = args[0];

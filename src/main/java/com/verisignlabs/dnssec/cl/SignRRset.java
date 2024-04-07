@@ -98,8 +98,7 @@ public class SignRRset extends CLBase {
     if (optstr != null) {
       keyDirectory = new File(optstr);
       if (!keyDirectory.isDirectory()) {
-        log.severe("key directory " + optstr + " is not a directory");
-        usage(true);
+        fail("key directory " + optstr + " is not a directory");
       }
     }
 
@@ -112,8 +111,7 @@ public class SignRRset extends CLBase {
         start = Instant.now().minusSeconds(3600);
       }
     } catch (java.text.ParseException e) {
-      System.err.println("Unable to parse start time specifiction: " + e);
-      usage(true);
+      fail("unable to parse start time specifiction: " + e);
     }
 
     try {   
@@ -124,8 +122,7 @@ public class SignRRset extends CLBase {
         expire = Utils.convertDuration(start, "+2592000"); // 30 days
       }
     } catch (java.text.ParseException e) {
-      System.err.println("Unable to parse expire time specification: " + e);
-      usage(true);      
+      fail("Unable to parse expire time specification: " + e);
     }
 
     outputfile = cli.getOptionValue('f');
@@ -133,8 +130,7 @@ public class SignRRset extends CLBase {
     String[] files = cli.getArgs();
 
     if (files.length < 1) {
-      System.err.println("error: missing zone file and/or key files");
-      usage(true);
+      fail("missing zone file and/or key files");
     }
 
     inputfile = files[0];
@@ -217,8 +213,7 @@ public class SignRRset extends CLBase {
     // Read in the zone
     List<Record> records = ZoneUtils.readZoneFile(inputfile, null);
     if (records == null || records.isEmpty()) {
-      System.err.println("error: empty RRset file");
-      usage(true);
+      fail("empty RRset file");
     }
     // Construct the RRset. Complain if the records in the input file
     // consist of more than one RRset.
@@ -241,22 +236,18 @@ public class SignRRset extends CLBase {
           && rrset.getDClass() == r.getDClass()) {
         rrset.addRR(r);
       } else {
-        System.err.println("Records do not all belong to the same RRset.");
-        usage(true);
+        fail("records do not all belong to the same RRset");
       }
     }
 
     if (rrset == null || rrset.size() == 0) {
-      System.err.println("No records found in inputfile.");
-      usage(true);
-      return;
+      fail("no records found in inputfile");
     }
 
     // Load the key pairs.
 
     if (keyFiles.length == 0) {
-      System.err.println("error: at least one keyfile must be specified");
-      usage(true);
+      fail("at least one keyfile must be specified");
     }
 
     List<DnsKeyPair> keypairs = getKeys(keyFiles, 0, keyDirectory);
@@ -271,8 +262,7 @@ public class SignRRset extends CLBase {
         continue;
       }
       if (!pair.getDNSKEYName().equals(keysetName)) {
-        System.err.println("Keys do not all have the same name.");
-        usage(true);
+        fail("keys do not all have the same name");
       }
     }
 

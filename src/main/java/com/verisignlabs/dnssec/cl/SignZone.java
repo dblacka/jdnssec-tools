@@ -148,8 +148,7 @@ public class SignZone extends CLBase {
     if (optstr != null) {
       keyDirectory = new File(optstr);
       if (!keyDirectory.isDirectory()) {
-        log.severe("key directory " + optstr + " is not a directory");
-        usage(true);
+        fail("key directory " + optstr + " is not a directory");
       }
     }
 
@@ -162,8 +161,7 @@ public class SignZone extends CLBase {
         start = Instant.now().minusSeconds(3600);
       }
     } catch (java.text.ParseException e) {
-      System.err.println("Unable to parse start time specifiction: " + e);
-      usage(true);
+      fail("unable to parse start time specifiction: " + e);
     }
 
     try {
@@ -174,8 +172,7 @@ public class SignZone extends CLBase {
         expire = Utils.convertDuration(start, "+2592000"); // 30 days
       }
     } catch (java.text.ParseException e) {
-      System.err.println("error: missing zone file and/or key files");
-      usage(true);
+      fail("missing zone file and/or key files");
     }
 
     outputfile = cli.getOptionValue('f');
@@ -186,8 +183,7 @@ public class SignZone extends CLBase {
     if (optstr != null) {
       salt = base16.fromString(optstr);
       if (salt == null && !optstr.equals("-")) {
-        System.err.println("error: salt is not valid hexidecimal.");
-        usage(true);
+        fail("salt is not valid hexidecimal");
       }
     }
 
@@ -217,16 +213,14 @@ public class SignZone extends CLBase {
       try {
         includeNames = getNameList(includeNamesFile);
       } catch (IOException e) {
-        System.err.println("Unable to load include-names file: " + e);
-        usage(true);
+        fail("unable to load include-names file: " + e);
       }
     }
 
     String[] files = cli.getArgs();
 
     if (files.length < 1) {
-      System.err.println("error: missing zone file and/or key files");
-      usage(true);
+      fail("missing zone file and/or key files");
     }
 
     zonefile = files[0];
@@ -469,17 +463,13 @@ public class SignZone extends CLBase {
     // Read in the zone
     List<Record> records = ZoneUtils.readZoneFile(zonefile, null);
     if (records == null || records.isEmpty()) {
-      System.err.println("error: empty zone file");
-      usage(true);
-      return;
+      fail("empty zone file");
     }
 
     // calculate the zone name.
     Name zonename = ZoneUtils.findZoneName(records);
     if (zonename == null) {
-      System.err.println("error: invalid zone file - no SOA");
-      usage(true);
-      return;
+      fail("invalid zone file - no SOA");
     }
 
     // Load the key pairs. Note that getKeys() always returns an ArrayList,
@@ -517,9 +507,7 @@ public class SignZone extends CLBase {
 
     // If we have zero keypairs at all, we are stuck.
     if (keypairs.isEmpty() && kskpairs.isEmpty()) {
-      System.err.println("No zone signing keys could be determined.");
-      usage(true);
-      return;
+      fail("no zone signing keys could be determined");
     }
 
     // If we only have one type of key (all ZSKs or all KSKs), then these are
@@ -559,8 +547,7 @@ public class SignZone extends CLBase {
     // Verify that the keys can be in the zone.
     if (!keyPairsValidForZone(zonename, keypairs)
         || !keyPairsValidForZone(zonename, kskpairs)) {
-      System.err.println("error: specified keypairs are not valid for the zone.");
-      usage(true);
+      fail("specified keypairs are not valid for the zone.");
     }
 
     // We force the signing keys to be in the zone by just appending

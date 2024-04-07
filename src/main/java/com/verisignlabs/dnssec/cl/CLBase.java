@@ -133,19 +133,15 @@ public abstract class CLBase {
     try {
       cli = parser.parse(opts, args);
     } catch (UnrecognizedOptionException e) {
-      System.err.println("error: unknown option encountered: " + e.getMessage());
-      usage(true);
+      fail("unknown option encountered: " + e.getMessage());
     } catch (AlreadySelectedException e) {
-      System.err.println("error: mutually exclusive options have "
-          + "been selected:\n     " + e.getMessage());
-      usage(true);
+      fail("mutually exclusive options have been selected:\n     " + e.getMessage());
     } catch (ParseException e) {
-      System.err.println("Unable to parse command line: " + e);
-      usage(true);
+      fail("unable to parse command line: " + e);
     }
 
     if (cli.hasOption('h')) {
-      usage(false);
+      usage();
     }
 
     String loadedConfig = loadConfig(cli.getOptionValue('c'));
@@ -228,8 +224,12 @@ public abstract class CLBase {
     return null;
   }
 
+  protected void fail(String errorMessage) {
+    log.severe(errorMessage);
+    System.exit(64);
+  }
   /** Print out the usage and help statements, then quit. */
-  public void usage(boolean isError) {
+  public void usage() {
     HelpFormatter f = new HelpFormatter();
 
     PrintWriter out = new PrintWriter(System.err);
@@ -239,9 +239,6 @@ public abstract class CLBase {
         HelpFormatter.DEFAULT_DESC_PAD, null);
 
     out.flush();
-    if (isError) {
-      System.exit(64);
-    }
     System.exit(0);
 
   }

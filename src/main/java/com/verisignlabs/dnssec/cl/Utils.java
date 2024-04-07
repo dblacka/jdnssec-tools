@@ -5,8 +5,6 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.TimeZone;
 
-import org.apache.commons.cli.ParseException;
-
 import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
 
 public class Utils {

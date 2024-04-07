@@ -50,8 +50,7 @@ public class KeyInfoTool extends CLBase {
       keynames = cli.getArgs();
 
       if (keynames.length < 1) {
-        System.err.println("error: missing key file ");
-        usage(true);
+        fail("missing key file");
       }
     }
   

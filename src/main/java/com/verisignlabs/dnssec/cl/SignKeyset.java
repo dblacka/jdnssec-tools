@@ -93,8 +93,7 @@ public class SignKeyset extends CLBase {
       if (keyDirectoryName != null) {
         keyDirectory = new File(optstr);
         if (!keyDirectory.isDirectory()) {
-          log.severe("key directory " + optstr + " is not a directory");
-          usage(true);
+          fail("key directory " + optstr + " is not a directory");
         }
       }
 
@@ -107,8 +106,7 @@ public class SignKeyset extends CLBase {
           start = Instant.now().minusSeconds(3600);
         }
       } catch (java.text.ParseException e) {
-        System.err.println("Unable to parse start time specifiction: " + e);
-        usage(true);
+        fail("Unable to parse start time specifiction: " + e);
       }
 
       try {
@@ -119,8 +117,7 @@ public class SignKeyset extends CLBase {
           expire = Utils.convertDuration(start, "+2592000"); // 30 days
         }
       } catch (java.text.ParseException e) {
-        System.err.println("Unable to parse expire time specification: " + e);
-        usage(true);
+        fail("Unable to parse expire time specification: " + e);
       }
 
       outputfile = cli.getOptionValue('f');
@@ -128,8 +125,7 @@ public class SignKeyset extends CLBase {
       String[] files = cli.getArgs();
 
       if (files.length < 1) {
-        System.err.println("error: missing zone file and/or key files");
-        usage(true);
+        fail("missing zone file and/or key files");
       }
 
       inputfile = files[0];
@@ -246,8 +242,7 @@ public class SignKeyset extends CLBase {
     // Read in the zone
     List<Record> records = ZoneUtils.readZoneFile(inputfile, null);
     if (records == null || records.isEmpty()) {
-      System.err.println("error: empty keyset file");
-      usage(true);
+      fail("empty keyset file");
     }
 
     // Make sure that all records are DNSKEYs with the same name.
@@ -263,15 +258,13 @@ public class SignKeyset extends CLBase {
         keysetName = r.getName();
       }
       if (!r.getName().equals(keysetName)) {
-        System.err.println("error: DNSKEY with a different name found!");
-        usage(true);
+        fail("DNSKEY with a different name found!");
       }
       keyset.addRR(r);
     }
 
     if (keyset.size() == 0) {
-      System.err.println("error: No DNSKEYs found in keyset file");
-      usage(true);
+      fail("error: No DNSKEYs found in keyset file");
     }
 
     // Load the key pairs.
@@ -286,9 +279,7 @@ public class SignKeyset extends CLBase {
 
     // If there *still* aren't any ZSKs defined, bail.
     if (keypairs == null || keypairs.isEmpty() || keysetName == null) {
-      System.err.println("error: No signing keys could be determined.");
-      usage(true);
-      return;
+      fail("no signing keys could be determined.");
     }
 
     // default the output file, if not set.

@@ -74,16 +74,14 @@ public class VerifyZone extends CLBase {
       try {
         currentTime = Utils.convertDuration(null, optstr);
       } catch (java.text.ParseException e) {
-        System.err.println("error: could not parse timespec");
-        usage(true);
+        fail("could not parse timespec");
       }
     }
 
     String[] args = cli.getArgs();
 
     if (args.length < 1) {
-      System.err.println("error: missing zone file");
-      usage(true);
+      fail("missing zone file");
     }
 
     zonefile = args[0];
