@@ -29,8 +29,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.Name;
@@ -53,216 +51,217 @@ import com.verisignlabs.dnssec.security.ZoneUtils;
  * @author David Blacka
  */
 public class SignZone extends CLBase {
-  private CLIState state;
+  private File keyDirectory = null;
+  private File keysetDirectory = null;
+  private String[] kskFiles = null;
+  private String[] keyFiles = null;
+  private String zonefile = null;
+  private Instant start = null;
+  private Instant expire = null;
+  private String outputfile = null;
+  private boolean verifySigs = false;
+  private boolean useOptOut = false;
+  private boolean fullySignKeyset = false;
+  private List<Name> includeNames = null;
+  private boolean useNsec3 = false;
+  private byte[] salt = null;
+  private int iterations = 0;
+  private int digestId = DNSSEC.Digest.SHA1;
+  private long nsec3paramttl = -1;
+  private boolean verboseSigning = false;
 
-  /**
-   * This is an inner class used to hold all of the command line option state.
-   */
-  private static class CLIState extends CLIStateBase {
-    public File keyDirectory = null;
-    public File keysetDirectory = null;
-    public String[] kskFiles = null;
-    public String[] keyFiles = null;
-    public String zonefile = null;
-    public Instant start = null;
-    public Instant expire = null;
-    public String outputfile = null;
-    public boolean verifySigs = false;
-    public boolean useOptOut = false;
-    public boolean fullySignKeyset = false;
-    public List<Name> includeNames = null;
-    public boolean useNsec3 = false;
-    public byte[] salt = null;
-    public int iterations = 0;
-    public int digestId = DNSSEC.Digest.SHA1;
-    public long nsec3paramttl = -1;
-    public boolean verboseSigning = false;
+  private static final Random rand = new Random();
 
-    private static final Random rand = new Random();
+  public SignZone(String name, String usageStr) {
+    super(name, usageStr);
+  }
 
-    public CLIState() {
-      super("signzone", "jdnssec-signzone [..options..] zone_file [key_file ...]");
+  protected void setupOptions() {
+    // boolean options
+    opts.addOption("a", "verify", false, "verify generated signatures>");
+    opts.addOption("F", "fully-sign-keyset", false,
+        "sign the zone apex keyset with all available keys.");
+    opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
+
+    opts.addOption(Option.builder("d").hasArg().argName("dir").longOpt("keyset-directory")
+        .desc("directory to find keyset files (default '.')").build());
+    opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
+        .desc("directory to find key files (default '.'").build());
+    opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
+        .desc("signature starting time (default is now - 1 hour)").build());
+    opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
+        .desc("signature expiration time (default is start-time + 30 days)").build());
+    opts.addOption(
+        Option.builder("f").hasArg().argName("outfile").desc("file the the signed rrset is written to").build());
+    opts.addOption(Option.builder("k").hasArgs().argName("KSK file").longOpt("ksk-file")
+        .desc("This key is a Key-Signing Key (may repeat)").build());
+    opts.addOption(Option.builder("I").hasArg().argName("file").longOpt("include-file")
+        .desc("include names in the file in the NSEC/NSEC3 chain").build());
+
+    // NSEC3 options
+    opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
+    opts.addOption("O", "use-opt-out", false,
+        "generate a fully Opt-Out zone (only valid with NSEC3).");
+    opts.addOption(
+        Option.builder("S").hasArg().argName("hex value").longOpt("salt").desc("Supply a salt value").build());
+    opts.addOption(Option.builder("R").hasArg().argName("length").longOpt("random-salt")
+        .desc("Generate a random salt of <length>").build());
+    opts.addOption(Option.builder("H").hasArg().argName("count").longOpt("iterations")
+        .desc("Use this many addtional iterations in NSEC3 (default 0)").build());
+    opts.addOption(Option.builder().hasArg().longOpt("nsec3paramttl").argName("ttl")
+        .desc("Use this TTL for the NSEC3PARAM record (default is min(soa.min, soa.ttl))").build());
+    opts.addOption(Option.builder().hasArg().argName("id").longOpt("ds-digest")
+        .desc("Digest algorithm to use for generated DS records").build());
+  }
+
+  protected void processOptions() {
+    String[] verifyOptionKeys = { "verify_signatures", "verify" };
+    String[] nsec3OptionKeys = { "use_nsec3", "nsec3" };
+    String[] optOutOptionKeys = { "use_opt_out", "opt_out" };
+    String[] verboseSigningOptionKeys = { "verbose_signing" };
+    String[] fullySignKeysetOptionKeys = { "fully_sign_keyset", "fully_sign" };
+    String[] keyDirectoryOptionKeys = { "key_directory", "keydir" };
+    String[] inceptionOptionKeys = { "inception", "start" };
+    String[] expireOptionKeys = { "expire" };
+    String[] nsec3SaltOptionKeys = { "nsec3_salt", "salt" };
+    String[] randomSaltOptionKeys = { "nsec3_random_salt_length", "nsec3_salt_length", "random_salt_length" };
+    String[] nsec3IterationsOptionKeys = { "nsec3_iterations", "iterations" };
+    String[] digestAlgOptionKeys = { "digest_algorithm", "digest_id" };
+    String[] nsec3paramTTLOptionKeys = { "nsec3param_ttl" };
+    String[] incudeNamesOptionKeys = { "include_names_file", "include_names" };
+
+    String optstr = null;
+
+    verifySigs = cliBooleanOption("a", verifyOptionKeys, false);
+    useNsec3 = cliBooleanOption("3", nsec3OptionKeys, false);
+    useOptOut = cliBooleanOption("O", optOutOptionKeys, false);
+    verboseSigning = cliBooleanOption("V", verboseSigningOptionKeys, false);
+
+    if (useOptOut && !useNsec3) {
+      System.err.println("Opt-Out not supported without NSEC3 -- ignored.");
+      useOptOut = false;
     }
 
-    @Override
-    protected void setupOptions(Options opts) {
-      // boolean options
-      opts.addOption("a", "verify", false, "verify generated signatures>");
-      opts.addOption("F", "fully-sign-keyset", false,
-          "sign the zone apex keyset with all available keys.");
-      opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
+    fullySignKeyset = cliBooleanOption("F", fullySignKeysetOptionKeys, false);
 
-      opts.addOption(Option.builder("d").hasArg().argName("dir").longOpt("keyset-directory")
-          .desc("directory to find keyset files (default '.')").build());
-      opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
-          .desc("directory to find key files (default '.'").build());
-      opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
-          .desc("signature starting time (default is now - 1 hour)").build());
-      opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
-          .desc("signature expiration time (default is start-time + 30 days)").build());
-      opts.addOption(
-          Option.builder("f").hasArg().argName("outfile").desc("file the the signed rrset is written to").build());
-      opts.addOption(Option.builder("k").hasArgs().argName("KSK file").longOpt("ksk-file")
-          .desc("This key is a Key-Signing Key (may repeat)").build());
-      opts.addOption(Option.builder("I").hasArg().argName("file").longOpt("include-file")
-          .desc("include names in the file in the NSEC/NSEC3 chain").build());
-
-      // NSEC3 options
-      opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
-      opts.addOption("O", "use-opt-out", false,
-          "generate a fully Opt-Out zone (only valid with NSEC3).");
-      opts.addOption(
-          Option.builder("S").hasArg().argName("hex value").longOpt("salt").desc("Supply a salt value").build());
-      opts.addOption(Option.builder("R").hasArg().argName("length").longOpt("random-salt")
-          .desc("Generate a random salt of <length>").build());
-      opts.addOption(Option.builder("H").hasArg().argName("count").longOpt("iterations")
-          .desc("Use this many addtional iterations in NSEC3 (default 0)").build());
-      opts.addOption(Option.builder().hasArg().longOpt("nsec3paramttl").argName("ttl")
-          .desc("Use this TTL for the NSEC3PARAM record (default is min(soa.min, soa.ttl))").build());
-      opts.addOption(Option.builder().hasArg().argName("id").longOpt("ds-digest")
-          .desc("Digest algorithm to use for generated DS records").build());
-
+    optstr = cliOption("D", keyDirectoryOptionKeys, null);
+    if (optstr != null) {
+      keyDirectory = new File(optstr);
+      if (!keyDirectory.isDirectory()) {
+        log.severe("key directory " + optstr + " is not a directory");
+        usage(true);
+      }
     }
 
-    @Override
-    protected void processOptions() throws ParseException {
-      String[] verifyOptionKeys = { "verify_signatures", "verify" };
-      String[] nsec3OptionKeys = { "use_nsec3", "nsec3" };
-      String[] optOutOptionKeys = { "use_opt_out", "opt_out" };
-      String[] verboseSigningOptionKeys = { "verbose_signing" };
-      String[] fullySignKeysetOptionKeys = { "fully_sign_keyset", "fully_sign" };
-      String[] keyDirectoryOptionKeys = { "key_directory", "keydir" };
-      String[] inceptionOptionKeys = { "inception", "start" };
-      String[] expireOptionKeys = { "expire" };
-      String[] nsec3SaltOptionKeys = { "nsec3_salt", "salt" };
-      String[] randomSaltOptionKeys = { "nsec3_random_salt_length", "nsec3_salt_length", "random_salt_length" };
-      String[] nsec3IterationsOptionKeys = { "nsec3_iterations", "iterations" };
-      String[] digestAlgOptionKeys = { "digest_algorithm", "digest_id" };
-      String[] nsec3paramTTLOptionKeys = { "nsec3param_ttl" };
-      String[] incudeNamesOptionKeys = { "include_names_file", "include_names" };
-
-      String optstr = null;
-
-      verifySigs = cliBooleanOption("a", verifyOptionKeys, false);
-      useNsec3 = cliBooleanOption("3", nsec3OptionKeys, false);
-      useOptOut = cliBooleanOption("O", optOutOptionKeys, false);
-      verboseSigning = cliBooleanOption("V", verboseSigningOptionKeys, false);
-
-      if (useOptOut && !useNsec3) {
-        System.err.println("Opt-Out not supported without NSEC3 -- ignored.");
-        useOptOut = false;
-      }
-
-      fullySignKeyset = cliBooleanOption("F", fullySignKeysetOptionKeys, false);
-
-      optstr = cliOption("D", keyDirectoryOptionKeys, null);
-      if (optstr != null) {
-        keyDirectory = new File(optstr);
-        if (!keyDirectory.isDirectory()) {
-          staticLog.severe("key directory " + optstr + " is not a directory");
-          usage();
-        }
-      }
-
+    try {
       optstr = cliOption("s", inceptionOptionKeys, null);
       if (optstr != null) {
-        start = convertDuration(null, optstr);
+        start = Utils.convertDuration(null, optstr);
       } else {
         // default is now - 1 hour.
         start = Instant.now().minusSeconds(3600);
       }
+    } catch (java.text.ParseException e) {
+      System.err.println("Unable to parse start time specifiction: " + e);
+      usage(true);
+    }
 
+    try {
       optstr = cliOption("e", expireOptionKeys, null);
       if (optstr != null) {
-        expire = convertDuration(start, optstr);
+        expire = Utils.convertDuration(start, optstr);
       } else {
-        expire = convertDuration(start, "+2592000"); // 30 days
+        expire = Utils.convertDuration(start, "+2592000"); // 30 days
       }
+    } catch (java.text.ParseException e) {
+      System.err.println("error: missing zone file and/or key files");
+      usage(true);
+    }
 
-      outputfile = cli.getOptionValue('f');
+    outputfile = cli.getOptionValue('f');
 
-      kskFiles = cli.getOptionValues('k');
+    kskFiles = cli.getOptionValues('k');
 
-      optstr = cliOption("S", nsec3SaltOptionKeys, null);
-      if (optstr != null) {
-        salt = base16.fromString(optstr);
-        if (salt == null && !optstr.equals("-")) {
-          System.err.println("error: salt is not valid hexidecimal.");
-          usage();
-        }
-      }
-
-      optstr = cliOption("R", randomSaltOptionKeys, null);
-      if (optstr != null) {
-        int length = parseInt(optstr, 0);
-        if (length > 0 && length <= 255) {
-          salt = new byte[length];
-          rand.nextBytes(salt);
-        }
-      }
-
-      iterations = cliIntOption("iterations", nsec3IterationsOptionKeys, 0);
-      if (iterations > 150) {
-        staticLog.warning("NSEC3 iterations value is too high for normal use: " + iterations
-            + " is greater than current accepted threshold of 150");
-      }
-
-      optstr = cliOption("ds-digest", digestAlgOptionKeys, Integer.toString(digestId));
-      digestId = DNSSEC.Digest.value(optstr);
-
-      nsec3paramttl = cliIntOption("nsec3paramttl", nsec3paramTTLOptionKeys, -1);
-
-      optstr = cliOption("I", incudeNamesOptionKeys, null);
-      if (optstr != null) {
-        File includeNamesFile = new File(optstr);
-        try {
-          includeNames = CLIState.getNameList(includeNamesFile);
-        } catch (IOException e) {
-          throw new ParseException(e.getMessage());
-        }
-      }
-
-      String[] files = cli.getArgs();
-
-      if (files.length < 1) {
-        System.err.println("error: missing zone file and/or key files");
-        usage();
-      }
-
-      zonefile = files[0];
-      if (files.length > 1) {
-        keyFiles = new String[files.length - 1];
-        System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
+    optstr = cliOption("S", nsec3SaltOptionKeys, null);
+    if (optstr != null) {
+      salt = base16.fromString(optstr);
+      if (salt == null && !optstr.equals("-")) {
+        System.err.println("error: salt is not valid hexidecimal.");
+        usage(true);
       }
     }
 
-    /**
-     * Load a list of DNS names from a file.
-     *
-     * @param nameListFile the path of a file containing a bare list of DNS
-     *                     names.
-     * @return a list of {@link org.xbill.DNS.Name} objects.
-     */
-    private static List<Name> getNameList(File nameListFile) throws IOException {
-      try (BufferedReader br = new BufferedReader(new FileReader(nameListFile))) {
-        List<Name> res = new ArrayList<>();
-
-        String line = null;
-        while ((line = br.readLine()) != null) {
-          try {
-            Name n = Name.fromString(line);
-            // force the name to be absolute.
-            if (!n.isAbsolute())
-              n = Name.concatenate(n, Name.root);
-
-            res.add(n);
-          } catch (TextParseException e) {
-            staticLog.severe("DNS Name parsing error:" + e);
-          }
-        }
-
-        return res;
+    optstr = cliOption("R", randomSaltOptionKeys, null);
+    if (optstr != null) {
+      int length = Utils.parseInt(optstr, 0);
+      if (length > 0 && length <= 255) {
+        salt = new byte[length];
+        rand.nextBytes(salt);
       }
+    }
+
+    iterations = cliIntOption("iterations", nsec3IterationsOptionKeys, 0);
+    if (iterations > 150) {
+      log.warning("NSEC3 iterations value is too high for normal use: " + iterations
+          + " is greater than current accepted threshold of 150");
+    }
+
+    optstr = cliOption("ds-digest", digestAlgOptionKeys, Integer.toString(digestId));
+    digestId = DNSSEC.Digest.value(optstr);
+
+    nsec3paramttl = cliIntOption("nsec3paramttl", nsec3paramTTLOptionKeys, -1);
+
+    optstr = cliOption("I", incudeNamesOptionKeys, null);
+    if (optstr != null) {
+      File includeNamesFile = new File(optstr);
+      try {
+        includeNames = getNameList(includeNamesFile);
+      } catch (IOException e) {
+        System.err.println("Unable to load include-names file: " + e);
+        usage(true);
+      }
+    }
+
+    String[] files = cli.getArgs();
+
+    if (files.length < 1) {
+      System.err.println("error: missing zone file and/or key files");
+      usage(true);
+    }
+
+    zonefile = files[0];
+    if (files.length > 1) {
+      keyFiles = new String[files.length - 1];
+      System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
+    }
+  }
+
+  /**
+   * Load a list of DNS names from a file.
+   *
+   * @param nameListFile the path of a file containing a bare list of DNS
+   *                     names.
+   * @return a list of {@link org.xbill.DNS.Name} objects.
+   */
+  private List<Name> getNameList(File nameListFile) throws IOException {
+    try (BufferedReader br = new BufferedReader(new FileReader(nameListFile))) {
+      List<Name> res = new ArrayList<>();
+
+      String line = null;
+      while ((line = br.readLine()) != null) {
+        try {
+          Name n = Name.fromString(line);
+          // force the name to be absolute.
+          if (!n.isAbsolute())
+            n = Name.concatenate(n, Name.root);
+
+          res.add(n);
+        } catch (TextParseException e) {
+          log.severe("DNS Name parsing error:" + e);
+        }
+      }
+
+      return res;
     }
   }
 
@@ -273,7 +272,7 @@ public class SignZone extends CLBase {
    * @param keypairs a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
-  private static boolean verifyZoneSigs(List<Record> records,
+  private boolean verifyZoneSigs(List<Record> records,
       List<DnsKeyPair> keypairs, List<DnsKeyPair> kskpairs) {
     boolean secure = true;
 
@@ -299,7 +298,7 @@ public class SignZone extends CLBase {
 
       if (!result) {
         System.err.println("Signatures did not verify for RRset: " + rrset);
-        staticLog.fine("Signatures did not verify for RRset: " + rrset);
+        log.fine("Signatures did not verify for RRset: " + rrset);
         secure = false;
       }
     }
@@ -318,7 +317,7 @@ public class SignZone extends CLBase {
    * @param inDirectory the directory to look in (may be null).
    * @return a list of keypair objects.
    */
-  private static List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
+  private List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
       File inDirectory) throws IOException {
     if (keyfiles == null)
       return new ArrayList<>();
@@ -339,7 +338,7 @@ public class SignZone extends CLBase {
     return keys;
   }
 
-  private static List<DnsKeyPair> getKeys(List<Record> dnskeyrrs, File inDirectory)
+  private List<DnsKeyPair> getKeys(List<Record> dnskeyrrs, File inDirectory)
       throws IOException {
     List<DnsKeyPair> res = new ArrayList<>();
     for (Record r : dnskeyrrs) {
@@ -373,7 +372,7 @@ public class SignZone extends CLBase {
     }
   }
 
-  private static List<DnsKeyPair> findZoneKeys(File inDirectory, Name zonename)
+  private List<DnsKeyPair> findZoneKeys(File inDirectory, Name zonename)
       throws IOException {
     if (inDirectory == null) {
       inDirectory = new File(".");
@@ -416,7 +415,7 @@ public class SignZone extends CLBase {
    *                    keysets that do not belong in the zone.
    * @return a list of {@link org.xbill.DNS.Record}s found in the keyset files.
    */
-  private static List<Record> getKeysets(File inDirectory, Name zonename)
+  private List<Record> getKeysets(File inDirectory, Name zonename)
       throws IOException {
     if (inDirectory == null) {
       inDirectory = new File(".");
@@ -468,10 +467,10 @@ public class SignZone extends CLBase {
 
   public void execute() throws Exception {
     // Read in the zone
-    List<Record> records = ZoneUtils.readZoneFile(state.zonefile, null);
+    List<Record> records = ZoneUtils.readZoneFile(zonefile, null);
     if (records == null || records.isEmpty()) {
       System.err.println("error: empty zone file");
-      state.usage();
+      usage(true);
       return;
     }
 
@@ -479,26 +478,26 @@ public class SignZone extends CLBase {
     Name zonename = ZoneUtils.findZoneName(records);
     if (zonename == null) {
       System.err.println("error: invalid zone file - no SOA");
-      state.usage();
+      usage(true);
       return;
     }
 
     // Load the key pairs. Note that getKeys() always returns an ArrayList,
     // which may be empty.
-    List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
-    List<DnsKeyPair> kskpairs = getKeys(state.kskFiles, 0, state.keyDirectory);
+    List<DnsKeyPair> keypairs = getKeys(keyFiles, 0, keyDirectory);
+    List<DnsKeyPair> kskpairs = getKeys(kskFiles, 0, keyDirectory);
 
     // If we didn't get any keys on the command line, look at the zone apex for
     // any public keys.
     if (keypairs.isEmpty()) {
       List<Record> dnskeys = ZoneUtils.findRRs(records, zonename, Type.DNSKEY);
-      keypairs = getKeys(dnskeys, state.keyDirectory);
+      keypairs = getKeys(dnskeys, keyDirectory);
     }
 
     // If we *still* don't have any key pairs, look for keys the key directory
     // that match
     if (keypairs.isEmpty()) {
-      keypairs = findZoneKeys(state.keyDirectory, zonename);
+      keypairs = findZoneKeys(keyDirectory, zonename);
     }
 
     // If we don't have any KSKs, but we do have more than one zone
@@ -519,7 +518,7 @@ public class SignZone extends CLBase {
     // If we have zero keypairs at all, we are stuck.
     if (keypairs.isEmpty() && kskpairs.isEmpty()) {
       System.err.println("No zone signing keys could be determined.");
-      state.usage();
+      usage(true);
       return;
     }
 
@@ -549,11 +548,11 @@ public class SignZone extends CLBase {
     }
 
     // default the output file, if not set.
-    if (state.outputfile == null && !state.zonefile.equals("-")) {
+    if (outputfile == null && !zonefile.equals("-")) {
       if (zonename.isAbsolute()) {
-        state.outputfile = zonename + "signed";
+        outputfile = zonename + "signed";
       } else {
-        state.outputfile = zonename + ".signed";
+        outputfile = zonename + ".signed";
       }
     }
 
@@ -561,7 +560,7 @@ public class SignZone extends CLBase {
     if (!keyPairsValidForZone(zonename, keypairs)
         || !keyPairsValidForZone(zonename, kskpairs)) {
       System.err.println("error: specified keypairs are not valid for the zone.");
-      state.usage();
+      usage(true);
     }
 
     // We force the signing keys to be in the zone by just appending
@@ -579,34 +578,34 @@ public class SignZone extends CLBase {
     }
 
     // read in the keysets, if any.
-    List<Record> keysetrecs = getKeysets(state.keysetDirectory, zonename);
+    List<Record> keysetrecs = getKeysets(keysetDirectory, zonename);
     if (keysetrecs != null) {
       records.addAll(keysetrecs);
     }
 
-    JCEDnsSecSigner signer = new JCEDnsSecSigner(state.verboseSigning);
+    JCEDnsSecSigner signer = new JCEDnsSecSigner(verboseSigning);
 
     // Sign the zone.
     List<Record> signedRecords;
 
-    if (state.useNsec3) {
+    if (useNsec3) {
       signedRecords = signer.signZoneNSEC3(zonename, records, kskpairs, keypairs,
-          state.start, state.expire,
-          state.fullySignKeyset, state.useOptOut,
-          state.includeNames, state.salt,
-          state.iterations, state.digestId,
-          state.nsec3paramttl);
+          start, expire,
+          fullySignKeyset, useOptOut,
+          includeNames, salt,
+          iterations, digestId,
+          nsec3paramttl);
     } else {
       signedRecords = signer.signZone(zonename, records, kskpairs, keypairs,
-          state.start, state.expire, state.fullySignKeyset,
-          state.digestId);
+          start, expire, fullySignKeyset,
+          digestId);
     }
 
     // write out the signed zone
-    ZoneUtils.writeZoneFile(signedRecords, state.outputfile);
+    ZoneUtils.writeZoneFile(signedRecords, outputfile);
     System.out.println("zone signing complete");
 
-    if (state.verifySigs) {
+    if (verifySigs) {
       log.fine("verifying generated signatures");
       boolean res = verifyZoneSigs(signedRecords, keypairs, kskpairs);
 
@@ -619,9 +618,8 @@ public class SignZone extends CLBase {
   }
 
   public static void main(String[] args) {
-    SignZone tool = new SignZone();
-    tool.state = new CLIState();
+    SignZone tool = new SignZone("signzone", "jdnssec-signzone [..options..] zone_file [key_file ...]");
 
-    tool.run(tool.state, args);
+    tool.run(args);
   }
 }

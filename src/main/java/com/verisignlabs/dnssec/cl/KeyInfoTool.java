@@ -20,8 +20,6 @@ package com.verisignlabs.dnssec.cl;
 import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.RSAPublicKey;
 
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.DNSKEYRecord;
 
 import com.verisignlabs.dnssec.security.BINDKeyUtils;
@@ -34,41 +32,33 @@ import com.verisignlabs.dnssec.security.DnsKeyPair;
  * @author David Blacka
  */
 public class KeyInfoTool extends CLBase {
-  private CLIState state;
+  private String[] keynames = null;
+
+  public KeyInfoTool(String name, String usageStr) {
+    super(name, usageStr);
+  }
 
   /**
-   * This is a small inner class used to hold all of the command line option
-   * state.
+   * Set up the command line options.
    */
-  protected static class CLIState extends CLIStateBase {
-    public String[] keynames = null;
+  protected void setupOptions() {
+    // no special options at the moment.
+  }
 
-    public CLIState() {
-      super("keytoolinfo", "jdnssec-keyinfo [..options..] keyfile");
-    }
 
-    /**
-     * Set up the command line options.
-     */
-    @Override
-    protected void setupOptions(Options opts) {
-      // no special options at the moment.
-    }
-
-    @Override
-    protected void processOptions() throws ParseException {
+  protected void processOptions()  {
       keynames = cli.getArgs();
 
       if (keynames.length < 1) {
         System.err.println("error: missing key file ");
-        usage();
+        usage(true);
       }
     }
-  }
+  
 
   public void execute() throws Exception {
-    for (int i = 0; i < state.keynames.length; ++i) {
-      String          keyname   = state.keynames[i];
+    for (int i = 0; i < keynames.length; ++i) {
+      String          keyname   = keynames[i];
       DnsKeyPair      key       = BINDKeyUtils.loadKey(keyname, null);
       DNSKEYRecord    dnskey    = key.getDNSKEYRecord();
       DnsKeyAlgorithm dnskeyalg = DnsKeyAlgorithm.getInstance();
@@ -96,16 +86,15 @@ public class KeyInfoTool extends CLBase {
         System.out.println("DSA subprime (Q): " + pub.getParams().getQ());
         System.out.println("DSA public (Y): " + pub.getY());
       }
-      if (state.keynames.length - i > 1) {
+      if (keynames.length - i > 1) {
         System.out.println();
       }
     }
   }
 
   public static void main(String[] args) {
-    KeyInfoTool tool = new KeyInfoTool();
-    tool.state = new CLIState();
+    KeyInfoTool tool = new KeyInfoTool("keyinfotool", "jdnssec-keyinfo [..options..] keyfile");
 
-    tool.run(tool.state, args);
+    tool.run(args);
   }
 }
