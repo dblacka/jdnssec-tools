@@ -1,5 +1,6 @@
 build
 bin/main
+dist/
 .classpath
 .project
 .gradle
