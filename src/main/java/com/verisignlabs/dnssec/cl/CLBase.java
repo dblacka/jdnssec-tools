@@ -17,11 +17,11 @@
 
 package com.verisignlabs.dnssec.cl;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.util.Date;
-import java.util.TimeZone;
+import java.util.Properties;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -48,8 +48,19 @@ import com.verisignlabs.dnssec.security.DnsKeyAlgorithm;
  * subclass variant of the CLIState and call run().
  */
 public abstract class CLBase {
-  protected static Logger staticLog = Logger.getLogger(CLBase.class.getName());
-  protected Logger log;
+  protected Logger log = Logger.getLogger(this.getClass().toString());
+  protected Options opts;
+  protected String name;
+  protected String usageStr;
+  protected Properties props;
+  protected CommandLine cli;
+
+  protected CLBase(String name, String usageStr) {
+    this.name = name;
+    this.usageStr = usageStr;
+
+    setup();
+  }
 
   /**
    * This is a very simple log formatter that simply outputs the log level and
@@ -70,253 +81,319 @@ public abstract class CLBase {
     }
   }
 
+  /** This is the base set of command line options provided to all subclasses. */
+  private void setupCommonOptions() {
+    // Set up the standard set of options that all jdnssec command line tools will
+    // implement.
+
+    // boolean options
+    opts.addOption("h", "help", false, "Print this message.");
+    opts.addOption("m", "multiline", false,
+        "Output DNS records using 'multiline' format");
+
+    opts.addOption(Option.builder("l").longOpt("log-level").argName("level").hasArg()
+        .desc("set the logging level with either java.util.logging levels, or 0-6").build());
+    opts.addOption(Option.builder("v").longOpt("verbose").desc(
+        "set as verbose (log-level = fine)").build());
+
+    opts.addOption(Option.builder("c").longOpt("config").argName("file").hasArg()
+        .desc("configuration file (format: java properties)").build());
+
+    opts.addOption(Option.builder("A").hasArg().argName("alias:original:mnemonic").longOpt("alg-alias")
+        .desc("Define an alias for an algorithm").build());
+  }
+
   /**
-   * This is a base class for command line parsing state. Subclasses should
-   * override setupOptions and processOptions.
+   * This is an overridable method for subclasses to add their own command line
+   * options.
    */
-  public static class CLIStateBase {
-    protected Options opts;
-    protected String usageStr;
+  protected abstract void setupOptions();
 
-    /**
-     * The base constructor. This will setup the command line options.
-     *
-     * @param usage
-     *              The command line usage string (e.g.,
-     *              "jdnssec-foo [..options..] zonefile")
-     */
-    public CLIStateBase(String usage) {
-      usageStr = usage;
-      setup();
+  /**
+   * Initialize the command line options
+   */
+  public void setup() {
+    opts = new Options();
+    setupCommonOptions();
+    setupOptions();
+  }
+
+  /**
+   * This is the main method for parsing the command line arguments. Subclasses
+   * generally override processOptions() rather than this method. This method
+   * creates the parsing objects and processes the common options.
+   * 
+   * @param args The command line arguments.
+   */
+  public void parseCommandLine(String[] args) {
+    String[] logLevelOptionKeys = { "log_level", "log-level" };
+    String[] multilineOptionKeys = { "multiline" };
+    CommandLineParser parser = new DefaultParser();
+
+    try {
+      cli = parser.parse(opts, args);
+    } catch (UnrecognizedOptionException e) {
+      fail("unknown option encountered: " + e.getMessage());
+    } catch (AlreadySelectedException e) {
+      fail("mutually exclusive options have been selected:\n     " + e.getMessage());
+    } catch (ParseException e) {
+      fail("unable to parse command line: " + e);
     }
 
-    /** This is the base set of command line options provided to all subclasses. */
-    private void setup() {
-      // Set up the standard set of options that all jdnssec command line tools will
-      // implement.
-      opts = new Options();
-
-      // boolean options
-      opts.addOption("h", "help", false, "Print this message.");
-      opts.addOption("m", "multiline", false,
-          "Output DNS records using 'multiline' format");
-
-      opts.addOption(Option.builder("v").longOpt("verbose").argName("level").hasArg().desc(
-          "verbosity level -- 0: silence, 1: error, 2: warning, 3: info, 4/5: fine, 6: finest; default: 2 (warning)")
-          .build());
-
-      opts.addOption(Option.builder("A").hasArg().argName("alias:original:mnemonic").longOpt("alg-alias")
-          .desc("Define an alias for an algorithm").build());
-
-      setupOptions(opts);
+    if (cli.hasOption('h')) {
+      usage();
     }
 
-    /**
-     * This is an overridable method for subclasses to add their own command
-     * line options.
-     *
-     * @param opts
-     *             the options object to add (via OptionBuilder, typically) new
-     *             options to.
-     */
-    protected void setupOptions(Options opts) {
-      // Subclasses generally override this.
+    String loadedConfig = loadConfig(cli.getOptionValue('c'));
+
+    Logger rootLogger = Logger.getLogger("");
+
+    // we set log level with both --log-level and -v/--verbose.
+    String logLevel = cliOption("log-level", logLevelOptionKeys, null);
+    if (logLevel == null) {
+      logLevel = cli.hasOption("v") ? "fine" : "warning";
+    }
+    setLogLevel(rootLogger, logLevel);
+
+    for (Handler h : rootLogger.getHandlers()) {
+      h.setLevel(rootLogger.getLevel());
+      h.setFormatter(new BareLogFormatter());
     }
 
-    /**
-     * This is the main method for parsing the command line arguments.
-     * Subclasses generally override processOptions() rather than this method.
-     * This method create the parsing objects and processes the standard
-     * options.
-     *
-     * @param args
-     *             The command line arguments.
-     * @throws ParseException
-     */
-    public void parseCommandLine(String[] args) throws ParseException {
-      CommandLineParser parser = new DefaultParser();
-      CommandLine cli = parser.parse(opts, args);
+    if (loadedConfig != null) {
+      log.info("Loaded config file: " + loadedConfig);
+    }
 
-      if (cli.hasOption('h')) {
-        usage();
+    if (cliBooleanOption("m", multilineOptionKeys, false)) {
+      org.xbill.DNS.Options.set("multiline");
+    }
+
+    processAliasOptions();
+
+    processOptions();
+  }
+
+  /**
+   * Process additional tool-specific options. Subclasses generally override
+   * this.
+   */
+  protected abstract void processOptions();
+
+  /**
+   * Load a configuration (java properties) file for jdnssec-tools. Returns
+   * the path of the loaded file.
+   * 
+   * @param configFile a given path to a config file. This will be considered
+   *                   first.
+   * @return The path of the file that was actually loaded, or null if no config
+   *         file was loaded.
+   */
+  protected String loadConfig(String configFile) {
+    // Do not load config files twice
+    if (props != null) {
+      return null;
+    }
+    props = new Properties();
+    String[] configFiles = { configFile, "jdnssec-tools.properties", ".jdnssec-tools.properties",
+        System.getProperty("user.home") + "/.jdnssec-tools.properties" };
+
+    File f = null;
+
+    for (String fname : configFiles) {
+      if (fname == null) {
+        continue;
+      }
+      f = new File(fname);
+      if (!f.canRead()) {
+        continue;
       }
 
-      Logger rootLogger = Logger.getLogger("");
-      int value = parseInt(cli.getOptionValue('v'), -1);
+      try (FileInputStream stream = new FileInputStream(f)) {
+        props.load(stream);
+        break; // load the first config file found in our list
+      } catch (IOException e) {
+        log.warning("Could not read config file " + f.getName() + ": " + e);
+      }
+    }
 
-      switch (value) {
+    if (f != null) {
+      return f.getPath();
+    }
+    return null;
+  }
+
+  protected void fail(String errorMessage) {
+    log.severe(errorMessage);
+    System.exit(64);
+  }
+  /** Print out the usage and help statements, then quit. */
+  public void usage() {
+    HelpFormatter f = new HelpFormatter();
+
+    PrintWriter out = new PrintWriter(System.err);
+
+    // print our own usage statement:
+    f.printHelp(out, 120, usageStr, null, opts, HelpFormatter.DEFAULT_LEFT_PAD,
+        HelpFormatter.DEFAULT_DESC_PAD, null);
+
+    out.flush();
+    System.exit(0);
+
+  }
+
+  /**
+   * Set the logging level based on a string value
+   *
+   * @param logger   The logger to set -- usually the rootLogger
+   * @param levelStr A level string that is either an integer from 0 to 6, or a
+   *                 java.util.logging log level string (severe, warning, info,
+   *                 fine, finer,
+   *                 finest).
+   */
+  private void setLogLevel(Logger logger, String levelStr) {
+    Level level;
+    int internalLogLevel = Utils.parseInt(levelStr, -1);
+    if (internalLogLevel != -1) {
+      switch (internalLogLevel) {
         case 0:
-          rootLogger.setLevel(Level.OFF);
+          level = Level.OFF;
           break;
         case 1:
-          rootLogger.setLevel(Level.SEVERE);
+          level = Level.SEVERE;
           break;
         case 2:
         default:
-          rootLogger.setLevel(Level.WARNING);
+          level = Level.WARNING;
           break;
         case 3:
-          rootLogger.setLevel(Level.INFO);
+          level = Level.INFO;
           break;
         case 4:
-          rootLogger.setLevel(Level.CONFIG);
+          level = Level.FINE;
+          break;
         case 5:
-          rootLogger.setLevel(Level.FINE);
-          break;
         case 6:
-          rootLogger.setLevel(Level.ALL);
-          break;
+          level = Level.ALL;
       }
-
-      // I hate java.util.logging, btw.
-      for (Handler h : rootLogger.getHandlers()) {
-        h.setLevel(rootLogger.getLevel());
-        h.setFormatter(new BareLogFormatter());
+    } else {
+      try {
+        level = Level.parse(levelStr.toUpperCase());
+      } catch (IllegalArgumentException e) {
+        System.err.println("Verbosity level '" + levelStr + "' not recognized");
+        level = Level.WARNING;
       }
+    }
+    logger.setLevel(level);
+  }
 
-      if (cli.hasOption('m')) {
-        org.xbill.DNS.Options.set("multiline");
-      }
+  /**
+   * Process both property file based alias definitions and command line alias
+   * definitions
+   */
+  protected void processAliasOptions() {
+    DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+    // First parse any command line options
+    // those look like '-A <alias-num>:<orig-num>:<mnemonic>', e.g., '-A
+    // 21:13:ECDSAP256-NSEC6'
+    String[] optstrs = null;
+    if ((optstrs = cli.getOptionValues('A')) != null) {
+      for (String value : optstrs) {
+        String[] valueComponents = value.split(":");
+        int aliasAlg = Utils.parseInt(valueComponents[0], -1);
+        int origAlg = Utils.parseInt(valueComponents[1], -1);
+        String mnemonic = valueComponents[2];
 
-      String[] optstrs = null;
-      if ((optstrs = cli.getOptionValues('A')) != null) {
-        for (int i = 0; i < optstrs.length; i++) {
-          addArgAlias(optstrs[i]);
+        if (mnemonic != null && origAlg >= 0 && aliasAlg >= 0) {
+          algs.addAlias(aliasAlg, mnemonic, origAlg);
         }
       }
-
-      processOptions(cli);
     }
 
-    /**
-     * Process additional tool-specific options. Subclasses generally override
-     * this.
-     *
-     * @param cli
-     *            The {@link CommandLine} object containing the parsed command
-     *            line state.
-     */
-    protected void processOptions(CommandLine cli) throws ParseException {
-      // Subclasses generally override this.
-    }
+    // Next see if we have any alias options in properties
+    // Those look like 'signzone.alias.<alias-mnemonic> =
+    // <orig-alg-num>:<alias-alg-num>'
+    for (String key : props.stringPropertyNames()) {
+      if (key.startsWith(name + ".alias.") || key.startsWith("alias.")) {
+        String[] keyComponents = key.split("\\.");
+        String mnemonic = keyComponents[keyComponents.length - 1];
+        String[] valueComponents = props.getProperty(key).split(":");
+        int origAlg = Utils.parseInt(valueComponents[0], -1);
+        int aliasAlg = Utils.parseInt(valueComponents[1], -1);
 
-    /** Print out the usage and help statements, then quit. */
-    public void usage() {
-      HelpFormatter f = new HelpFormatter();
-
-      PrintWriter out = new PrintWriter(System.err);
-
-      // print our own usage statement:
-      f.printHelp(out, 75, usageStr, null, opts, HelpFormatter.DEFAULT_LEFT_PAD,
-          HelpFormatter.DEFAULT_DESC_PAD, null);
-
-      out.flush();
-      System.exit(64);
-
-    }
-
-    protected void addArgAlias(String s) {
-      if (s == null)
-        return;
-
-      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
-
-      String[] v = s.split(":");
-      if (v.length < 2)
-        return;
-
-      int alias = parseInt(v[0], -1);
-      if (alias <= 0)
-        return;
-      int orig = parseInt(v[1], -1);
-      if (orig <= 0)
-        return;
-      String mn = null;
-      if (v.length > 2)
-        mn = v[2];
-
-      algs.addAlias(alias, mn, orig);
-    }
-  }
-
-  public static int parseInt(String s, int def) {
-    try {
-      return Integer.parseInt(s);
-    } catch (NumberFormatException e) {
-      return def;
-    }
-  }
-
-  public static long parseLong(String s, long def) {
-    try {
-      return Long.parseLong(s);
-    } catch (NumberFormatException e) {
-      return def;
+        if (mnemonic != null && origAlg >= 0 && aliasAlg >= 0) {
+          algs.addAlias(aliasAlg, mnemonic, origAlg);
+        }
+      }
     }
   }
 
   /**
-   * Calculate a date/time from a command line time/offset duration string.
+   * Given a parsed command line, option, and list of possible config
+   * properties, and a default value, determine value for the option
    *
-   * @param start
-   *                 the start time to calculate offsets from.
-   * @param duration
-   *                 the time/offset string to parse.
-   * @return the calculated time.
+   * @param option       The option name
+   * @param properties   A list of configuration parameters that we would like
+   *                     to use for this option, from most preferred to least.
+   * @param defaultValue A default value to return if either the option or
+   *                     config value cannot be parsed, or neither are present.
+   * @return The found value, or the default value.
    */
-  public static Instant convertDuration(Instant start, String duration) throws ParseException {
-    if (start == null) {
-      start = Instant.now();
+  protected String cliOption(String option, String[] properties, String defaultValue) {
+    if (cli.hasOption(option)) {
+      return cli.getOptionValue(option);
     }
-
-    if (duration.startsWith("now")) {
-      start = Instant.now();
-      if (duration.indexOf("+") < 0)
-        return start;
-
-      duration = duration.substring(3);
+    for (String property : properties) {
+      // first look up the scoped version of the property
+      String value = props.getProperty(name + "." + property);
+      if (value != null) {
+        return value;
+      }
+      value = props.getProperty(property);
+      if (value != null) {
+        return value;
+      }
     }
+    return defaultValue;
+  }
 
-    if (duration.startsWith("+")) {
-      long offset = parseLong(duration.substring(1), 0);
-      return start.plusSeconds(offset);
-    }
+  /**
+   * Given a parsed command line, option, and list of possible config
+   * properties, determine the value for the option, converting the value to
+   * long.
+   */
+  protected long cliLongOption(String option, String[] properties, long defaultValue) {
+    String value = cliOption(option, properties, Long.toString(defaultValue));
+    return Utils.parseLong(value, defaultValue);
+  }
 
-    // This is a heuristic to distinguish UNIX epoch times from the zone file
-    // format standard (which is length == 14)
-    if (duration.length() <= 10) {
-      long epoch = parseLong(duration, 0);
-      return Instant.ofEpochSecond(epoch);
-    }
+  /**
+   * Given a parsed command line, option, and list of possible config
+   * properties, determine the value for the option, converting the value to
+   * int.
+   */
+  protected int cliIntOption(String option, String[] properties, int defaultValue) {
+    String value = cliOption(option, properties, Integer.toString(defaultValue));
+    return Utils.parseInt(value, defaultValue);
+  }
 
-    SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMddHHmmss");
-    dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-    try {
-      Date parsedDate = dateFormatter.parse(duration);
-      return parsedDate.toInstant();
-    } catch (java.text.ParseException e) {
-      throw new ParseException(e.getMessage());
+  /**
+   * Given a parsed command line, option, and list of possible config
+   * properties, determine the value for the option, converting the value to
+   * a boolean.
+   */
+  protected boolean cliBooleanOption(String option, String[] properties, boolean defaultValue) {
+    if (cli.hasOption(option)) {
+      return true;
     }
+    String value = cliOption(option, properties, Boolean.toString(defaultValue));
+    return Boolean.parseBoolean(value);
   }
 
   public abstract void execute() throws Exception;
 
-  public void run(CLIStateBase state, String[] args) {
-    try {
-      state.parseCommandLine(args);
-    } catch (UnrecognizedOptionException e) {
-      System.err.println("error: unknown option encountered: " + e.getMessage());
-      state.usage();
-    } catch (AlreadySelectedException e) {
-      System.err.println("error: mutually exclusive options have "
-          + "been selected:\n     " + e.getMessage());
-      state.usage();
-    } catch (Exception e) {
-      System.err.println("error: unknown command line parsing exception:");
-      e.printStackTrace();
-      state.usage();
-    }
+  public void run(String[] args) {
 
+    parseCommandLine(args);
     log = Logger.getLogger(this.getClass().toString());
 
     try {

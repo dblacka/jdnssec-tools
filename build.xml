@@ -10,17 +10,19 @@
 
 -->
 
-<project default="compile" basedir=".">
+<project default="build" basedir=".">
 
   <property file="build.properties" />
   <property file="VERSION" />
 
-  <property name="sectools-distname" value="jdnssec-tools-${version}" />
 
   <property name="build.dir" value="build" />
   <property name="build.dest" value="${build.dir}/classes" />
   <property name="build.lib.dest" value="${build.dir}/libs" />
   <property name="build.src" value="src/main/java" />
+
+  <property name="dist.dir" value="dist"/>
+  <property name="dist.name" value="jdnssec-tools-${version}" />
 
   <property name="packages" value="com.verisignlabs.dnssec.*" />
   <property name="doc.dir" value="docs" />
@@ -33,6 +35,7 @@
     <pathelement location="${build.dest}" />
     <fileset dir="${lib.dir}" includes="*.jar,*.zip" />
   </path>
+
   <property name="project.classpath" refid="project.classpath" />
 
   <target name="prepare-src">
@@ -40,7 +43,7 @@
     <mkdir dir="${build.lib.dest}" />
   </target>
 
-  <target name="sectools" depends="prepare-src" >
+  <target name="compile" depends="prepare-src" >
     <javac srcdir="${build.src}"
            destdir="${build.dest}"
            classpathref="project.classpath"
@@ -51,14 +54,29 @@
            release="${build.java_version}" />
   </target>
 
-  <target name="sectools-jar" depends="usage,sectools">
+  <target name="build-jar" depends="usage, compile">
     <jar jarfile="${build.lib.dest}/jdnssec-tools.jar"
          basedir="${build.dest}"
          includes="com/verisignlabs/dnssec/" />
   </target>
 
-  <target name="compile"
-          depends="usage,sectools-jar">
+  <target name="build"
+          depends="usage,build-jar">
+  </target>
+
+  <target name="build-onejar" depends="compile">
+    <jar destfile="${dist.dir}/${dist.name}.jar">
+      <zipfileset dir="${build.dest}" includes="**/*.class" />
+
+      <zipfileset src="${lib.dir}/dnsjava-3.5.3.jar" />
+      <zipfileset src="${lib.dir}/commons-cli-1.6.0.jar" />
+      <zipfileset src="${lib.dir}/slf4j-api-1.7.36.jar" />
+      <zipfileset src="${lib.dir}/slf4j-simple-1.7.36.jar" />
+      <manifest>
+        <attribute name="Main-Class"
+                   value="com.verisignlabs.dnssec.cl.CLI" />
+      </manifest>
+    </jar>
   </target>
 
   <target name="javadoc" depends="usage">
@@ -75,16 +93,21 @@
     </javadoc>
   </target>
 
-
   <target name="clean" depends="usage">
     <delete dir="${build.dest}" />
     <delete dir="${build.lib.dest}" />
+    <delete dir="${dist.dir}" />    
   </target>
 
-  <target name="sectools-dist-prepare" depends="usage, compile, javadoc">
-    <mkdir dir="${sectools-distname}" />
+  <target name="dist-clean" depends="usage">
+    <delete dir="${dist.name}" />
+  </target>
 
-    <copy todir="${sectools-distname}">
+  <target name="dist-prepare" depends="usage, build, javadoc">
+    <mkdir dir="${dist.dir}" />
+    <mkdir dir="${dist.name}" />
+
+    <copy todir="${dist.name}">
       <fileset dir=".">
         <include name="bin/jdnssec-*" />
         <include name="lib/*.jar" />
@@ -99,37 +122,33 @@
       </fileset>
     </copy>
 
-    <copy todir="${sectools-distname}/lib">
+    <copy todir="${dist.name}/lib">
       <fileset dir="${build.lib.dest}">
         <include name="*.jar" />
        </fileset>
     </copy>
   </target>
 
-  <target name="sectools-dist-clean">
-    <delete dir="${sectools-distname}" />
-  </target>
-
   <patternset id="exec.files">
-    <include name="${sectools-distname}/bin/jdnssec-*" />
+    <include name="${dist.name}/bin/jdnssec-*" />
   </patternset>
 
   <patternset id="src.files">
-    <include name="${sectools-distname}/src/" />
-    <include name="${sectools-distname}/build.xml" />
-    <include name="${sectools-distname}/build.properties" />
+    <include name="${dist.name}/src/" />
+    <include name="${dist.name}/build.xml" />
+    <include name="${dist.name}/build.properties" />
   </patternset>
 
   <patternset id="bin.files">
-    <include name="${sectools-distname}/doc/" />
-    <include name="${sectools-distname}/lib/" />
-    <include name="${sectools-distname}/licenses/" />
-    <include name="${sectools-distname}/VERSION" />
-    <include name="${sectools-distname}/README" />
+    <include name="${dist.name}/doc/" />
+    <include name="${dist.name}/lib/" />
+    <include name="${dist.name}/licenses/" />
+    <include name="${dist.name}/VERSION" />
+    <include name="${dist.name}/README" />
   </patternset>
 
-  <target name="sectools-bin-dist" depends="sectools-dist-prepare">
-    <tar destfile="${sectools-distname}.tar.gz" compression="gzip">
+  <target name="bin-dist" depends="dist-prepare">
+    <tar destfile="${dist.dir}/${dist.name}.tar.gz" compression="gzip">
       <tarfileset mode="755" dir=".">
         <patternset refid="exec.files" />
       </tarfileset>
@@ -139,21 +158,16 @@
     </tar>
   </target>
 
-  <target name="sectools-src-dist" depends="sectools-dist-prepare">
-    <tar destfile="${sectools-distname}-src.tar.gz"
-         compression="gzip">
+  <target name="src-dist" depends="dist-prepare">
+    <tar destfile="${dist.dir}/${dist.name}-src.tar.gz" compression="gzip">
       <tarfileset dir=".">
         <patternset refid="src.files" />
       </tarfileset>
     </tar>
   </target>
 
-  <target name="sectools-dist"
-         depends="sectools-bin-dist,sectools-src-dist, sectools-dist-clean">
-  </target>
-
-
-  <target name="dist" depends="sectools-dist">
+  <target name="dist"
+         depends="bin-dist, src-dist, build-onejar, dist-clean">
   </target>
 
   <target name="usage">
@@ -161,10 +175,11 @@
     <echo message="jdnssec-tools v. ${version} Build System" />
     <echo message="--------------------------------" />
     <echo message="Available Targets:" />
-    <echo message="  compile (default) - compiles the source code, creates jar" />
+    <echo message="  build (default)   - compiles the source code, creates main jar" />
     <echo message="  javadoc           - create javadoc from source" />
     <echo message="  clean             - delete class files" />
     <echo message="  dist              - package it up" />
+    <echo message="  onejar            - build the executable jar" />
     <echo message="  usage             - this help message" />
     <echo message=" " />
   </target>

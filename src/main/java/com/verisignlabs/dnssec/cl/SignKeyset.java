@@ -24,9 +24,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.RRSIGRecord;
 import org.xbill.DNS.RRset;
@@ -48,70 +46,78 @@ import com.verisignlabs.dnssec.security.ZoneUtils;
  * @author David Blacka
  */
 public class SignKeyset extends CLBase {
-  private CLIState state;
+  private File keyDirectory = null;
+  private String[] keyFiles = null;
+  private Instant start = null;
+  private Instant expire = null;
+  private String inputfile = null;
+  private String outputfile = null;
+  private boolean verifySigs = false;
+
+  public SignKeyset(String name, String usageStr) {
+    super(name, usageStr);
+  }
+
 
   /**
-   * This is an inner class used to hold all of the command line option state.
+   * Set up the command line options.
    */
-  protected static class CLIState extends CLIStateBase {
-    public File keyDirectory = null;
-    public String[] keyFiles = null;
-    public Instant start = null;
-    public Instant expire = null;
-    public String inputfile = null;
-    public String outputfile = null;
-    public boolean verifySigs = false;
 
-    public CLIState() {
-      super("jdnssec-signkeyset [..options..] dnskeyset_file [key_file ...]");
-    }
+  protected void setupOptions() {
+    // boolean options
+    opts.addOption("a", "verify", false, "verify generated signatures>");
 
-    /**
-     * Set up the command line options.
-     */
-    @Override
-    protected void setupOptions(Options opts) {
-      // boolean options
-      opts.addOption("a", "verify", false, "verify generated signatures>");
+    // Argument options
+    opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
+        .desc("directory where key files are found (default '.').").build());
+    opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
+        .desc("signature starting time (default is now - 1 hour)").build());
+    opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
+        .desc("signature expiration time (default is start-time + 30 days)").build());
+    opts.addOption(
+        Option.builder("f").hasArg().argName("outfile").desc("file the signed keyset is written to").build());
+  }
 
-      // Argument options
-      opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
-          .desc("directory where key files are found (default '.').").build());
-      opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
-          .desc("signature starting time (default is now - 1 hour)").build());
-      opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
-          .desc("signature expiration time (default is start-time + 30 days)").build());
-      opts.addOption(
-          Option.builder("f").hasArg().argName("outfile").desc("file the signed keyset is written to").build());
-    }
 
-    @Override
-    protected void processOptions(CommandLine cli)
-        throws org.apache.commons.cli.ParseException {
+  protected void processOptions() {
+      String[] verifyOptionKeys = { "verify_signatures", "verify" };
+      String[] keyDirectoryOptionKeys = { "key_directory", "keydir" };
+      String[] inceptionOptionKeys = { "inception", "start" };
+      String[] expireOptionKeys = { "expire" };
+
       String optstr = null;
 
-      if (cli.hasOption('a'))
-        verifySigs = true;
-
-      if ((optstr = cli.getOptionValue('D')) != null) {
+      verifySigs = cliBooleanOption("a", verifyOptionKeys, false);
+      
+      String keyDirectoryName = cliOption("D", keyDirectoryOptionKeys, null);
+      if (keyDirectoryName != null) {
         keyDirectory = new File(optstr);
         if (!keyDirectory.isDirectory()) {
-          System.err.println("error: " + optstr + " is not a directory");
-          usage();
+          fail("key directory " + optstr + " is not a directory");
         }
       }
 
-      if ((optstr = cli.getOptionValue('s')) != null) {
-        start = convertDuration(null, optstr);
-      } else {
-        // default is now - 1 hour.
-        start = Instant.now().minusSeconds(3600);
+      try {
+        optstr = cliOption("s", inceptionOptionKeys, null);
+        if (optstr != null) {
+          start = Utils.convertDuration(null, optstr);
+        } else {
+          // default is now - 1 hour.
+          start = Instant.now().minusSeconds(3600);
+        }
+      } catch (java.text.ParseException e) {
+        fail("Unable to parse start time specifiction: " + e);
       }
 
-      if ((optstr = cli.getOptionValue('e')) != null) {
-        expire = convertDuration(start, optstr);
-      } else {
-        expire = convertDuration(start, "+2592000"); // 30 days
+      try {
+        optstr = cliOption("e", expireOptionKeys, null);
+        if (optstr != null) {
+          expire = Utils.convertDuration(start, optstr);
+        } else {
+          expire = Utils.convertDuration(start, "+2592000"); // 30 days
+        }
+      } catch (java.text.ParseException e) {
+        fail("Unable to parse expire time specification: " + e);
       }
 
       outputfile = cli.getOptionValue('f');
@@ -119,8 +125,7 @@ public class SignKeyset extends CLBase {
       String[] files = cli.getArgs();
 
       if (files.length < 1) {
-        System.err.println("error: missing zone file and/or key files");
-        usage();
+        fail("missing zone file and/or key files");
       }
 
       inputfile = files[0];
@@ -129,7 +134,6 @@ public class SignKeyset extends CLBase {
         System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
       }
     }
-  }
 
   /**
    * Verify the generated signatures.
@@ -138,7 +142,7 @@ public class SignKeyset extends CLBase {
    * @param keypairs a list of keypairs used the sign the zone.
    * @return true if all of the signatures validated.
    */
-  private static boolean verifySigs(List<Record> records,
+  private boolean verifySigs(List<Record> records,
       List<DnsKeyPair> keypairs) {
     boolean secure = true;
 
@@ -160,7 +164,7 @@ public class SignKeyset extends CLBase {
       boolean result = verifier.verify(rrset);
 
       if (!result) {
-        staticLog.fine("Signatures did not verify for RRset: " + rrset);
+        log.fine("Signatures did not verify for RRset: " + rrset);
         secure = false;
       }
     }
@@ -179,7 +183,7 @@ public class SignKeyset extends CLBase {
    * @param inDirectory the directory to look in (may be null).
    * @return a list of keypair objects.
    */
-  private static List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
+  private List<DnsKeyPair> getKeys(String[] keyfiles, int startIndex,
       File inDirectory) throws IOException {
     if (keyfiles == null)
       return new ArrayList<>();
@@ -236,10 +240,9 @@ public class SignKeyset extends CLBase {
 
   public void execute() throws Exception {
     // Read in the zone
-    List<Record> records = ZoneUtils.readZoneFile(state.inputfile, null);
+    List<Record> records = ZoneUtils.readZoneFile(inputfile, null);
     if (records == null || records.isEmpty()) {
-      System.err.println("error: empty keyset file");
-      state.usage();
+      fail("empty keyset file");
     }
 
     // Make sure that all records are DNSKEYs with the same name.
@@ -255,46 +258,42 @@ public class SignKeyset extends CLBase {
         keysetName = r.getName();
       }
       if (!r.getName().equals(keysetName)) {
-        System.err.println("error: DNSKEY with a different name found!");
-        state.usage();
+        fail("DNSKEY with a different name found!");
       }
       keyset.addRR(r);
     }
 
     if (keyset.size() == 0) {
-      System.err.println("error: No DNSKEYs found in keyset file");
-      state.usage();
+      fail("error: No DNSKEYs found in keyset file");
     }
 
     // Load the key pairs.
-    List<DnsKeyPair> keypairs = getKeys(state.keyFiles, 0, state.keyDirectory);
+    List<DnsKeyPair> keypairs = getKeys(keyFiles, 0, keyDirectory);
 
     // If we *still* don't have any key pairs, look for keys the key
     // directory
     // that match
     if (keypairs == null) {
-      keypairs = findZoneKeys(state.keyDirectory, keysetName);
+      keypairs = findZoneKeys(keyDirectory, keysetName);
     }
 
     // If there *still* aren't any ZSKs defined, bail.
     if (keypairs == null || keypairs.isEmpty() || keysetName == null) {
-      System.err.println("error: No signing keys could be determined.");
-      state.usage();
-      return;
+      fail("no signing keys could be determined.");
     }
 
     // default the output file, if not set.
-    if (state.outputfile == null) {
+    if (outputfile == null) {
       if (keysetName.isAbsolute()) {
-        state.outputfile = keysetName + "signed_keyset";
+        outputfile = keysetName + "signed_keyset";
       } else {
-        state.outputfile = keysetName + ".signed_keyset";
+        outputfile = keysetName + ".signed_keyset";
       }
     }
 
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
-    List<RRSIGRecord> sigs = signer.signRRset(keyset, keypairs, state.start, state.expire);
+    List<RRSIGRecord> sigs = signer.signRRset(keyset, keypairs, start, expire);
     for (RRSIGRecord s : sigs) {
       keyset.addRR(s);
     }
@@ -309,9 +308,9 @@ public class SignKeyset extends CLBase {
     }
 
     // write out the signed zone
-    ZoneUtils.writeZoneFile(signedRecords, state.outputfile);
+    ZoneUtils.writeZoneFile(signedRecords, outputfile);
 
-    if (state.verifySigs) {
+    if (verifySigs) {
       log.fine("verifying generated signatures");
       boolean res = verifySigs(signedRecords, keypairs);
 
@@ -325,9 +324,8 @@ public class SignKeyset extends CLBase {
   }
 
   public static void main(String[] args) {
-    SignKeyset tool = new SignKeyset();
-    tool.state = new CLIState();
+    SignKeyset tool = new SignKeyset("signkeyset", "jdnssec-signkeyset [..options..] dnskeyset_file [key_file ...]");
 
-    tool.run(tool.state, args);
+    tool.run(args);
   }
 }

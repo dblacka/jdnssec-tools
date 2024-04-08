@@ -24,9 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.Master;
 import org.xbill.DNS.NSEC3PARAMRecord;
 import org.xbill.DNS.NSEC3Record;
@@ -45,43 +42,33 @@ import com.verisignlabs.dnssec.security.RecordComparator;
  * @author David Blacka
  */
 public class ZoneFormat extends CLBase {
-  private CLIState state;
+  private String file;
+  private boolean assignNSEC3;
 
-  /**
-   * This is a small inner class used to hold all of the command line option
-   * state.
-   */
-  protected static class CLIState extends CLIStateBase {
-    public String file;
-    public boolean assignNSEC3;
-
-    public CLIState() {
-      super("jdnssec-zoneformat [..options..] zonefile");
-    }
-
-    @Override
-    protected void setupOptions(Options opts) {
-      opts.addOption("N", "nsec3", false,
-          "attempt to determine the original ownernames for NSEC3 RRs.");
-    }
-
-    @Override
-    protected void processOptions(CommandLine cli) throws ParseException {
-      if (cli.hasOption('N'))
-        assignNSEC3 = true;
-
-      String[] args = cli.getArgs();
-
-      if (args.length < 1) {
-        System.err.println("error: must specify a zone file");
-        usage();
-      }
-
-      file = args[0];
-    }
+  public ZoneFormat(String name, String usageStr) {
+    super(name, usageStr);
   }
 
-  private static List<Record> readZoneFile(String filename) throws IOException {
+  protected void setupOptions() {
+    opts.addOption("N", "nsec3", false,
+        "attempt to determine the original ownernames for NSEC3 RRs.");
+  }
+
+  protected void processOptions() {
+    String[] assignNsec3OwnersOptionKeys = { "assign_nsec3_owners", "assign_owners" };
+
+    assignNSEC3 = cliBooleanOption("N", assignNsec3OwnersOptionKeys, false);
+
+    String[] args = cli.getArgs();
+
+    if (args.length < 1) {
+      fail("must specify a zone file");
+    }
+
+    file = args[0];
+  }
+
+  private List<Record> readZoneFile(String filename) throws IOException {
     try (Master master = new Master(filename)) {
       List<Record> res = new ArrayList<>();
       Record r = null;
@@ -98,14 +85,14 @@ public class ZoneFormat extends CLBase {
     }
   }
 
-  private static void formatZone(List<Record> zone) {
+  private void formatZone(List<Record> zone) {
 
     for (Record r : zone) {
       System.out.println(r.toString());
     }
   }
 
-  private static void determineNSEC3Owners(List<Record> zone)
+  private void determineNSEC3Owners(List<Record> zone)
       throws NoSuchAlgorithmException {
 
     // first, find the NSEC3PARAM record -- this is an inefficient linear
@@ -173,11 +160,11 @@ public class ZoneFormat extends CLBase {
   }
 
   public void execute() throws IOException, NoSuchAlgorithmException {
-    List<Record> z = readZoneFile(state.file);
+    List<Record> z = readZoneFile(file);
     // Put the zone into a consistent (name and RR type) order.
     Collections.sort(z, new RecordComparator());
 
-    if (state.assignNSEC3) {
+    if (assignNSEC3) {
       determineNSEC3Owners(z);
     } else {
       formatZone(z);
@@ -185,10 +172,9 @@ public class ZoneFormat extends CLBase {
   }
 
   public static void main(String[] args) {
-    ZoneFormat tool = new ZoneFormat();
-    tool.state = new CLIState();
+    ZoneFormat tool = new ZoneFormat("zoneformat", "jdnssec-zoneformat [..options..] zonefile");
 
-    tool.run(tool.state, args);
+    tool.run(args);
   }
 
 }

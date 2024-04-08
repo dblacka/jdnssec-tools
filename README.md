@@ -8,9 +8,13 @@ This is a collection of DNSSEC tools written in Java.  They are intended to be a
 
 These tools depend upon DNSjava (<https://github.com/dnsjava/dnsjava>), the Jakarta Commons CLI and Logging libraries (<https://commons.apache.org/proper/commons-cli>), slf4j (<https://www.slf4j.org>), and Sun's Java Cryptography extensions.  A copy of each of these libraries is included in the distribution.
 
-See the "licenses" directory for the licensing information of this package and the other packages that are distributed with it.
+See the "[licenses](https://github.com/dblacka/jdnssec-tools/tree/master/licenses)" directory for the licensing information of this package and the other packages that are distributed with it.
 
-Getting started:
+## Getting Started
+
+### Using the binary distribution
+
+The binary distributions can be downloaded from the [releases](https://github.com/dblacka/jdnssec-tools/releases) page.  To use it;
 
 1. Unpack the binary distribution:
 
@@ -21,9 +25,11 @@ Getting started:
         cd java-dnssec-tools-x.x.x
         ./bin/jdnssec-signzone -h
 
-Building from source:
+### Building from source
 
-1. Unpack the source distribution, preferably into the same directory that the binary distribution was unpacked.
+There is a source distribution also downloadable from the [releases](https://github.com/dblacka/jdnssec-tools/releases) page, but this should work with a clone of this repo.
+
+1. (If downloaded) Unpack the source distribution, preferably into the same directory that the binary distribution was unpacked.
 
         tar zxvf java-dnssec-tools-x.x.x-src.tar.gz
 
@@ -32,16 +38,18 @@ Building from source:
 
         ant
 
-4. You can build the distribution tarballs with 'ant dist'.  You can run the tools directly from the build area (without building the jdnssec-tools.jar file) by using the ./bin/\_jdnssec_* wrappers.
-
-5. Alternatively, build the project using gradle:
-
-        gradlew clean
-        gradlew assemble -i
-
-The resulting jar file gets generated in build/libs.
+4. You can build the distribution tarballs with 'ant dist', although the main `ant` build command will have built the primary jar file.
 
 The source for this project is available in git on github: <https://github.com/dblacka/jdnssec-tools>
+
+### Using the one-jar distribution
+
+As of version 0.20, there is a one-jar (aka an executable jar) as part of the distribution.  It can also be downloaded from the [releases](https://github.com/dblacka/jdnssec-tools/releases) page.
+
+1. Fetch the one-jar distribution.
+2. Invoke with `java -jar jdnssec-tools-x.x.x.jar`
+
+    java -jar jdnssec-tools-x.x.x.jar signzone -h
 
 ---
 

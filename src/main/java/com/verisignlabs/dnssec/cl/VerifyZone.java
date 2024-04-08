@@ -20,10 +20,7 @@ package com.verisignlabs.dnssec.cl;
 import java.time.Instant;
 import java.util.List;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Options;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.ParseException;
 import org.xbill.DNS.Record;
 
 import com.verisignlabs.dnssec.security.ZoneUtils;
@@ -35,100 +32,75 @@ import com.verisignlabs.dnssec.security.ZoneVerifier;
  * @author David Blacka
  */
 public class VerifyZone extends CLBase {
+  private String zonefile = null;
+  private String[] keyfiles = null;
+  private int startfudge = 0;
+  private int expirefudge = 0;
+  private boolean ignoreTime = false;
+  private boolean ignoreDups = false;
+  private Instant currentTime = null;
 
-  private CLIState state;
+  public VerifyZone(String name, String usageStr) {
+    super(name, usageStr);
+  }
 
-  /**
-   * This is a small inner class used to hold all of the command line option
-   * state.
-   */
-  protected static class CLIState extends CLIStateBase {
-    public String zonefile = null;
-    public String[] keyfiles = null;
-    public int startfudge = 0;
-    public int expirefudge = 0;
-    public boolean ignoreTime = false;
-    public boolean ignoreDups = false;
-    public Instant currentTime = null;
+  protected void setupOptions() {
+    opts.addOption(Option.builder("S").hasArg().argName("seconds").longOpt("sig-start-fudge")
+        .desc("'fudge' RRSIG inception ties by 'seconds'").build());
+    opts.addOption(Option.builder("E").hasArg().argName("seconds").longOpt("sig-expire-fudge")
+        .desc("'fudge' RRSIG expiration times by 'seconds'").build());
+    opts.addOption(Option.builder("t").hasArg().argName("time").longOpt("use-time")
+        .desc("Use 'time' as the time for verification purposes.").build());
 
-    public CLIState() {
-      super("jdnssec-verifyzone [..options..] zonefile");
+    opts.addOption(
+        Option.builder().longOpt("ignore-time").desc("Ignore RRSIG inception and expiration time errors.").build());
+    opts.addOption(Option.builder().longOpt("ignore-duplicate-rrs").desc("Ignore duplicate record errors.").build());
+  }
+
+  protected void processOptions() {
+    String[] ignoreTimeOptionKeys = { "ignore_time" };
+    String[] ignoreDuplicateOptionKeys = { "ingore_duplicate_rrs", "ignore_duplicates" };
+    String[] startFudgeOptionKeys = { "start_fudge" };
+    String[] expireFudgeOptionKeys = { "expire_fudge" };
+    String[] currentTimeOptionKeys = { "current_time" };
+
+    ignoreTime = cliBooleanOption("ignore-time", ignoreTimeOptionKeys, false);
+    ignoreDups = cliBooleanOption("ignore-duplicate-rrs", ignoreDuplicateOptionKeys, false);
+    startfudge = cliIntOption("S", startFudgeOptionKeys, 0);
+    expirefudge = cliIntOption("E", expireFudgeOptionKeys, 0);
+
+    String optstr = cliOption("t", currentTimeOptionKeys, null);
+    if (optstr != null) {
+      try {
+        currentTime = Utils.convertDuration(null, optstr);
+      } catch (java.text.ParseException e) {
+        fail("could not parse timespec");
+      }
     }
 
-    @Override
-    protected void setupOptions(Options opts) {
-      opts.addOption(Option.builder("S").hasArg().argName("seconds").longOpt("sig-start-fudge")
-          .desc("'fudge' RRSIG inception ties by 'seconds'").build());
-      opts.addOption(Option.builder("E").hasArg().argName("seconds").longOpt("sig-expire-fudge")
-          .desc("'fudge' RRSIG expiration times by 'seconds'").build());
-      opts.addOption(Option.builder("t").hasArg().argName("time").longOpt("use-time")
-          .desc("Use 'time' as the time for verification purposes.").build());
+    String[] args = cli.getArgs();
 
-      opts.addOption(
-          Option.builder().longOpt("ignore-time").desc("Ignore RRSIG inception and expiration time errors.").build());
-      opts.addOption(Option.builder().longOpt("ignore-duplicate-rrs").desc("Ignore duplicate record errors.").build());
+    if (args.length < 1) {
+      fail("missing zone file");
     }
 
-    @Override
-    protected void processOptions(CommandLine cli) {
-      if (cli.hasOption("ignore-time")) {
-        ignoreTime = true;
-      }
+    zonefile = args[0];
 
-      if (cli.hasOption("ignore-duplicate-rrs")) {
-        ignoreDups = true;
-      }
-
-      String optstr = null;
-      if ((optstr = cli.getOptionValue('S')) != null) {
-        startfudge = parseInt(optstr, 0);
-      }
-
-      if ((optstr = cli.getOptionValue('E')) != null) {
-        expirefudge = parseInt(optstr, 0);
-      }
-
-      if ((optstr = cli.getOptionValue('t')) != null) {
-        try {
-          currentTime = convertDuration(null, optstr);
-        } catch (ParseException e) {
-          System.err.println("error: could not parse timespec");
-          usage();
-        }
-      }
-
-      String[] optstrs = null;
-      if ((optstrs = cli.getOptionValues('A')) != null) {
-        for (int i = 0; i < optstrs.length; i++) {
-          addArgAlias(optstrs[i]);
-        }
-      }
-
-      String[] args = cli.getArgs();
-
-      if (args.length < 1) {
-        System.err.println("error: missing zone file");
-        usage();
-      }
-
-      zonefile = args[0];
-
-      if (args.length >= 2) {
-        keyfiles = new String[args.length - 1];
-        System.arraycopy(args, 1, keyfiles, 0, keyfiles.length);
-      }
+    if (args.length >= 2) {
+      keyfiles = new String[args.length - 1];
+      System.arraycopy(args, 1, keyfiles, 0, keyfiles.length);
     }
   }
 
   public void execute() throws Exception {
     ZoneVerifier zoneverifier = new ZoneVerifier();
-    zoneverifier.getVerifier().setStartFudge(state.startfudge);
-    zoneverifier.getVerifier().setExpireFudge(state.expirefudge);
-    zoneverifier.getVerifier().setIgnoreTime(state.ignoreTime);
-    zoneverifier.getVerifier().setCurrentTime(state.currentTime);
-    zoneverifier.setIgnoreDuplicateRRs(state.ignoreDups);
+    zoneverifier.getVerifier().setStartFudge(startfudge);
+    zoneverifier.getVerifier().setExpireFudge(expirefudge);
+    zoneverifier.getVerifier().setIgnoreTime(ignoreTime);
+    zoneverifier.getVerifier().setCurrentTime(currentTime);
+    zoneverifier.setIgnoreDuplicateRRs(ignoreDups);
 
-    List<Record> records = ZoneUtils.readZoneFile(state.zonefile, null);
+    List<Record> records = ZoneUtils.readZoneFile(zonefile, null);
 
     log.fine("verifying zone...");
     int errors = zoneverifier.verifyZone(records);
@@ -144,9 +116,8 @@ public class VerifyZone extends CLBase {
   }
 
   public static void main(String[] args) {
-    VerifyZone tool = new VerifyZone();
-    tool.state = new CLIState();
+    VerifyZone tool = new VerifyZone("verifyzone", "jdnssec-verifyzone [..options..] zonefile");
 
-    tool.run(tool.state, args);
+    tool.run(args);
   }
 }

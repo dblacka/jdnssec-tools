@@ -19,9 +19,7 @@ package com.verisignlabs.dnssec.cl;
 
 import java.io.File;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.xbill.DNS.DClass;
 import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.Name;
@@ -37,177 +35,144 @@ import com.verisignlabs.dnssec.security.JCEDnsSecSigner;
  * @author David Blacka
  */
 public class KeyGen extends CLBase {
-  private CLIState state;
+  private int algorithm = 13;
+  private int keylength = 2048;
+  private boolean useLargeE = true;
+  private String outputfile = null;
+  private File keydir = null;
+  private boolean zoneKey = true;
+  private boolean kskFlag = false;
+  private String owner = null;
+  private long ttl = 86400;
+  private int givenKeyTag = -1;
+
+  public KeyGen(String name, String usageStr) {
+    super(name, usageStr);
+  }
 
   /**
-   * This is a small inner class used to hold all of the command line option
-   * state.
+   * Set up the command line options.
    */
-  protected static class CLIState extends CLIStateBase {
-    public int algorithm = 13;
-    public int keylength = 2048;
-    public boolean useLargeE = true;
-    public String outputfile = null;
-    public File keydir = null;
-    public boolean zoneKey = true;
-    public boolean kskFlag = false;
-    public String owner = null;
-    public long ttl = 86400;
-    public int givenKeyTag = -1;
+  protected void setupOptions() {
+    // boolean options
+    opts.addOption("k", "kskflag", false,
+        "Key is a key-signing-key (sets the SEP flag).");
+    opts.addOption("e", "large-exponent", false, "Use large RSA exponent (default)");
+    opts.addOption("E", "small-exponent", false, "Use small RSA exponent");
 
-    public CLIState() {
-      super("jdnssec-keygen [..options..] name");
+    // Argument options
+    opts.addOption(
+        Option.builder("n").longOpt("nametype").hasArg().argName("type").desc("ZONE | OTHER (default ZONE)").build());
+
+    String[] algStrings = DnsKeyAlgorithm.getInstance().supportedAlgMnemonics();
+    String algStringSet = String.join(" | ", algStrings);
+    opts.addOption(Option.builder("a").hasArg().argName("algorithm")
+        .desc(algStringSet + " | alias, ECDSAP256SHA256 is default.").build());
+
+    opts.addOption(Option.builder("b").hasArg().argName("size").desc(
+        "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored")
+        .build());
+    opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output-file")
+        .desc("base filename from the public/private key files").build());
+    opts.addOption(Option.builder("d").hasArg().argName("dir").longOpt("keydir")
+        .desc("generated keyfiles are written to this directory").build());
+    opts.addOption(Option.builder("T").hasArg().argName("ttl").longOpt("ttl")
+        .desc("use this TTL for the generated DNSKEY records (default: 86400").build());
+    opts.addOption(Option.builder().hasArg().argName("tag").longOpt("with-tag")
+        .desc("Generate keys until tag is the given value.").build());
+
+  }
+
+  protected void processOptions() {
+    String[] useLargeEOptionKeys = { "use_large_exponent", "use_large_e" };
+    String[] keyDirectoryOptionKeys = { "key_directory", "keydir" };
+    String[] algorithmOptionKeys = { "algorithm", "alg " };
+    String[] keyLengthOptionKeys = { "key_length", "keylen" };
+    String[] ttlOptionKeys = { "dnskey_ttl", "ttl" };
+
+    if (cli.hasOption('k')) {
+      kskFlag = true;
+    }
+    useLargeE = cli.hasOption('e'); // explicit command line option for the large exponent
+    useLargeE = !cli.hasOption('E');  // explicit command line option for the small exponent
+    String optstr = cliOption("e", useLargeEOptionKeys, Boolean.toString(useLargeE)); // get any config file properties
+    if (optstr != null) {
+      useLargeE = Boolean.parseBoolean(optstr);
     }
 
-    /**
-     * Set up the command line options.
-     */
-    @Override
-    protected void setupOptions(Options opts) {
-      // boolean options
-      opts.addOption("k", "kskflag", false,
-          "Key is a key-signing-key (sets the SEP flag).");
-      opts.addOption("e", "large-exponent", false, "Use large RSA exponent (default)");
-      opts.addOption("E", "small-exponent", false, "Use small RSA exponent");
+    outputfile = cli.getOptionValue('f');
 
-      // Argument options
-      opts.addOption(
-          Option.builder("n").longOpt("nametype").hasArg().argName("type").desc("ZONE | OTHER (default ZONE)").build());
-
-      String[] algStrings = DnsKeyAlgorithm.getInstance().supportedAlgMnemonics();
-      String algStringSet = String.join(" | ", algStrings);
-      opts.addOption(Option.builder("a").hasArg().argName("algorithm")
-          .desc(algStringSet + " | alias, ECDSAP256SHA256 is default.").build());
-
-      opts.addOption(Option.builder("b").hasArg().argName("size").desc(
-          "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored")
-          .build());
-      opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output-file")
-          .desc("base filename from the public/private key files").build());
-      opts.addOption(Option.builder("d").hasArg().argName("dir").longOpt("keydir")
-          .desc("generated keyfiles are written to this directory").build());
-      opts.addOption(Option.builder("T").hasArg().argName("ttl").longOpt("ttl")
-          .desc("use this TTL for the generated DNSKEY records (default: 86400").build());
-      opts.addOption(Option.builder().hasArg().argName("tag").longOpt("with-tag")
-          .desc("Generate keys until tag is the given value.").build());
-
+    String keydirName = cliOption("d", keyDirectoryOptionKeys, null);
+    if (keydirName != null) {
+      keydir = new File(keydirName);
     }
 
-    @Override
-    protected void processOptions(CommandLine cli)
-        throws org.apache.commons.cli.ParseException {
-      String optstr = null;
-      String[] optstrs = null;
-
-      if (cli.hasOption('k'))
-        kskFlag = true;
-      if (cli.hasOption('e'))
-        useLargeE = true;
-
-      outputfile = cli.getOptionValue('f');
-
-      if ((optstr = cli.getOptionValue('d')) != null) {
-        keydir = new File(optstr);
-      }
-
-      if ((optstr = cli.getOptionValue('n')) != null && !optstr.equalsIgnoreCase("ZONE")) {
-        zoneKey = false;
-      }
-
-      if ((optstrs = cli.getOptionValues('A')) != null) {
-        for (int i = 0; i < optstrs.length; i++) {
-          addArgAlias(optstrs[i]);
-        }
-      }
-
-      if ((optstr = cli.getOptionValue('a')) != null) {
-        algorithm = CLIState.parseAlg(optstr);
-        if (algorithm < 0) {
-          System.err.println("DNSSEC algorithm " + optstr + " is not supported");
-          usage();
-        }
-      }
-
-      if ((optstr = cli.getOptionValue('b')) != null) {
-        keylength = parseInt(optstr, 1024);
-      }
-
-      if ((optstr = cli.getOptionValue("ttl")) != null) {
-        ttl = parseInt(optstr, 86400);
-      }
-
-      if ((optstr = cli.getOptionValue("with-tag")) != null) {
-        givenKeyTag = parseInt(optstr, -1);
-      }
-
-      String[] args = cli.getArgs();
-
-      if (args.length < 1) {
-        System.err.println("error: missing key owner name");
-        usage();
-      }
-
-      owner = args[0];
+    String algString = cliOption("a", algorithmOptionKeys, Integer.toString(algorithm));
+    algorithm = Utils.parseAlg(algString);
+    if (algorithm < 0) {
+      fail("DNSSEC algorithm " + algString + " is not supported");
     }
 
-    private static int parseAlg(String s) {
-      DnsKeyAlgorithm algs = DnsKeyAlgorithm.getInstance();
+    keylength = cliIntOption("b", keyLengthOptionKeys, keylength);
+    ttl = cliLongOption("ttl", ttlOptionKeys, ttl);
+    givenKeyTag = Utils.parseInt(cli.getOptionValue("with-tag"), -1);
 
-      int alg = parseInt(s, -1);
-      if (alg > 0) {
-        if (algs.supportedAlgorithm(alg))
-          return alg;
-        return -1;
-      }
+    String[] args = cli.getArgs();
 
-      return algs.stringToAlgorithm(s);
+    if (args.length < 1) {
+      fail("missing key owner name");
     }
+
+    owner = args[0];
+
+    log.fine("keygen options => algorithm: " + algorithm + ", keylength: " + keylength +
+        ", useLargeE: " + useLargeE + ", kskFlag: " + kskFlag + ", ttl: " + ttl + ", givenKeyTag: " + givenKeyTag);
   }
 
   public void execute() throws Exception {
     JCEDnsSecSigner signer = new JCEDnsSecSigner();
 
     // Minor hack to make the owner name absolute.
-    if (!state.owner.endsWith(".")) {
-      state.owner = state.owner + ".";
+    if (!owner.endsWith(".")) {
+      owner = owner + ".";
     }
 
-    Name ownerName = Name.fromString(state.owner);
+    Name ownerName = Name.fromString(owner);
 
     // Calculate our flags
     int flags = 0;
-    if (state.zoneKey) {
+    if (zoneKey) {
       flags |= DNSKEYRecord.Flags.ZONE_KEY;
     }
-    if (state.kskFlag) {
+    if (kskFlag) {
       flags |= DNSKEYRecord.Flags.SEP_KEY;
     }
-    log.fine("create key pair with (name = " + ownerName + ", ttl = " + state.ttl
-        + ", alg = " + state.algorithm + ", flags = " + flags + ", length = "
-        + state.keylength + ")");
+    log.fine("create key pair with (name = " + ownerName + ", ttl = " + ttl
+        + ", alg = " + algorithm + ", flags = " + flags + ", length = "
+        + keylength + ")");
 
-    DnsKeyPair pair = signer.generateKey(ownerName, state.ttl, DClass.IN,
-        state.algorithm, flags, state.keylength,
-        state.useLargeE);
+    DnsKeyPair pair = signer.generateKey(ownerName, ttl, DClass.IN,
+        algorithm, flags, keylength,
+        useLargeE);
 
     // If we were asked to generate a duplicate keytag, keep trying until we get one
-    while (state.givenKeyTag >= 0 && pair.getDNSKEYFootprint() != state.givenKeyTag) {
-      pair = signer.generateKey(ownerName, state.ttl, DClass.IN, state.algorithm, flags, state.keylength,
-          state.useLargeE);
+    // This can take a long time, depending on our key generation speed
+    while (givenKeyTag >= 0 && pair.getDNSKEYFootprint() != givenKeyTag) {
+      pair = signer.generateKey(ownerName, ttl, DClass.IN, algorithm, flags, keylength,
+          useLargeE);
     }
 
-    if (state.outputfile != null) {
-      BINDKeyUtils.writeKeyFiles(state.outputfile, pair, state.keydir);
+    if (outputfile != null) {
+      BINDKeyUtils.writeKeyFiles(outputfile, pair, keydir);
     } else {
-      BINDKeyUtils.writeKeyFiles(pair, state.keydir);
+      BINDKeyUtils.writeKeyFiles(pair, keydir);
       System.out.println(BINDKeyUtils.keyFileBase(pair));
     }
   }
 
   public static void main(String[] args) {
-    KeyGen tool = new KeyGen();
-    tool.state = new CLIState();
+    KeyGen tool = new KeyGen("keygen", "jdnssec-keygen [..options..] zonename");
 
-    tool.run(tool.state, args);
+    tool.run(args);
   }
 }
