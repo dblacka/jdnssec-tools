@@ -2,7 +2,6 @@ package com.verisignlabs.dnssec.cl;
 
 public class CLI {
     private SubCommandType subCommand = null;
-    private String[] subCommandArgs = null;
     private String commandSetStr = null;
 
     enum SubCommandType {
@@ -24,6 +23,7 @@ public class CLI {
     }
 
     public void run(String[] args) {
+        String[] subCommandArgs = null;
         if (args.length < 1) {
             fail("missing command: must be one of: " + commandSetStr);
         }

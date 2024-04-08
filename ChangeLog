@@ -1,3 +1,18 @@
+2024-04-07  David Blacka  <david@blacka.com>
+
+        * Released version 0.20
+        * Removed support for Gradle builds since the gradle config was
+        out-of-date
+        * Requires Java 15 or later for EdDSA support
+        * Supports DNSSEC algorithm 16 using the SunEC provider
+        * Supports a java properties-formatted config file.  See
+        jdnssec-tools.properties.example for an example
+        * Updated to dnsjava 3.5.3
+        * Updated to commons-cli 1.6.0
+        * Added a "one-jar" distribution method, and a "univeral" CLI to
+        use with it.
+        * Formatting and linter suggestions
+
 2024-03-25  David Blacka <davidb@verisign.com>
 
         * Released version 0.19

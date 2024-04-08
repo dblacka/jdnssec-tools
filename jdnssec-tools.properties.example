@@ -5,7 +5,7 @@
 # Common properties
 
 # log_level = warning
-# verbose = warning   # same thing
+# verbose = true   # same as log_level = fine (true) or log_level = warning (false)
 # multiline = false
 
 # algorithm aliasing is <scope>.alias.<new-mnemonic> = <orig-alg-id>:<alias-alg-id>
