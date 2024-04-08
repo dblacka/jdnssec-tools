@@ -66,7 +66,7 @@ public class SignZone extends CLBase {
   private boolean useNsec3 = false;
   private byte[] salt = null;
   private int iterations = 0;
-  private int digestId = DNSSEC.Digest.SHA1;
+  private int digestId = DNSSEC.Digest.SHA256;
   private long nsec3paramttl = -1;
   private boolean verboseSigning = false;
 
@@ -228,6 +228,20 @@ public class SignZone extends CLBase {
       keyFiles = new String[files.length - 1];
       System.arraycopy(files, 1, keyFiles, 0, files.length - 1);
     }
+
+    log.fine("SignZone settings => key_directory: " + keyDirectory +
+        ", keyset_directory: " + keysetDirectory +
+        ", start: " + start.getEpochSecond() +
+        ", expire: " + expire.getEpochSecond() +
+        ", verify_sigs: " + verifySigs +
+        ", use_nsec3: " + useNsec3 +
+        ", use_opt_out = " + useOptOut +
+        ", salt: " + DnsKeyPair.toHex(salt) +
+        ", iterations: " + iterations +
+        ", nsec3param_ttl: " + nsec3paramttl +
+        ", fully_sign_keyset: " + fullySignKeyset +
+        ", digest_id: " + digestId +
+        ", verbose_signing: " + verboseSigning);
   }
 
   /**
@@ -460,6 +474,14 @@ public class SignZone extends CLBase {
   }
 
   public void execute() throws Exception {
+    // Do a basic existence check for the zonefile first.
+    if (!zonefile.equals("-")) {
+      File f = new File(zonefile);
+      if (!f.exists()) {
+        fail("zonefile '" + zonefile + "' does not exist");
+      }
+    }
+
     // Read in the zone
     List<Record> records = ZoneUtils.readZoneFile(zonefile, null);
     if (records == null || records.isEmpty()) {

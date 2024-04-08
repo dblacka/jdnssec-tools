@@ -73,7 +73,7 @@ public class KeyGen extends CLBase {
         "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored")
         .build());
     opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output-file")
-        .desc("base filename from the private/private key files").build());
+        .desc("base filename from the public/private key files").build());
     opts.addOption(Option.builder("d").hasArg().argName("dir").longOpt("keydir")
         .desc("generated keyfiles are written to this directory").build());
     opts.addOption(Option.builder("T").hasArg().argName("ttl").longOpt("ttl")

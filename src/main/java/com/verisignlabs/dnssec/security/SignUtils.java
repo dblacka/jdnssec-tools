@@ -178,7 +178,7 @@ public class SignUtils {
     if (n.labels() != labels) {
       n = n.wild(n.labels() - labels);
       wildcardName = true;
-      log.fine("Detected wildcard expansion: " + rrset.getName() + " changed to " + n);
+      log.finer("Detected wildcard expansion: " + rrset.getName() + " changed to " + n);
     }
 
     // now convert the wire format records in the RRset into a
@@ -1063,7 +1063,7 @@ public class SignUtils {
     int ldiff = node.name.labels() - zonename.labels();
     for (int i = 1; i < ldiff; i++) {
       Name n = new Name(node.name, i);
-      log.fine("Generating ENT NSEC3 for " + n);
+      log.finer("Generating ENT NSEC3 for " + n);
       ProtoNSEC3 nsec3 = generateNSEC3(n, zonename, node.ttl, salt, iterations, optIn,
           null);
       nsec3s.add(nsec3);
@@ -1127,11 +1127,11 @@ public class SignUtils {
       // check to see if cur is a duplicate (by name)
       if (prevNSEC3 != null
           && Arrays.equals(prevNSEC3.getOwner(), curNSEC3.getOwner())) {
-        log.fine("found duplicate NSEC3 (by name) -- merging type maps: "
+        log.finer("found duplicate NSEC3 (by name) -- merging type maps: "
             + prevNSEC3.getTypemap() + " and " + curNSEC3.getTypemap());
         i.remove();
         prevNSEC3.mergeTypes(curNSEC3.getTypemap());
-        log.fine("merged type map: " + prevNSEC3.getTypemap());
+        log.finer("merged type map: " + prevNSEC3.getTypemap());
         continue;
       }
 

@@ -153,9 +153,7 @@ public abstract class CLBase {
     if (logLevel == null) {
       logLevel = cli.hasOption("v") ? "fine" : "warning";
     }
-    if (logLevel != null) {
-      setLogLevel(rootLogger, logLevel);
-    }
+    setLogLevel(rootLogger, logLevel);
 
     for (Handler h : rootLogger.getHandlers()) {
       h.setLevel(rootLogger.getLevel());
@@ -384,6 +382,9 @@ public abstract class CLBase {
    * a boolean.
    */
   protected boolean cliBooleanOption(String option, String[] properties, boolean defaultValue) {
+    if (cli.hasOption(option)) {
+      return true;
+    }
     String value = cliOption(option, properties, Boolean.toString(defaultValue));
     return Boolean.parseBoolean(value);
   }
