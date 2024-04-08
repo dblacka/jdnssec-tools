@@ -93,7 +93,9 @@ public class KeyGen extends CLBase {
     if (cli.hasOption('k')) {
       kskFlag = true;
     }
-    String optstr = cliOption("E", useLargeEOptionKeys, null);
+    useLargeE = cli.hasOption('e'); // explicit command line option for the large exponent
+    useLargeE = !cli.hasOption('E');  // explicit command line option for the small exponent
+    String optstr = cliOption("e", useLargeEOptionKeys, Boolean.toString(useLargeE)); // get any config file properties
     if (optstr != null) {
       useLargeE = Boolean.parseBoolean(optstr);
     }
@@ -123,8 +125,8 @@ public class KeyGen extends CLBase {
 
     owner = args[0];
 
-    log.fine("keygen options => algorithm: " + algorithm + " keylength: " + keylength +
-        " useLargeE: " + useLargeE + " kskFlag: " + kskFlag + " ttl: " + ttl + " givenKeyTag: " + givenKeyTag);
+    log.fine("keygen options => algorithm: " + algorithm + ", keylength: " + keylength +
+        ", useLargeE: " + useLargeE + ", kskFlag: " + kskFlag + ", ttl: " + ttl + ", givenKeyTag: " + givenKeyTag);
   }
 
   public void execute() throws Exception {
