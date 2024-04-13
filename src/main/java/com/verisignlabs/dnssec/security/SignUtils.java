@@ -1317,6 +1317,8 @@ public class SignUtils {
    */
   public static void generateDSRecords(Name zonename, List<Record> records, int digestAlg) {
 
+    DSAlgorithm dsAlgorithm = DSAlgorithm.getInstance();
+
     for (ListIterator<Record> i = records.listIterator(); i.hasNext();) {
       Record r = i.next();
       if (r == null)
@@ -1328,7 +1330,7 @@ public class SignUtils {
 
       // Convert non-zone level KEY records into DS records.
       if (r.getType() == Type.DNSKEY && !rName.equals(zonename)) {
-        DSRecord ds = calculateDSRecord((DNSKEYRecord) r, digestAlg, r.getTTL());
+        DSRecord ds = dsAlgorithm.calculateDSRecord((DNSKEYRecord) r, digestAlg, r.getTTL());
 
         i.set(ds);
       }
@@ -1376,53 +1378,6 @@ public class SignUtils {
     }
   }
 
-  /**
-   * Given a DNSKEY record, generate the DS record from it.
-   *
-   * @param keyrec    the KEY record in question.
-   * @param digestAlg The digest algorithm (SHA-1, SHA-256, etc.).
-   * @param ttl       the desired TTL for the generated DS record. If zero, or
-   *                  negative, the original KEY RR's TTL will be used.
-   * @return the corresponding {@link org.xbill.DNS.DSRecord}
-   */
-  public static DSRecord calculateDSRecord(DNSKEYRecord keyrec, int digestAlg, long ttl) {
-    if (keyrec == null)
-      return null;
-
-    if (ttl <= 0)
-      ttl = keyrec.getTTL();
-
-    DNSOutput os = new DNSOutput();
-
-    os.writeByteArray(keyrec.getName().toWireCanonical());
-    os.writeByteArray(keyrec.rdataToWireCanonical());
-
-    try {
-      byte[] digest;
-      MessageDigest md;
-
-      switch (digestAlg) {
-        case DNSSEC.Digest.SHA1:
-          md = MessageDigest.getInstance("SHA");
-          digest = md.digest(os.toByteArray());
-          break;
-        case DNSSEC.Digest.SHA256:
-          md = MessageDigest.getInstance("SHA-256");
-          digest = md.digest(os.toByteArray());
-          break;
-        default:
-          throw new IllegalArgumentException("Unknown digest id: " + digestAlg);
-      }
-
-      return new DSRecord(keyrec.getName(), keyrec.getDClass(), ttl,
-          keyrec.getFootprint(), keyrec.getAlgorithm(), digestAlg,
-          digest);
-
-    } catch (NoSuchAlgorithmException e) {
-      log.severe(e.toString());
-      return null;
-    }
-  }
 
   /**
    * Calculate an NSEC3 hash based on a DNS name and NSEC3 hash parameters.

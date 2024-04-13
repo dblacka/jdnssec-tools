@@ -22,16 +22,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 import org.apache.commons.cli.Option;
-import org.xbill.DNS.CDSRecord;
-import org.xbill.DNS.DLVRecord;
 import org.xbill.DNS.DNSKEYRecord;
 import org.xbill.DNS.DNSSEC;
 import org.xbill.DNS.DSRecord;
 import org.xbill.DNS.Record;
 
 import com.verisignlabs.dnssec.security.BINDKeyUtils;
+import com.verisignlabs.dnssec.security.DSAlgorithm;
 import com.verisignlabs.dnssec.security.DnsKeyPair;
-import com.verisignlabs.dnssec.security.SignUtils;
 
 /**
  * This class forms the command line implementation of a DNSSEC DS/DLV generator
@@ -59,7 +57,6 @@ public class DSTool extends CLBase {
    * state.
    */
 
-
   /**
    * Set up the command line options.
    * 
@@ -68,8 +65,11 @@ public class DSTool extends CLBase {
   protected void setupOptions() {
     opts.addOption(Option.builder("D").longOpt("dlv").desc("Generate a DLV record instead.").build());
     opts.addOption(Option.builder("C").longOpt("cds").desc("Generate a CDS record instead").build());
+    String[] algStrings = DSAlgorithm.getInstance().supportedAlgorithmMnemonics();
+    String algStringSet = String.join(" | ", algStrings);
     opts.addOption(
-        Option.builder("d").hasArg().argName("id").longOpt("digest").desc("The digest algorithm to use").build());
+        Option.builder("d").hasArg().argName("id").longOpt("digest").desc(algStringSet + ": default is SHA256")
+            .build());
     opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output").desc("output to file").build());
     opts.addOption(Option.builder("T").longOpt("ttl").hasArg().desc("TTL to use for generated DS/CDS record").build());
   }
@@ -99,6 +99,7 @@ public class DSTool extends CLBase {
   }
 
   public void createDS(String keyname) throws IOException {
+    DSAlgorithm dsAlgorithm = DSAlgorithm.getInstance();
     DnsKeyPair key = BINDKeyUtils.loadKey(keyname, null);
     DNSKEYRecord dnskey = key.getDNSKEYRecord();
 
@@ -107,21 +108,17 @@ public class DSTool extends CLBase {
     }
 
     long ttl = dsTTL < 0 ? dnskey.getTTL() : dsTTL;
-    DSRecord ds = SignUtils.calculateDSRecord(dnskey, digestId, ttl);
+    DSRecord ds = dsAlgorithm.calculateDSRecord(dnskey, digestId, ttl);
     Record res;
 
     switch (createType) {
       case DLV:
         log.fine("creating DLV.");
-        DLVRecord dlv = new DLVRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
-            ds.getDigestID(), ds.getDigest());
-        res = dlv;
+        res = dsAlgorithm.dsToDLV(ds);
         break;
       case CDS:
         log.fine("creating CDS.");
-        CDSRecord cds = new CDSRecord(ds.getName(), ds.getDClass(), ds.getTTL(), ds.getFootprint(), ds.getAlgorithm(),
-            ds.getDClass(), ds.getDigest());
-        res = cds;
+        res = dsAlgorithm.dstoCDS(ds);
         break;
       default:
         res = ds;
@@ -138,14 +135,14 @@ public class DSTool extends CLBase {
   }
 
   public void execute() throws Exception {
-    for (String keyname : keynames){
+    for (String keyname : keynames) {
       createDS(keyname);
     }
   }
 
   public static void main(String[] args) {
     DSTool tool = new DSTool("dstool", "jdnssec-dstool [..options..] keyfile [keyfile..]");
-  
+
     tool.run(args);
   }
 }

@@ -67,7 +67,7 @@ public class KeyGen extends CLBase {
     String[] algStrings = DnsKeyAlgorithm.getInstance().supportedAlgMnemonics();
     String algStringSet = String.join(" | ", algStrings);
     opts.addOption(Option.builder("a").hasArg().argName("algorithm")
-        .desc(algStringSet + " | alias, ECDSAP256SHA256 is default.").build());
+        .desc(algStringSet + " | aliases, ECDSAP256SHA256 is default.").build());
 
     opts.addOption(Option.builder("b").hasArg().argName("size").desc(
         "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored")

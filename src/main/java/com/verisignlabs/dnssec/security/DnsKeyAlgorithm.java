@@ -27,20 +27,14 @@
 
 package com.verisignlabs.dnssec.security;
 
-import java.math.BigInteger;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
-import java.security.Security;
 import java.security.Signature;
-import java.security.spec.ECFieldFp;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
-import java.security.spec.ECPoint;
-import java.security.spec.EllipticCurve;
 import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.NamedParameterSpec;
 import java.security.spec.RSAKeyGenParameterSpec;
@@ -73,7 +67,6 @@ public class DnsKeyAlgorithm {
     RSA,
     DH,
     DSA,
-    ECC_GOST,
     ECDSA,
     EDDSA;
   }
@@ -129,12 +122,8 @@ public class DnsKeyAlgorithm {
   private KeyPairGenerator mRSAKeyGenerator;
   /** This is a cached key pair generator for DSA keys. */
   private KeyPairGenerator mDSAKeyGenerator;
-  /** This is a cached key pair generator for ECC GOST keys. */
-  private KeyPairGenerator mECGOSTKeyGenerator;
   /** This is a cached key pair generator for ECDSA_P256 keys. */
   private KeyPairGenerator mECKeyGenerator;
-  /** This is a cached key pair generator for EdDSA keys. */
-  private KeyPairGenerator mEdKeyGenerator;
 
   private Logger log = Logger.getLogger(this.getClass().toString());
 
@@ -142,17 +131,6 @@ public class DnsKeyAlgorithm {
   private static DnsKeyAlgorithm mInstance = null;
 
   public DnsKeyAlgorithm() {
-    // Attempt to add the bouncycastle provider. This is so we can use this
-    // provider if it is available, but not require the user to add it as one of
-    // the java.security providers.
-    try {
-      Class<?> bcProviderClass = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
-      Provider bcProvider = (Provider) bcProviderClass.getDeclaredConstructor().newInstance();
-      Security.addProvider(bcProvider);
-    } catch (ReflectiveOperationException e) {
-      log.fine("Unable to load BC provider");
-    }
-
     initialize();
   }
 
@@ -189,14 +167,6 @@ public class DnsKeyAlgorithm {
     addAlgorithm(DNSSEC.Algorithm.RSASHA512, "SHA512withRSA", BaseAlgorithm.RSA);
     addMnemonic("RSASHA512", DNSSEC.Algorithm.RSASHA512);
 
-    // ECC-GOST is not supported by Java 1.8's Sun crypto provider. The
-    // bouncycastle.org provider, however, does support it.
-    // GostR3410-2001-CryptoPro-A is the named curve in the BC provider, but we
-    // will get the parameters directly.
-    addAlgorithm(DNSSEC.Algorithm.ECC_GOST, "GOST3411withECGOST3410", BaseAlgorithm.ECC_GOST, null);
-    addMnemonic("ECCGOST", DNSSEC.Algorithm.ECC_GOST);
-    addMnemonic("ECC-GOST", DNSSEC.Algorithm.ECC_GOST);
-
     addAlgorithm(DNSSEC.Algorithm.ECDSAP256SHA256, "SHA256withECDSA", BaseAlgorithm.ECDSA, "secp256r1");
     addMnemonic("ECDSAP256SHA256", DNSSEC.Algorithm.ECDSAP256SHA256);
     addMnemonic("ECDSA-P256", DNSSEC.Algorithm.ECDSAP256SHA256);
@@ -226,9 +196,7 @@ public class DnsKeyAlgorithm {
    *                  library (SunEC).
    */
   private void addECDSAAlgorithm(int algorithm, String sigName, String curveName) {
-    ECParameterSpec ecSpec = ECSpecFromAlgorithm(algorithm);
-    if (ecSpec == null)
-      ecSpec = ECSpecFromName(curveName);
+    ECParameterSpec ecSpec = ECSpecFromName(curveName);
     if (ecSpec == null)
       return;
 
@@ -278,10 +246,15 @@ public class DnsKeyAlgorithm {
    * @param curveName the name of the curve.
    */
   private void addAlgorithm(int algorithm, String sigName, BaseAlgorithm baseType, String curveName) {
-    if (baseType == BaseAlgorithm.ECDSA) {
-      addECDSAAlgorithm(algorithm, sigName, curveName);
-    } else if (baseType == BaseAlgorithm.EDDSA) {
-      addEdDSAAlgorithm(algorithm, sigName, curveName);
+    switch (baseType) {
+      case ECDSA:
+        addECDSAAlgorithm(algorithm, sigName, curveName);
+        break;
+      case EDDSA:
+        addEdDSAAlgorithm(algorithm, sigName, curveName);
+        break;
+      default:
+        throw new IllegalArgumentException("Non-Ellipic curve algorithm passed.");
     }
   }
 
@@ -322,25 +295,6 @@ public class DnsKeyAlgorithm {
 
   private AlgEntry getEntry(int alg) {
     return mAlgorithmMap.get(alg);
-  }
-
-  // For curves where we don't (or can't) get the parameters from a standard
-  // name, we can construct the parameters here. For now, we only do this for
-  // the ECC-GOST curve.
-  private ECParameterSpec ECSpecFromAlgorithm(int algorithm) {
-    if (algorithm == DNSSEC.Algorithm.ECC_GOST) {
-      // From RFC 4357 Section 11.4
-      BigInteger p = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97", 16);
-      BigInteger a = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD94", 16);
-      BigInteger b = new BigInteger("A6", 16);
-      BigInteger gx = new BigInteger("1", 16);
-      BigInteger gy = new BigInteger("8D91E471E0989CDA27DF505A453F2B7635294F2DDF23E3B122ACC99C9E9F1E14", 16);
-      BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6C611070995AD10045841B09B761B893", 16);
-
-      EllipticCurve curve = new EllipticCurve(new ECFieldFp(p), a, b);
-      return new ECParameterSpec(curve, new ECPoint(gx, gy), n, 1);
-    }
-    return null;
   }
 
   // Fetch the curve parameters from a named ECDSA curve.
@@ -529,22 +483,6 @@ public class DnsKeyAlgorithm {
         pair = mDSAKeyGenerator.generateKeyPair();
         break;
       }
-      case ECC_GOST: {
-        if (mECGOSTKeyGenerator == null) {
-          mECGOSTKeyGenerator = KeyPairGenerator.getInstance("ECGOST3410");
-        }
-
-        ECParameterSpec ecSpec = getEllipticCurveParams(algorithm);
-        try {
-          mECGOSTKeyGenerator.initialize(ecSpec);
-        } catch (InvalidAlgorithmParameterException e) {
-          // Fold the InvalidAlgorithmParameterException into our existing
-          // thrown exception. Ugly, but requires less code change.
-          throw new NoSuchAlgorithmException("invalid key parameter spec");
-        }
-        pair = mECGOSTKeyGenerator.generateKeyPair();
-        break;
-      }
       case ECDSA: {
         if (mECKeyGenerator == null) {
           mECKeyGenerator = KeyPairGenerator.getInstance("EC");
@@ -563,9 +501,9 @@ public class DnsKeyAlgorithm {
       }
       case EDDSA: {
         EdAlgEntry entry = (EdAlgEntry) getEntry(algorithm);
-        mEdKeyGenerator = KeyPairGenerator.getInstance(entry.curveName);
+        KeyPairGenerator edKeyGenerator = KeyPairGenerator.getInstance(entry.curveName);
 
-        pair = mEdKeyGenerator.generateKeyPair();
+        pair = edKeyGenerator.generateKeyPair();
         break;
       }
       default:
