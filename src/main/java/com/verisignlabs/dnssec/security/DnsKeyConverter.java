@@ -201,8 +201,6 @@ public class DnsKeyConverter {
             return parsePrivateDSA(lines);
           case DH:
             return parsePrivateDH(lines);
-          case ECC_GOST:
-            return parsePrivateECDSA(lines, alg);
           case ECDSA:
             return parsePrivateECDSA(lines, alg);
           case EDDSA:

@@ -134,8 +134,7 @@ public class BINDKeyUtils {
   public static DnsKeyPair loadKeyPair(String keyFileBasePath, File inDirectory)
       throws IOException {
     keyFileBasePath = fixKeyFileBasePath(keyFileBasePath);
-    // FIXME: should we throw the IOException when one of the files
-    // cannot be found, or just when both cannot be found?
+
     File publicKeyFile = new File(inDirectory, keyFileBasePath + ".key");
     File privateKeyFile = new File(inDirectory, keyFileBasePath + ".private");
 
@@ -251,8 +250,6 @@ public class BINDKeyUtils {
     if (privateKeyString == null)
       return null;
 
-    // FIXME: should this swallow exceptions or actually propagate
-    // them?
     try {
       DnsKeyConverter conv = new DnsKeyConverter();
       return conv.parsePrivateKeyString(privateKeyString);
