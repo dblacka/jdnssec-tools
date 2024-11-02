@@ -100,7 +100,15 @@ public class VerifyZone extends CLBase {
     zoneverifier.getVerifier().setCurrentTime(currentTime);
     zoneverifier.setIgnoreDuplicateRRs(ignoreDups);
 
-    List<Record> records = ZoneUtils.readZoneFile(zonefile, null);
+    List<Record> records = null;
+    try  {  
+      records = ZoneUtils.readZoneFile(zonefile, null);
+    } catch (java.io.IOException e) {
+      fail(e.getMessage());
+    }
+    if (records == null) {
+      fail("Unable to read a zone file");
+    }
 
     log.fine("verifying zone...");
     int errors = zoneverifier.verifyZone(records);

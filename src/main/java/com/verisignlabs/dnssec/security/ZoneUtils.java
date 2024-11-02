@@ -58,13 +58,10 @@ public class ZoneUtils {
    */
   public static List<Record> readZoneFile(String zonefile, Name origin) throws IOException {
     ArrayList<Record> records = new ArrayList<>();
-    try (Master m = zonefile.equals("-") ? new Master(System.in) : new Master(zonefile, origin)) {
-      Record r = null;
-      while ((r = m.nextRecord()) != null) {
-        records.add(r);
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
+    Master m = zonefile.equals("-") ? new Master(System.in) : new Master(zonefile, origin);
+    Record r = null;
+    while ((r = m.nextRecord()) != null) {
+      records.add(r);
     }
 
     return records;

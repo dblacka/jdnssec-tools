@@ -166,6 +166,10 @@
     </tar>
   </target>
 
+  <target name="onejar"
+          depends="build-onejar">
+  </target>
+
   <target name="dist"
          depends="bin-dist, src-dist, build-onejar, dist-clean">
   </target>
