@@ -211,7 +211,12 @@ public class SignRRset extends CLBase {
 
   public void execute() throws Exception {
     // Read in the zone
-    List<Record> records = ZoneUtils.readZoneFile(inputfile, null);
+    List<Record> records = null;
+    try {
+      records = ZoneUtils.readZoneFile(inputfile, null);
+    } catch (java.io.IOException e) {
+      fail("Unable to read input file: " + e.getMessage());
+    }
     if (records == null || records.isEmpty()) {
       fail("empty RRset file");
     }

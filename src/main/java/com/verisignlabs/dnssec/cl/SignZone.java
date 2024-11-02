@@ -64,7 +64,7 @@ public class SignZone extends CLBase {
   private boolean fullySignKeyset = false;
   private List<Name> includeNames = null;
   private boolean useNsec3 = false;
-  private byte[] salt = null;
+  private byte[] salt = {};
   private int iterations = 0;
   private int digestId = DNSSEC.Digest.SHA256;
   private long nsec3paramttl = -1;
@@ -161,7 +161,7 @@ public class SignZone extends CLBase {
         start = Instant.now().minusSeconds(3600);
       }
     } catch (java.text.ParseException e) {
-      fail("unable to parse start time specifiction: " + e);
+      fail("unable to parse start time specifiction: " + e.getMessage());
     }
 
     try {
@@ -172,7 +172,7 @@ public class SignZone extends CLBase {
         expire = Utils.convertDuration(start, "+2592000"); // 30 days
       }
     } catch (java.text.ParseException e) {
-      fail("missing zone file and/or key files");
+      fail("unable to parse end time specficiation: " + e.getMessage());
     }
 
     outputfile = cli.getOptionValue('f');

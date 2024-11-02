@@ -1,9 +1,13 @@
+2024-11-02  David Blacka  <david@blacka.com>
+
+        * Handle I/O errors from ZoneUtils.readZoneFile() correctly (issue #19).
+
 2024-04-13  David Blacka  <david@blacka.com>
 
 	* Remove support for ECC_GOST
 	* Create a new DSAlgorithm class, move DS creation into that
 	* Add support for DS algorithms 3 and 4 -- bouncycastle crypto
-	provider used for DS algoirthm 3 (GOST R 34.11-94)
+	provider used for DS algorithm 3 (GOST R 34.11-94)
 	* Moved support for loading the bouncycastle provider to the new
 	DSAlgorithm class
 
