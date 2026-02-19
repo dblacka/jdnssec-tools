@@ -68,7 +68,7 @@
     <jar destfile="${dist.dir}/${dist.name}.jar">
       <zipfileset dir="${build.dest}" includes="**/*.class" />
 
-      <zipfileset src="${lib.dir}/dnsjava-3.5.3.jar" />
+      <zipfileset src="${lib.dir}/dnsjava-3.6.4.jar" />
       <zipfileset src="${lib.dir}/commons-cli-1.6.0.jar" />
       <zipfileset src="${lib.dir}/slf4j-api-1.7.36.jar" />
       <zipfileset src="${lib.dir}/slf4j-simple-1.7.36.jar" />

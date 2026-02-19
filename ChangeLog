@@ -1,3 +1,7 @@
+2026-02-19  David Blacka <david@blacka.com>
+
+        * Update dnsjava to 3.6.4 (this adds a number of "new" RR types, including SVCB/HTTPS and ZONEMD.)
+
 2024-11-02  David Blacka  <david@blacka.com>
 
         * Handle I/O errors from ZoneUtils.readZoneFile() correctly (issue #19).
