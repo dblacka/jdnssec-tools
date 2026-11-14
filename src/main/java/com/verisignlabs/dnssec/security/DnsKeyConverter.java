@@ -58,9 +58,12 @@ import org.xbill.DNS.utils.base64;
 
 // FIX/ME: if we can avoid directly pulling in the bouncycastle classes, that would work better with the other code that conditionally adds the BC providerœ
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.crypto.params.MLDSAParameters;
 import org.bouncycastle.crypto.params.MLDSAPrivateKeyParameters;
+import org.bouncycastle.crypto.params.MLDSAPublicKeyParameters;
 import org.bouncycastle.crypto.util.PrivateKeyInfoFactory;
+import org.bouncycastle.crypto.util.SubjectPublicKeyInfoFactory;
 import org.bouncycastle.jcajce.interfaces.MLDSAPrivateKey;
 import org.bouncycastle.jcajce.interfaces.MLDSAPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -89,9 +92,10 @@ public class DnsKeyConverter {
    * Given a DNS KEY record, return the JCA public key
    *
    * @throws NoSuchAlgorithmException
+   * @throws IOException 
    */
   public PublicKey parseDNSKEYRecord(DNSKEYRecord pKeyRecord)
-      throws NoSuchAlgorithmException {
+      throws NoSuchAlgorithmException, IOException {
     if (pKeyRecord.getKey() == null)
       return null;
 
@@ -111,6 +115,14 @@ public class DnsKeyConverter {
     }
 
     try {
+      // Bypass the use of DNSSEC.toPublicKey() for ML-DSA-44
+      if (originalAlgorithm == DnsKeyAlgorithm.DNSSEC_MLDSA44) {
+        // ugh. here we go:
+        MLDSAPublicKeyParameters pubkeyParams = new MLDSAPublicKeyParameters(MLDSAParameters.ml_dsa_44, pKeyRecord.getKey());
+        // what is this?
+        SubjectPublicKeyInfo subPubInfo = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(pubkeyParams);
+        return BouncyCastleProvider.getPublicKey(subPubInfo);
+      }
       // This uses DNSJava's DNSSEC.toPublicKey() method.
       return pKeyRecord.getPublicKey();
     } catch (DNSSECException e) {
@@ -129,9 +141,8 @@ public class DnsKeyConverter {
       // TO/DO: implement support of ML-DSA-44 directly in dnsjava. This bypasses the
       // lack of support in org.xbill.DNS.DNSSEC
       // it would also give us a constant to refer to instead of hard-coding 18 here.
-      if (origAlgorithm == 18) {
+      if (origAlgorithm == DnsKeyAlgorithm.DNSSEC_MLDSA44) {
         MLDSAPublicKey pubkey = (MLDSAPublicKey) key;
-        log.fine("MLDSA pubkey length: " + pubkey.getPublicData().length);
         keyrec = new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, origAlgorithm,
             pubkey.getPublicData());
       } else {

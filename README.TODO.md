@@ -11,3 +11,7 @@ This bit of code has been around since approximately 2005, and has been in "mini
   * allowing for an external sort once the data is shown to be larger than X, and/or
   * allowing for a memory-constrained internal sort that uses disk, and/or,
   * figuring out how to let the JVM use *a lot* of memory.
+* Assume presence of the bouncycastle provider.  We have the jar in the distribution, so we should assume its presence and use it for ECDSA so we can use deterministic signing.
+* Add ZONEMD support, at least in the simple mode.
+* Add support for any missing DNSKEY algorithms (SM2/SM3, GOST.34)
+* Use bouncycastle for ECDSA (#21) and implement determinisitic ECDSA signing
