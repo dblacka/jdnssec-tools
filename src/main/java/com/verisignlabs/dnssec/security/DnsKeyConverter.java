@@ -23,6 +23,7 @@ import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.DSAParams;
@@ -55,6 +56,18 @@ import org.xbill.DNS.DNSSEC.DNSSECException;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.utils.base64;
 
+// FIX/ME: if we can avoid directly pulling in the bouncycastle classes, that would work better with the other code that conditionally adds the BC providerœ
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.crypto.params.MLDSAParameters;
+import org.bouncycastle.crypto.params.MLDSAPrivateKeyParameters;
+import org.bouncycastle.crypto.params.MLDSAPublicKeyParameters;
+import org.bouncycastle.crypto.util.PrivateKeyInfoFactory;
+import org.bouncycastle.crypto.util.SubjectPublicKeyInfoFactory;
+import org.bouncycastle.jcajce.interfaces.MLDSAPrivateKey;
+import org.bouncycastle.jcajce.interfaces.MLDSAPublicKey;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 /**
  * This class handles conversions between JCA key formats and DNSSEC and BIND9
  * key formats.
@@ -68,7 +81,7 @@ public class DnsKeyConverter {
   private KeyFactory mECKeyFactory;
   private KeyFactory mEdKeyFactory;
   private DnsKeyAlgorithm mAlgorithms;
-  
+
   private Logger log = Logger.getLogger(this.getClass().toString());
 
   public DnsKeyConverter() {
@@ -79,9 +92,10 @@ public class DnsKeyConverter {
    * Given a DNS KEY record, return the JCA public key
    *
    * @throws NoSuchAlgorithmException
+   * @throws IOException
    */
   public PublicKey parseDNSKEYRecord(DNSKEYRecord pKeyRecord)
-      throws NoSuchAlgorithmException {
+      throws NoSuchAlgorithmException, IOException {
     if (pKeyRecord.getKey() == null)
       return null;
 
@@ -101,6 +115,15 @@ public class DnsKeyConverter {
     }
 
     try {
+      // Bypass the use of DNSSEC.toPublicKey() for ML-DSA-44
+      if (originalAlgorithm == DnsKeyAlgorithm.DNSSEC_MLDSA44) {
+        // ugh. here we go:
+        MLDSAPublicKeyParameters pubkeyParams = new MLDSAPublicKeyParameters(MLDSAParameters.ml_dsa_44,
+            pKeyRecord.getKey());
+        // what is this?
+        SubjectPublicKeyInfo subPubInfo = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(pubkeyParams);
+        return BouncyCastleProvider.getPublicKey(subPubInfo);
+      }
       // This uses DNSJava's DNSSEC.toPublicKey() method.
       return pKeyRecord.getPublicKey();
     } catch (DNSSECException e) {
@@ -114,15 +137,25 @@ public class DnsKeyConverter {
   public DNSKEYRecord generateDNSKEYRecord(Name name, int dclass, long ttl,
       int flags, int alg, PublicKey key) {
     try {
+      DNSKEYRecord keyrec = null;
       int origAlgorithm = mAlgorithms.originalAlgorithm(alg);
-      DNSKEYRecord keyrec = new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, origAlgorithm,
-          key);
+      // TO/DO: implement support of ML-DSA-44 directly in dnsjava. This bypasses the
+      // lack of support in org.xbill.DNS.DNSSEC
+      // it would also give us a constant to refer to instead of hard-coding 18 here.
+      if (origAlgorithm == DnsKeyAlgorithm.DNSSEC_MLDSA44) {
+        MLDSAPublicKey pubkey = (MLDSAPublicKey) key;
+        keyrec = new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, origAlgorithm,
+            pubkey.getPublicData());
+      } else {
+        keyrec = new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, origAlgorithm,
+            key);
+      }
       if (origAlgorithm == alg) {
         return keyrec;
       }
       return new DNSKEYRecord(name, dclass, ttl, flags, DNSKEYRecord.Protocol.DNSSEC, alg, keyrec.getKey());
     } catch (DNSSECException e) {
-      log.severe("Unable to generated a DNSKEYRecord: " + e);
+      log.severe("Unable to generate a DNSKEYRecord: " + e);
       // This mimics the behavior of KEYConverter.buildRecord(), which would
       // return null if the algorithm was unknown.
       return null;
@@ -168,7 +201,7 @@ public class DnsKeyConverter {
    * @return a JCA private key, given a BIND9-style textual encoding
    */
   public PrivateKey parsePrivateKeyString(String key)
-      throws IOException, NoSuchAlgorithmException {
+      throws IOException, NoSuchAlgorithmException, NoSuchProviderException {
     StringTokenizer lines = new StringTokenizer(key, "\n");
 
     while (lines.hasMoreTokens()) {
@@ -205,6 +238,8 @@ public class DnsKeyConverter {
             return parsePrivateECDSA(lines, alg);
           case EDDSA:
             return parsePrivateEdDSA(lines, alg);
+          case MLDSA:
+            return parsePrivateMLDSA(lines, alg);
           default:
             throw new IOException("unsupported private key algorithm: " + val);
         }
@@ -496,6 +531,46 @@ public class DnsKeyConverter {
   }
 
   /**
+   * Given the remaining lines in a BIND9-style ML-DSA private key, parse the key
+   * info and translate it into a JCA private key objects.
+   * 
+   * @param lines     The remaining lines in a private key file
+   * @param algorithm
+   * @return
+   * @throws NoSuchAlgorithmException
+   */
+  private PrivateKey parsePrivateMLDSA(StringTokenizer lines, int algorithm)
+      throws NoSuchAlgorithmException, NoSuchProviderException {
+
+    byte[] data = null;
+
+    while (lines.hasMoreTokens()) {
+      String line = lines.nextToken();
+      if (line == null)
+        continue;
+
+      if (line.startsWith("#"))
+        continue;
+
+      String val = value(line);
+      if (val == null)
+        continue;
+
+      data = base64.fromString(val);
+
+    }
+
+    try {
+      MLDSAPrivateKeyParameters privParams = new MLDSAPrivateKeyParameters(MLDSAParameters.ml_dsa_44, data);
+      PrivateKeyInfo pkinfo = PrivateKeyInfoFactory.createPrivateKeyInfo(privParams);
+      return BouncyCastleProvider.getPrivateKey(pkinfo);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  /**
    * Given a private key and public key, generate the BIND9 style private key
    * format.
    */
@@ -510,6 +585,8 @@ public class DnsKeyConverter {
       return generatePrivateEC((ECPrivateKey) priv, (ECPublicKey) pub, alg);
     } else if (priv instanceof EdECPrivateKey && pub instanceof EdECPublicKey) {
       return generatePrivateED((EdECPrivateKey) priv, (EdECPublicKey) pub, alg);
+    } else if (priv instanceof MLDSAPrivateKey && pub instanceof MLDSAPublicKey) {
+      return generatePrivateMLDSA((MLDSAPrivateKey) priv, (MLDSAPublicKey) pub, alg);
     }
 
     return null;
@@ -645,4 +722,18 @@ public class DnsKeyConverter {
     return sw.toString();
   }
 
+  private String generatePrivateMLDSA(MLDSAPrivateKey priv, MLDSAPublicKey pub, int alg) {
+
+    StringWriter sw = new StringWriter();
+    PrintWriter out = new PrintWriter(sw);
+
+    out.println("Private-key-format: v1.2");
+    out.println("Algorithm: " + alg + " (" + mAlgorithms.algToString(alg) + ")");
+    out.print("PrivateKey: ");
+
+    byte[] keyBytes = priv.getSeed();
+    out.println(base64.toString(keyBytes));
+
+    return sw.toString();
+  }
 }

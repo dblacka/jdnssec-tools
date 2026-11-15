@@ -24,6 +24,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
@@ -253,7 +254,7 @@ public class BINDKeyUtils {
     try {
       DnsKeyConverter conv = new DnsKeyConverter();
       return conv.parsePrivateKeyString(privateKeyString);
-    } catch (IOException | NoSuchAlgorithmException e) {
+    } catch (IOException | NoSuchAlgorithmException | NoSuchProviderException e) {
       e.printStackTrace();
     }
 

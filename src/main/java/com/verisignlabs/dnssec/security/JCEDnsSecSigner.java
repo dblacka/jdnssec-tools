@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.Signature;
 import java.security.interfaces.DSAPublicKey;
 import java.time.Instant;
@@ -80,7 +81,7 @@ public class JCEDnsSecSigner {
    */
   public DnsKeyPair generateKey(Name owner, long ttl, int dclass, int algorithm,
       int flags, int keysize, boolean useLargeExponent)
-      throws NoSuchAlgorithmException {
+      throws NoSuchAlgorithmException, NoSuchProviderException {
     DnsKeyAlgorithm algorithms = DnsKeyAlgorithm.getInstance();
 
     if (ttl < 0)
