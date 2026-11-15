@@ -16,6 +16,7 @@
 
 package com.verisignlabs.dnssec.security;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -166,7 +167,7 @@ public class DnsKeyPair {
       try {
         DnsKeyConverter conv = getKeyConverter();
         setPublic(conv.parseDNSKEYRecord(getDNSKEYRecord()));
-      } catch (NoSuchAlgorithmException e) {
+      } catch (NoSuchAlgorithmException | IOException e) {
         log.severe("DnsKeyPair.getPublic(): " + e.toString());
         return null;
       }

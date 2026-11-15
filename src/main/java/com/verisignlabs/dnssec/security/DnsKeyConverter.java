@@ -92,7 +92,7 @@ public class DnsKeyConverter {
    * Given a DNS KEY record, return the JCA public key
    *
    * @throws NoSuchAlgorithmException
-   * @throws IOException 
+   * @throws IOException
    */
   public PublicKey parseDNSKEYRecord(DNSKEYRecord pKeyRecord)
       throws NoSuchAlgorithmException, IOException {
@@ -118,7 +118,8 @@ public class DnsKeyConverter {
       // Bypass the use of DNSSEC.toPublicKey() for ML-DSA-44
       if (originalAlgorithm == DnsKeyAlgorithm.DNSSEC_MLDSA44) {
         // ugh. here we go:
-        MLDSAPublicKeyParameters pubkeyParams = new MLDSAPublicKeyParameters(MLDSAParameters.ml_dsa_44, pKeyRecord.getKey());
+        MLDSAPublicKeyParameters pubkeyParams = new MLDSAPublicKeyParameters(MLDSAParameters.ml_dsa_44,
+            pKeyRecord.getKey());
         // what is this?
         SubjectPublicKeyInfo subPubInfo = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(pubkeyParams);
         return BouncyCastleProvider.getPublicKey(subPubInfo);

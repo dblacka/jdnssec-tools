@@ -199,7 +199,7 @@ public class DnsKeyAlgorithm {
       Class<?> bcProviderClass = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
       Provider bcProvider = (Provider) bcProviderClass.getDeclaredConstructor().newInstance();
       Security.addProvider(bcProvider);
-      log.info("bouncycastle crypto provider loaded");
+      log.fine("bouncycastle crypto provider loaded");
 
       addAlgorithm(18, "ML-DSA-44", BaseAlgorithm.MLDSA);
       addMnemonic("ML-DSA-44", 18);

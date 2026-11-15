@@ -1,8 +1,7 @@
 2026-11-14  David Blacka <david@blacka.com>
 
         * Update dnsjava to 3.7.1
-        * Update commons-cli to 1.11.0
-        * Add ML-DSA-44 support, somewhat tested
+        * Add ML-DSA-44 support
 
 2026-02-19  David Blacka <david@blacka.com>
 
