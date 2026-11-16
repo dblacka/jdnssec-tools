@@ -62,24 +62,24 @@ public class KeyGen extends CLBase {
 
     // Argument options
     opts.addOption(
-        Option.builder("n").longOpt("nametype").hasArg().argName("type").desc("ZONE | OTHER (default ZONE)").build());
+        Option.builder("n").longOpt("nametype").hasArg().argName("type").desc("ZONE | OTHER (default ZONE)").get());
 
     String[] algStrings = DnsKeyAlgorithm.getInstance().supportedAlgMnemonics();
     String algStringSet = String.join(" | ", algStrings);
     opts.addOption(Option.builder("a").hasArg().argName("algorithm")
-        .desc(algStringSet + " | aliases, ECDSAP256SHA256 is default.").build());
+        .desc(algStringSet + " | aliases, ECDSAP256SHA256 is default.").get());
 
     opts.addOption(Option.builder("b").hasArg().argName("size").desc(
         "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored, MLDSA: ignored")
-        .build());
+        .get());
     opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output-file")
-        .desc("base filename from the public/private key files").build());
+        .desc("base filename from the public/private key files").get());
     opts.addOption(Option.builder("d").hasArg().argName("dir").longOpt("keydir")
-        .desc("generated keyfiles are written to this directory").build());
+        .desc("generated keyfiles are written to this directory").get());
     opts.addOption(Option.builder("T").hasArg().argName("ttl").longOpt("ttl")
-        .desc("use this TTL for the generated DNSKEY records (default: 86400").build());
+        .desc("use this TTL for the generated DNSKEY records (default: 86400").get());
     opts.addOption(Option.builder().hasArg().argName("tag").longOpt("with-tag")
-        .desc("Generate keys until tag is the given value.").build());
+        .desc("Generate keys until tag is the given value.").get());
 
   }
 

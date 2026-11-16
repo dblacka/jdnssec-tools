@@ -92,15 +92,15 @@ public abstract class CLBase {
         "Output DNS records using 'multiline' format");
 
     opts.addOption(Option.builder("l").longOpt("log-level").argName("level").hasArg()
-        .desc("set the logging level with either java.util.logging levels, or 0-6").build());
+        .desc("set the logging level with either java.util.logging levels, or 0-6").get());
     opts.addOption(Option.builder("v").longOpt("verbose").desc(
-        "set as verbose (log-level = fine)").build());
+        "set as verbose (log-level = fine)").get());
 
     opts.addOption(Option.builder("c").longOpt("config").argName("file").hasArg()
-        .desc("configuration file (format: java properties)").build());
+        .desc("configuration file (format: java properties)").get());
 
     opts.addOption(Option.builder("A").hasArg().argName("alias:original:mnemonic").longOpt("alg-alias")
-        .desc("Define an alias for an algorithm").build());
+        .desc("Define an alias for an algorithm").get());
   }
 
   /**
@@ -227,6 +227,7 @@ public abstract class CLBase {
     System.exit(64);
   }
   /** Print out the usage and help statements, then quit. */
+  @SuppressWarnings("deprecation")
   public void usage() {
     HelpFormatter f = new HelpFormatter();
 

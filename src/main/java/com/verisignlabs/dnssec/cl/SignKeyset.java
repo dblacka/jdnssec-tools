@@ -69,13 +69,13 @@ public class SignKeyset extends CLBase {
 
     // Argument options
     opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
-        .desc("directory where key files are found (default '.').").build());
+        .desc("directory where key files are found (default '.').").get());
     opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
-        .desc("signature starting time (default is now - 1 hour)").build());
+        .desc("signature starting time (default is now - 1 hour)").get());
     opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
-        .desc("signature expiration time (default is start-time + 30 days)").build());
+        .desc("signature expiration time (default is start-time + 30 days)").get());
     opts.addOption(
-        Option.builder("f").hasArg().argName("outfile").desc("file the signed keyset is written to").build());
+        Option.builder("f").hasArg().argName("outfile").desc("file the signed keyset is written to").get());
   }
 
 

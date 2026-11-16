@@ -63,15 +63,15 @@ public class DSTool extends CLBase {
    * @return a set of command line options.
    */
   protected void setupOptions() {
-    opts.addOption(Option.builder("D").longOpt("dlv").desc("Generate a DLV record instead.").build());
-    opts.addOption(Option.builder("C").longOpt("cds").desc("Generate a CDS record instead").build());
+    opts.addOption(Option.builder("D").longOpt("dlv").desc("Generate a DLV record instead.").get());
+    opts.addOption(Option.builder("C").longOpt("cds").desc("Generate a CDS record instead").get());
     String[] algStrings = DSAlgorithm.getInstance().supportedAlgorithmMnemonics();
     String algStringSet = String.join(" | ", algStrings);
     opts.addOption(
         Option.builder("d").hasArg().argName("id").longOpt("digest").desc(algStringSet + ": default is SHA256")
-            .build());
-    opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output").desc("output to file").build());
-    opts.addOption(Option.builder("T").longOpt("ttl").hasArg().desc("TTL to use for generated DS/CDS record").build());
+            .get());
+    opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output").desc("output to file").get());
+    opts.addOption(Option.builder("T").longOpt("ttl").hasArg().desc("TTL to use for generated DS/CDS record").get());
   }
 
   protected void processOptions() {
