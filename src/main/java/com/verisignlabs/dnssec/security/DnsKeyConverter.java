@@ -56,7 +56,6 @@ import org.xbill.DNS.DNSSEC.DNSSECException;
 import org.xbill.DNS.Name;
 import org.xbill.DNS.utils.base64;
 
-// FIX/ME: if we can avoid directly pulling in the bouncycastle classes, that would work better with the other code that conditionally adds the BC providerœ
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.crypto.params.MLDSAParameters;
@@ -117,10 +116,8 @@ public class DnsKeyConverter {
     try {
       // Bypass the use of DNSSEC.toPublicKey() for ML-DSA-44
       if (originalAlgorithm == DnsKeyAlgorithm.DNSSEC_MLDSA44) {
-        // ugh. here we go:
         MLDSAPublicKeyParameters pubkeyParams = new MLDSAPublicKeyParameters(MLDSAParameters.ml_dsa_44,
             pKeyRecord.getKey());
-        // what is this?
         SubjectPublicKeyInfo subPubInfo = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(pubkeyParams);
         return BouncyCastleProvider.getPublicKey(subPubInfo);
       }

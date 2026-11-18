@@ -34,7 +34,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
@@ -48,6 +47,7 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.logging.Logger;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.xbill.DNS.DNSSEC;
 
 /**
@@ -145,6 +145,13 @@ public class DnsKeyAlgorithm {
   }
 
   private void initialize() {
+    // Unconditionally add BouncyCastle. Once again we need to for DNSSEC
+    // standards that the built-in Java Crypto providers don't have.
+    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+      Security.addProvider(new BouncyCastleProvider());
+      log.fine("bouncycastle crypto provider loaded");
+    }
+
     mAlgorithmMap = new HashMap<>();
     mMnemonicToIdMap = new HashMap<>();
     mIdToMnemonicMap = new HashMap<>();
@@ -177,11 +184,11 @@ public class DnsKeyAlgorithm {
     addAlgorithm(DNSSEC.Algorithm.RSASHA512, "SHA512withRSA", BaseAlgorithm.RSA);
     addMnemonic("RSASHA512", DNSSEC.Algorithm.RSASHA512);
 
-    addAlgorithm(DNSSEC.Algorithm.ECDSAP256SHA256, "SHA256withECDSA", BaseAlgorithm.ECDSA, "secp256r1");
+    addAlgorithm(DNSSEC.Algorithm.ECDSAP256SHA256, "SHA256withECDDSA", BaseAlgorithm.ECDSA, "secp256r1");
     addMnemonic("ECDSAP256SHA256", DNSSEC.Algorithm.ECDSAP256SHA256);
     addMnemonic("ECDSA-P256", DNSSEC.Algorithm.ECDSAP256SHA256);
 
-    addAlgorithm(DNSSEC.Algorithm.ECDSAP384SHA384, "SHA384withECDSA", BaseAlgorithm.ECDSA, "secp384r1");
+    addAlgorithm(DNSSEC.Algorithm.ECDSAP384SHA384, "SHA384withECDDSA", BaseAlgorithm.ECDSA, "secp384r1");
     addMnemonic("ECDSAP384SHA384", DNSSEC.Algorithm.ECDSAP384SHA384);
     addMnemonic("ECDSA-P384", DNSSEC.Algorithm.ECDSAP384SHA384);
 
@@ -192,20 +199,9 @@ public class DnsKeyAlgorithm {
     addAlgorithm(16, "Ed448", BaseAlgorithm.EDDSA, "Ed448");
     addMnemonic(("ED448"), 16);
 
-    // Attempt to add the bouncycastle provider. This is so we can use this
-    // provider if it is available, but not require the user to add it as one of
-    // the java.security providers. If we have bouncycastle, we get to add alg 18!
-    try {
-      Class<?> bcProviderClass = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
-      Provider bcProvider = (Provider) bcProviderClass.getDeclaredConstructor().newInstance();
-      Security.addProvider(bcProvider);
-      log.fine("bouncycastle crypto provider loaded");
-
-      addAlgorithm(18, "ML-DSA-44", BaseAlgorithm.MLDSA);
-      addMnemonic("ML-DSA-44", 18);
-    } catch (ReflectiveOperationException e) {
-      // do nothing, this is the normal case
-    }
+    addAlgorithm(18, "ML-DSA-44", BaseAlgorithm.MLDSA);
+    addMnemonic("ML-DSA-44", 18);
+    addMnemonic("MLDSA44", 18);
   }
 
   private void addAlgorithm(int algorithm, String sigName, BaseAlgorithm baseType) {
@@ -379,7 +375,7 @@ public class DnsKeyAlgorithm {
    * for verification.
    * 
    * @param algorithm The DNSSEC key algorithm
-   * @param pubkey The public key we would like the verify with
+   * @param pubkey    The public key we would like the verify with
    * @return a Signature object
    */
   public Signature getSignature(int algorithm, PublicKey pubkey) {
@@ -391,7 +387,7 @@ public class DnsKeyAlgorithm {
     Signature s = null;
     try {
       if (algorithm == DNSSEC_MLDSA44) {
-        s = Signature.getInstance(entry.sigName, "BC");
+        s = Signature.getInstance(entry.sigName, BouncyCastleProvider.PROVIDER_NAME);
         s.initVerify(pubkey);
       } else {
         s = Signature.getInstance(entry.sigName);
@@ -557,14 +553,15 @@ public class DnsKeyAlgorithm {
       }
       case EDDSA: {
         EdAlgEntry entry = (EdAlgEntry) getEntry(algorithm);
-        KeyPairGenerator edKeyGenerator = KeyPairGenerator.getInstance(entry.curveName, "BC");
+        KeyPairGenerator edKeyGenerator = KeyPairGenerator.getInstance(entry.curveName);
 
         pair = edKeyGenerator.generateKeyPair();
         break;
       }
       case MLDSA: {
         AlgEntry entry = (AlgEntry) getEntry(algorithm);
-        KeyPairGenerator mldsaGenerator = KeyPairGenerator.getInstance(entry.sigName, "BC");
+        KeyPairGenerator mldsaGenerator = KeyPairGenerator.getInstance(entry.sigName,
+            BouncyCastleProvider.PROVIDER_NAME);
 
         pair = mldsaGenerator.generateKeyPair();
         break;
