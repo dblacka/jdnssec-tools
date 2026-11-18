@@ -6,7 +6,7 @@ Author: David Blacka (<davidb@verisign.com>)
 
 This is a collection of DNSSEC tools written in Java.  They are intended to be an addition or replacement for the DNSSEC tools that are part of BIND 9.
 
-These tools depend upon DNSjava (<https://github.com/dnsjava/dnsjava>), the Jakarta Commons CLI and Logging libraries (<https://commons.apache.org/proper/commons-cli>), slf4j (<https://www.slf4j.org>), and Sun's Java Cryptography extensions.  A copy of each of these libraries is included in the distribution.
+These tools depend upon DNSjava (<https://github.com/dnsjava/dnsjava>), the Jakarta Commons CLI and Logging libraries (<https://commons.apache.org/proper/commons-cli>), slf4j (<https://www.slf4j.org>), BouncyCastle (<https://www.bouncycastle.org>) and Sun's Java Cryptography extensions.  A copy of each of these libraries is included in the distribution.
 
 See the "[licenses](https://github.com/dblacka/jdnssec-tools/tree/master/licenses)" directory for the licensing information of this package and the other packages that are distributed with it.
 

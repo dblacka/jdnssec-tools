@@ -46,15 +46,15 @@ public class VerifyZone extends CLBase {
 
   protected void setupOptions() {
     opts.addOption(Option.builder("S").hasArg().argName("seconds").longOpt("sig-start-fudge")
-        .desc("'fudge' RRSIG inception ties by 'seconds'").build());
+        .desc("'fudge' RRSIG inception ties by 'seconds'").get());
     opts.addOption(Option.builder("E").hasArg().argName("seconds").longOpt("sig-expire-fudge")
-        .desc("'fudge' RRSIG expiration times by 'seconds'").build());
+        .desc("'fudge' RRSIG expiration times by 'seconds'").get());
     opts.addOption(Option.builder("t").hasArg().argName("time").longOpt("use-time")
-        .desc("Use 'time' as the time for verification purposes.").build());
+        .desc("Use 'time' as the time for verification purposes.").get());
 
     opts.addOption(
-        Option.builder().longOpt("ignore-time").desc("Ignore RRSIG inception and expiration time errors.").build());
-    opts.addOption(Option.builder().longOpt("ignore-duplicate-rrs").desc("Ignore duplicate record errors.").build());
+        Option.builder().longOpt("ignore-time").desc("Ignore RRSIG inception and expiration time errors.").get());
+    opts.addOption(Option.builder().longOpt("ignore-duplicate-rrs").desc("Ignore duplicate record errors.").get());
   }
 
   protected void processOptions() {

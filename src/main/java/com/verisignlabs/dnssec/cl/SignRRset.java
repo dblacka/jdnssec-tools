@@ -72,13 +72,13 @@ public class SignRRset extends CLBase {
     opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
 
     opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
-        .desc("directory to find key files (default '.'").build());
+        .desc("directory to find key files (default '.'").get());
     opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
-        .desc("signature starting time (default is now - 1 hour)").build());
+        .desc("signature starting time (default is now - 1 hour)").get());
     opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
-        .desc("signature expiration time (default is start-time + 30 days)").build());
+        .desc("signature expiration time (default is start-time + 30 days)").get());
     opts.addOption(
-        Option.builder("f").hasArg().argName("outfile").desc("file the the signed rrset is written to").build());
+        Option.builder("f").hasArg().argName("outfile").desc("file the the signed rrset is written to").get());
   }
 
   protected void processOptions() {

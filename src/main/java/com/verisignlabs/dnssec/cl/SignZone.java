@@ -84,34 +84,34 @@ public class SignZone extends CLBase {
     opts.addOption("V", "verbose-signing", false, "Display verbose signing activity.");
 
     opts.addOption(Option.builder("d").hasArg().argName("dir").longOpt("keyset-directory")
-        .desc("directory to find keyset files (default '.')").build());
+        .desc("directory to find keyset files (default '.')").get());
     opts.addOption(Option.builder("D").hasArg().argName("dir").longOpt("key-directory")
-        .desc("directory to find key files (default '.'").build());
+        .desc("directory to find key files (default '.'").get());
     opts.addOption(Option.builder("s").hasArg().argName("time/offset").longOpt("start-time")
-        .desc("signature starting time (default is now - 1 hour)").build());
+        .desc("signature starting time (default is now - 1 hour)").get());
     opts.addOption(Option.builder("e").hasArg().argName("time/offset").longOpt("expire-time")
-        .desc("signature expiration time (default is start-time + 30 days)").build());
+        .desc("signature expiration time (default is start-time + 30 days)").get());
     opts.addOption(
-        Option.builder("f").hasArg().argName("outfile").desc("file the the signed rrset is written to").build());
+        Option.builder("f").hasArg().argName("outfile").desc("file the the signed rrset is written to").get());
     opts.addOption(Option.builder("k").hasArgs().argName("KSK file").longOpt("ksk-file")
-        .desc("This key is a Key-Signing Key (may repeat)").build());
+        .desc("This key is a Key-Signing Key (may repeat)").get());
     opts.addOption(Option.builder("I").hasArg().argName("file").longOpt("include-file")
-        .desc("include names in the file in the NSEC/NSEC3 chain").build());
+        .desc("include names in the file in the NSEC/NSEC3 chain").get());
 
     // NSEC3 options
     opts.addOption("3", "use-nsec3", false, "use NSEC3 instead of NSEC");
     opts.addOption("O", "use-opt-out", false,
         "generate a fully Opt-Out zone (only valid with NSEC3).");
     opts.addOption(
-        Option.builder("S").hasArg().argName("hex value").longOpt("salt").desc("Supply a salt value").build());
+        Option.builder("S").hasArg().argName("hex value").longOpt("salt").desc("Supply a salt value").get());
     opts.addOption(Option.builder("R").hasArg().argName("length").longOpt("random-salt")
-        .desc("Generate a random salt of <length>").build());
+        .desc("Generate a random salt of <length>").get());
     opts.addOption(Option.builder("H").hasArg().argName("count").longOpt("iterations")
-        .desc("Use this many addtional iterations in NSEC3 (default 0)").build());
+        .desc("Use this many addtional iterations in NSEC3 (default 0)").get());
     opts.addOption(Option.builder().hasArg().longOpt("nsec3paramttl").argName("ttl")
-        .desc("Use this TTL for the NSEC3PARAM record (default is min(soa.min, soa.ttl))").build());
+        .desc("Use this TTL for the NSEC3PARAM record (default is min(soa.min, soa.ttl))").get());
     opts.addOption(Option.builder().hasArg().argName("id").longOpt("ds-digest")
-        .desc("Digest algorithm to use for generated DS records").build());
+        .desc("Digest algorithm to use for generated DS records").get());
   }
 
   protected void processOptions() {
