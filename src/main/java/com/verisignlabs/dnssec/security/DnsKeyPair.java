@@ -16,9 +16,11 @@
 
 package com.verisignlabs.dnssec.security;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -146,7 +148,15 @@ public class DnsKeyPair {
   /** @return the appropriate Signature object for this keypair. */
   protected Signature getSignature() {
     DnsKeyAlgorithm algorithms = DnsKeyAlgorithm.getInstance();
-    return algorithms.getSignature(getDNSKEYAlgorithm());
+    try {
+      if (getDNSKEYAlgorithm() == DnsKeyAlgorithm.DNSSEC_MLDSA44) {
+        return algorithms.getSignature(getDNSKEYAlgorithm(), getPublic());
+      }
+      return algorithms.getSignature(getDNSKEYAlgorithm());
+    } catch (NoSuchProviderException e) {
+      e.printStackTrace();
+      return null;
+    }
   }
 
   /**
@@ -157,8 +167,8 @@ public class DnsKeyPair {
       try {
         DnsKeyConverter conv = getKeyConverter();
         setPublic(conv.parseDNSKEYRecord(getDNSKEYRecord()));
-      } catch (NoSuchAlgorithmException e) {
-        log.severe(e.toString());
+      } catch (NoSuchAlgorithmException | IOException e) {
+        log.severe("DnsKeyPair.getPublic(): " + e.toString());
         return null;
       }
     }
@@ -271,7 +281,7 @@ public class DnsKeyPair {
     PublicKey pk = getPublic();
 
     if (mVerifier == null || pk == null) {
-      log.warning("Could not get a Signature object for this key pair" + this);
+      log.warning("Could not get a Signature object for this key pair: " + this);
       return null;
     }
 

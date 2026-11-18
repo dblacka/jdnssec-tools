@@ -70,7 +70,7 @@ public class KeyGen extends CLBase {
         .desc(algStringSet + " | aliases, ECDSAP256SHA256 is default.").build());
 
     opts.addOption(Option.builder("b").hasArg().argName("size").desc(
-        "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored")
+        "key size, in bits (default 2048). RSA: [512..4096], DSA: [512..1024], DH: [128..4096], ECDSA: ignored, EdDSA: ignored, MLDSA: ignored")
         .build());
     opts.addOption(Option.builder("f").hasArg().argName("file").longOpt("output-file")
         .desc("base filename from the public/private key files").build());

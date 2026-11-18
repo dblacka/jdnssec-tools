@@ -29,9 +29,14 @@ package com.verisignlabs.dnssec.security;
 
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Provider;
+import java.security.PublicKey;
+import java.security.Security;
 import java.security.Signature;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
@@ -68,8 +73,13 @@ public class DnsKeyAlgorithm {
     DH,
     DSA,
     ECDSA,
-    EDDSA;
+    EDDSA,
+    MLDSA;
   }
+
+  // define a constant here -- should replace with org.xbill.DNS.DNSSEC.MLDSA44
+  // when available
+  static int DNSSEC_MLDSA44 = 18;
 
   private static class AlgEntry {
     public int dnssecAlgorithm;
@@ -181,6 +191,21 @@ public class DnsKeyAlgorithm {
     addMnemonic("ED25519", 15);
     addAlgorithm(16, "Ed448", BaseAlgorithm.EDDSA, "Ed448");
     addMnemonic(("ED448"), 16);
+
+    // Attempt to add the bouncycastle provider. This is so we can use this
+    // provider if it is available, but not require the user to add it as one of
+    // the java.security providers. If we have bouncycastle, we get to add alg 18!
+    try {
+      Class<?> bcProviderClass = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
+      Provider bcProvider = (Provider) bcProviderClass.getDeclaredConstructor().newInstance();
+      Security.addProvider(bcProvider);
+      log.fine("bouncycastle crypto provider loaded");
+
+      addAlgorithm(18, "ML-DSA-44", BaseAlgorithm.MLDSA);
+      addMnemonic("ML-DSA-44", 18);
+    } catch (ReflectiveOperationException e) {
+      // do nothing, this is the normal case
+    }
   }
 
   private void addAlgorithm(int algorithm, String sigName, BaseAlgorithm baseType) {
@@ -331,7 +356,7 @@ public class DnsKeyAlgorithm {
    * @param algorithm The DNSSEC algorithm (by number).
    * @return a Signature object.
    */
-  public Signature getSignature(int algorithm) {
+  public Signature getSignature(int algorithm) throws NoSuchProviderException {
     AlgEntry entry = getEntry(algorithm);
     if (entry == null)
       return null;
@@ -341,6 +366,37 @@ public class DnsKeyAlgorithm {
     try {
       s = Signature.getInstance(entry.sigName);
     } catch (NoSuchAlgorithmException e) {
+      log.severe("Unable to get signature implementation for algorithm " + algorithm
+          + ": " + e);
+    }
+
+    return s;
+  }
+
+  /**
+   * Return a Signature object for the specified algorithm *and public key*.
+   * Some algorithms, like ML-DSA-44, need to be initialized with the public key
+   * for verification.
+   * 
+   * @param algorithm The DNSSEC key algorithm
+   * @param pubkey The public key we would like the verify with
+   * @return a Signature object
+   */
+  public Signature getSignature(int algorithm, PublicKey pubkey) {
+    AlgEntry entry = getEntry(algorithm);
+
+    if (entry == null)
+      return null;
+
+    Signature s = null;
+    try {
+      if (algorithm == DNSSEC_MLDSA44) {
+        s = Signature.getInstance(entry.sigName, "BC");
+        s.initVerify(pubkey);
+      } else {
+        s = Signature.getInstance(entry.sigName);
+      }
+    } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException e) {
       log.severe("Unable to get signature implementation for algorithm " + algorithm
           + ": " + e);
     }
@@ -450,7 +506,7 @@ public class DnsKeyAlgorithm {
   }
 
   public KeyPair generateKeyPair(int algorithm, int keysize, boolean useLargeExp)
-      throws NoSuchAlgorithmException {
+      throws NoSuchAlgorithmException, NoSuchProviderException {
     KeyPair pair = null;
     switch (baseType(algorithm)) {
       case RSA: {
@@ -501,20 +557,26 @@ public class DnsKeyAlgorithm {
       }
       case EDDSA: {
         EdAlgEntry entry = (EdAlgEntry) getEntry(algorithm);
-        KeyPairGenerator edKeyGenerator = KeyPairGenerator.getInstance(entry.curveName);
+        KeyPairGenerator edKeyGenerator = KeyPairGenerator.getInstance(entry.curveName, "BC");
 
         pair = edKeyGenerator.generateKeyPair();
+        break;
+      }
+      case MLDSA: {
+        AlgEntry entry = (AlgEntry) getEntry(algorithm);
+        KeyPairGenerator mldsaGenerator = KeyPairGenerator.getInstance(entry.sigName, "BC");
+
+        pair = mldsaGenerator.generateKeyPair();
         break;
       }
       default:
         throw new NoSuchAlgorithmException("Alg " + algorithm);
     }
-
     return pair;
   }
 
   public KeyPair generateKeyPair(int algorithm, int keysize)
-      throws NoSuchAlgorithmException {
+      throws NoSuchAlgorithmException, NoSuchProviderException {
     return generateKeyPair(algorithm, keysize, false);
   }
 
