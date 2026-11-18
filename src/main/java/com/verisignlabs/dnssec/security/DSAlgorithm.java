@@ -28,12 +28,12 @@ package com.verisignlabs.dnssec.security;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.logging.Logger;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.xbill.DNS.CDSRecord;
 import org.xbill.DNS.DLVRecord;
 import org.xbill.DNS.DNSKEYRecord;
@@ -57,23 +57,19 @@ public class DSAlgorithm {
     private static DSAlgorithm mInstance = null;
 
     public DSAlgorithm() {
+        // Unconditionally add BouncyCastle. Once again we need to for DNSSEC
+        // standards that the built-in Java Crypto providers don't have.
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+            log.fine("bouncycastle crypto provider loaded");
+        }        
+        
         mSupportedAlgorithms = new HashSet<>();
         mSupportedAlgorithms.add(DNSSEC.Digest.SHA1);
         mSupportedAlgorithms.add(DNSSEC.Digest.SHA256);
         mSupportedAlgorithms.add(DNSSEC.Digest.SHA384);
-        // Attempt to add the bouncycastle provider. This is so we can use this
-        // provider if it is available, but not require the user to add it as one of
-        // the java.security providers.
-        try {
-            Class<?> bcProviderClass = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
-            Provider bcProvider = (Provider) bcProviderClass.getDeclaredConstructor().newInstance();
-            Security.addProvider(bcProvider);
-            log.fine("bouncycastle crypto provider loaded");
-            mSupportedAlgorithms.add(DNSSEC.Digest.GOST3411);
-        } catch (ReflectiveOperationException e) {
-            // do nothing, this is the normal case
-        }
-
+        mSupportedAlgorithms.add(DNSSEC.Digest.GOST3411_12);
+        mSupportedAlgorithms.add(DNSSEC.Digest.SM3);
     }
 
     public String[] supportedAlgorithmMnemonics() {
@@ -121,17 +117,16 @@ public class DSAlgorithm {
                     md = MessageDigest.getInstance("SHA-256");
                     digest = md.digest(os.toByteArray());
                     break;
-                case DNSSEC.Digest.GOST3411:
-                    // The standard Java crypto providers don't have this, but bouncycastle does
-                    if (java.security.Security.getProviders("MessageDigest.GOST3411") != null) {
-                        md = MessageDigest.getInstance("GOST3411");
-                        digest = md.digest(os.toByteArray());
-                    } else {
-                        throw new IllegalArgumentException("Unsupported digest id: " + digestAlg);
-                    }
-                    break;
                 case DNSSEC.Digest.SHA384:
                     md = MessageDigest.getInstance("SHA-384");
+                    digest = md.digest(os.toByteArray());
+                    break;
+                case DNSSEC.Digest.GOST3411_12:
+                    md = MessageDigest.getInstance("GOST3411-2012-256");
+                    digest = md.digest(os.toByteArray());
+                    break;
+                case DNSSEC.Digest.SM3:
+                    md = MessageDigest.getInstance("SM3");
                     digest = md.digest(os.toByteArray());
                     break;
                 default:
